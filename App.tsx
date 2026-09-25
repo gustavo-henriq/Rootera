@@ -25,6 +25,7 @@ import { About, Experience } from './src/screens/Profile';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider } from './src/ds/theme';
 import { Gallery } from './src/ds/Gallery';
+import { Proto, protoParam } from './src/ds/Protos';
 
 // Web preview only: `?gallery=1` opens the design-system reference.
 const showGallery = Platform.OS === 'web' && typeof location !== 'undefined' && /[?&]gallery=1/.test(location.search);
@@ -63,8 +64,8 @@ export default function App() {
         <SafeAreaProvider>
           <ThemeProvider>
             {/* Screens adopt dark mode as they migrate to src/ds (phase 4); until then the bar stays dark. */}
-            <StatusBar style={showGallery ? "auto" : "dark"} />
-            {showGallery ? <Gallery /> : <StoreProvider><Navigator /></StoreProvider>}
+            <StatusBar style={showGallery || protoParam ? "auto" : "dark"} />
+            {protoParam ? <Proto which={protoParam} /> : showGallery ? <Gallery /> : <StoreProvider><Navigator /></StoreProvider>}
           </ThemeProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
