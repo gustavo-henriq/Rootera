@@ -15,6 +15,7 @@ import { Glyph, GlyphName } from '../ds/icons';
 import { Page } from '../ds/Page';
 import { Ground, PlantArt, plantArt } from '../ds/plant';
 import { Pop, Stagger } from '../ds/motion';
+import { NameInvite } from './NameInvite';
 
 const Tab = createBottomTabNavigator<Tabs>();
 type TabProps<T extends keyof Tabs> = CompositeScreenProps<BottomTabScreenProps<Tabs, T>, NativeStackScreenProps<Routes>>;
@@ -77,6 +78,7 @@ function Today({ navigation }: TabProps<'Today'>) {
       <T v="display">{greeting()}{first ? `,\n${first}` : ''}</T>
     </View>}>
     <Offline />
+    <NameInvite />
     {!garden.plants.length ? <View style={{ alignItems: 'center', gap: space[4], paddingTop: space[6] }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>{(['snake-plant', 'monstera', 'pilea'] as const).map((k, i) => <Image key={k} source={plantArt[k]} resizeMode="contain" style={{ width: i === 1 ? 130 : 96, height: i === 1 ? 130 : 96, marginHorizontal: -10 }} />)}</View>
       <Ground width={240} style={{ marginTop: -18 }} />

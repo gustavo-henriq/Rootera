@@ -34,6 +34,7 @@ const light = {
   soil: ['#D8C39E', '#B08A5E', '#86603D', '#5A3E27'],
   glassTint: 'rgba(250,251,245,0.86)',
   glassClear: 'rgba(250,251,245,0.55)',
+  glassCallout: 'rgba(250,251,245,0.72)', // callouts over art: the plant shows through, ink stays AA
   glassEdge: 'rgba(255,255,255,0.95)', // specular top highlight
   glassRim: 'rgba(28,35,20,0.10)', // outer hairline
   shadow: 'rgba(40,52,20,0.14)', // tinted, one light source from above
@@ -64,6 +65,7 @@ const dark: typeof light = {
   soil: ['#CDB690', '#A98459', '#7F5A38', '#5A3E27'],
   glassTint: 'rgba(26,32,19,0.84)',
   glassClear: 'rgba(26,32,19,0.5)',
+  glassCallout: 'rgba(26,32,19,0.7)',
   glassEdge: 'rgba(255,255,255,0.14)',
   glassRim: 'rgba(0,0,0,0.5)',
   shadow: 'rgba(0,0,0,0.45)',
@@ -116,10 +118,11 @@ export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 20, 6: 24, 8: 32, 11: 44, 16
 /** Radii grow with the size of the thing: inner < control < card < chrome. */
 export const radius = { inner: 4, input: 6, control: 10, card: 16, chrome: 26, pill: 999 };
 
-/** Three glass levels. Text is allowed only on `chrome` and `control`. */
+/** Glass levels. Text is allowed on `chrome`, `control` and short labels on `callout`. */
 export const glass = {
   chrome: { blur: 28, tint: 'glassTint' as const }, // tab bar, headers, sheets
   control: { blur: 18, tint: 'glassTint' as const }, // floating buttons, segmented, toasts
+  callout: { blur: 20, tint: 'glassCallout' as const }, // short labels over illustrations
   clear: { blur: 14, tint: 'glassClear' as const }, // decorative, never carries text
 };
 

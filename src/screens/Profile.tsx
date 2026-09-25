@@ -7,7 +7,7 @@ import { useTheme } from '../ds/theme';
 import { fonts, radius, space } from '../ds/tokens';
 import { Btn, Field, SourceLabel, Source, T, Tap, Toast } from '../ds/components';
 import { Page } from '../ds/Page';
-import { NudgePicker } from './Onboarding';
+import { NudgePicker } from './onboarding/Nudges';
 
 const hints: Record<ExperienceT, string> = { first: 'Explains how to check and what to look for.', some: 'Short tips for each plant.', many: 'Straight to the point.' };
 
