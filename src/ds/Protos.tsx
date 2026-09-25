@@ -33,40 +33,54 @@ function Frame({ title, note, children }: React.PropsWithChildren<{ title: strin
 }
 
 /* ---------- A · Plant it yourself: drag the seed into the pot ---------- */
+const SEED_TOP = 40, SEED = 56, POT_BOX = 300, POT_H = 234;
+
 function ProtoA() {
-  const { c, reduceMotion } = useTheme();
+  const { reduceMotion } = useTheme();
   const [planted, setPlanted] = useState(false);
   const x = useSharedValue(0), y = useSharedValue(0), grow = useSharedValue(0), lift = useSharedValue(1);
+  // Where the pot mouth is, relative to the seed's resting place. Measured, never assumed:
+  // the pot sits at the bottom, so this distance changes with every screen height.
+  const target = useSharedValue(0);
   const plant = () => {
     setPlanted(true);
     grow.value = reduceMotion ? 1 : withDelay(180, withSpring(1, springs.bouncy));
   };
-  // Seed starts ~230pt above the pot mouth; releasing within 70pt of it plants it.
-  const pan = Gesture.Pan().enabled(!planted)
+  const dropIn = () => {
+    'worklet';
+    x.value = withSpring(0, springs.smooth);
+    y.value = withSpring(target.value, springs.smooth);
+    runOnJS(plant)();
+  };
+  const pan = Gesture.Pan().enabled(!planted).minDistance(2)
     .onBegin(() => { lift.value = withSpring(1.25, springs.snappy); })
     .onChange(e => { x.value += e.changeX; y.value += e.changeY; })
     .onFinalize(() => {
       lift.value = withSpring(1, springs.snappy);
-      const hit = Math.abs(x.value) < 70 && Math.abs(y.value - 230) < 70;
-      if (hit) { x.value = withSpring(0, springs.smooth); y.value = withSpring(236, springs.smooth); runOnJS(plant)(); }
+      // The whole pot counts as the target, not a single point.
+      const hit = Math.abs(x.value) < 110 && y.value > target.value - 110 && y.value < target.value + POT_H;
+      if (hit) dropIn();
       else { x.value = withSpring(0, springs.smooth); y.value = withSpring(0, springs.smooth); }
     });
+  // Tapping the seed plants it too: an alternative for anyone who can't drag.
+  const tap = Gesture.Tap().enabled(!planted).onEnd(() => { dropIn(); });
   const seed = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }, { translateY: y.value }, { scale: lift.value * (1 - grow.value) }] }));
   const sprout = useAnimatedStyle(() => ({ opacity: grow.value, transform: [{ translateY: (1 - grow.value) * 60 }, { scale: .4 + .6 * grow.value }] }));
   return <Frame note="Concept A · Plant it yourself · step 1 of 5" title={planted ? 'It’s in. Now it can grow.' : 'Drop the seed in the pot.'}>
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: space[8] }}>
-      <GestureDetector gesture={pan}>
-        <Animated.View accessible accessibilityRole="button" accessibilityLabel="Seed. Drag it into the pot" accessibilityActions={[{ name: 'activate' }]} onAccessibilityAction={() => plant()}
-          style={[{ position: 'absolute', top: 40, width: 56, height: 56, alignItems: 'center', justifyContent: 'center' }, seed]}>
+      <View onLayout={e => { const potMouth = e.nativeEvent.layout.y + (POT_BOX - POT_H) + 28; target.value = potMouth - (SEED_TOP + SEED / 2); }}
+        style={{ width: 240, height: POT_BOX, alignItems: 'center', justifyContent: 'flex-end' }}>
+        <Animated.Image source={art.sprout} resizeMode="contain" style={[{ position: 'absolute', bottom: 0, width: 220, height: 290 }, sprout]} />
+        {!planted && <Image source={art.pot} resizeMode="contain" style={{ width: 170, height: POT_H }} />}
+      </View>
+      {!planted && <T v="subhead" tone="ink2" center style={{ marginTop: space[4] }}>Drag it, or tap it. Rootera learns one plant at a time, starting now.</T>}
+      {planted && <Animated.View entering={FadeIn.delay(400)} style={{ alignSelf: 'stretch', marginTop: space[4] }}><Btn title="Choose what it is" onPress={() => undefined} /></Animated.View>}
+      <GestureDetector gesture={Gesture.Exclusive(pan, tap)}>
+        <Animated.View accessible accessibilityRole="button" accessibilityLabel="Seed. Drag it into the pot, or tap to plant it" onAccessibilityTap={() => { if (!planted) plant(); }}
+          style={[{ position: 'absolute', top: SEED_TOP, width: SEED, height: SEED, alignItems: 'center', justifyContent: 'center' }, seed]}>
           <View style={{ width: 22, height: 30, borderRadius: 14, backgroundColor: '#8A6440', transform: [{ rotate: '-18deg' }] }} />
         </Animated.View>
       </GestureDetector>
-      <View style={{ width: 240, height: 300, alignItems: 'center', justifyContent: 'flex-end' }}>
-        <Animated.Image source={art.sprout} resizeMode="contain" style={[{ position: 'absolute', bottom: 0, width: 220, height: 290 }, sprout]} />
-        {!planted && <Image source={art.pot} resizeMode="contain" style={{ width: 170, height: 234 }} />}
-      </View>
-      {!planted && <T v="subhead" tone="ink2" center style={{ marginTop: space[4] }}>Rootera learns one plant at a time, starting now.</T>}
-      {planted && <Animated.View entering={FadeIn.delay(400)} style={{ alignSelf: 'stretch', marginTop: space[4] }}><Btn title="Choose what it is" onPress={() => undefined} /></Animated.View>}
     </View>
     <GrowthProgress stage={planted ? 1 : 0} />
   </Frame>;
