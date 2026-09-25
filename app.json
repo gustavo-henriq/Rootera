@@ -7,15 +7,24 @@
     "scheme": "rootera",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.rootera.mobile"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.rootera.mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "com.rootera.mobile"
+      "package": "com.rootera.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#34431D"
+      }
     },
     "web": {
       "bundler": "metro",
-      "name": "Rootera"
+      "name": "Rootera",
+      "favicon": "./assets/favicon.png",
+      "themeColor": "#F3F5EC"
     },
     "plugins": [
       "expo-font",
@@ -33,7 +42,21 @@
           "cameraPermission": "Allow Rootera to photograph your plant.",
           "recordAudioAndroid": false
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120,
+          "resizeMode": "contain",
+          "backgroundColor": "#F3F5EC",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#0F130B"
+          }
+        }
       ]
-    ]
+    ],
+    "icon": "./assets/icon.png"
   }
 }
