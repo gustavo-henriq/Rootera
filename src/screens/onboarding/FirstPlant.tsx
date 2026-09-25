@@ -7,13 +7,15 @@
  * "Not sure" is always an answer. When all notes are in, the question steps away and
  * the plate is ready to plant. Tapping a note reopens its question.
  */
-import React, { useEffect } from 'react';
-import { Image, ScrollView, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Image, Platform, ScrollView, TextInput, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, FadeOut, FadeOutUp, LinearTransition, SharedValue, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { catalog, PlantKind, Soil } from '../../model';
 import { plantArt } from '../../ds/plant';
 import { useTheme } from '../../ds/theme';
-import { fonts, radius, space, springs } from '../../ds/tokens';
+import { fonts, radius, space, springs, type } from '../../ds/tokens';
+import { Glyph } from '../../ds/icons';
+import { Candidate } from '../../api';
 import { Chip, Glass, SourceMark, T, Tap } from '../../ds/components';
 
 export type Slot = 'light' | 'pot' | 'stage' | 'watered' | 'soil';
@@ -75,16 +77,71 @@ function Specimen({ kind, size }: { kind: PlantKind | null; size: SharedValue<nu
     <Animated.View style={[{ position: 'absolute', borderRadius: 400, backgroundColor: c.hairline }, shadowStyle]} />
     <Image source={plantArt[kind ?? 'monstera']} resizeMode="contain" tintColor={c.sunken} accessibilityLabel={kind ? undefined : 'A plant silhouette, waiting for you to choose'} style={{ position: 'absolute', width: '100%', height: '100%', opacity: kind ? 0 : 1 }} />
     {kind && <Animated.View key={kind} style={[{ position: 'absolute', width: '100%', height: '100%', transformOrigin: 'bottom' }, plantStyle]}>
-      <Image source={plantArt[kind]} resizeMode="contain" accessibilityLabel={catalog.find(s => s.kind === kind)?.name} style={{ width: '100%', height: '100%' }} />
+      <Image source={plantArt[kind]} resizeMode="contain" accessibilityLabel={catalog.find(s => s.kind === kind)?.name ?? 'Your plant'} style={{ width: '100%', height: '100%' }} />
     </Animated.View>}
   </Animated.View>;
 }
 
-export function FirstPlant({ width, kind, setKind, answers, onAnswer, editing, setEditing }: {
-  width: number; kind: PlantKind | null; setKind: (k: PlantKind) => void;
-  answers: Answers; onAnswer: (s: Slot, i: number) => void; editing: Slot | null; setEditing: (s: Slot) => void;
+export interface Choice { kind: PlantKind; name: string; latin: string; via: 'featured' | 'search' | 'photo' | 'custom' }
+export type IdState = 'idle' | 'loading' | 'off' | 'error';
+
+/** Search, photo identification and "add by name", above the carousel. */
+function Finder({ q, setQ, choice, onChoose, photo, idState, matches, onCamera }: {
+  q: string; setQ: (q: string) => void; choice: Choice | null; onChoose: (c: Choice) => void;
+  photo?: string; idState: IdState; matches: Candidate[] | null; onCamera: () => void;
 }) {
-  const { c, reduceMotion } = useTheme();
+  const { c } = useTheme();
+  const t = q.trim().toLowerCase();
+  // The carousel shows the illustrated favourites; search reaches the whole catalog.
+  const list = t ? catalog.filter(s => `${s.name} ${s.latin} ${s.aliases}`.toLowerCase().includes(t)) : catalog.filter(s => s.featured);
+  const tile = (key: string, on: boolean, label: string, onPress: () => void, art: React.ReactNode, a11y: string) =>
+    <Tap key={key} role="radio" selected={on} label={a11y} onPress={onPress} ring={radius.control}
+      style={{ width: 84, alignItems: 'center', gap: 4, paddingVertical: 6, borderRadius: radius.control, backgroundColor: on ? c.raised : 'transparent', borderWidth: 1.5, borderColor: on ? c.ink : 'transparent' }}>
+      {art}
+      <T v="caption" tone={on ? 'ink' : 'ink2'} lines={2} center>{label}</T>
+    </Tap>;
+  return <View style={{ gap: space[3] }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], borderBottomWidth: 1, borderColor: c.ink3 }}>
+      <Glyph name="search" size={20} tone={c.ink2} />
+      <TextInput accessibilityLabel="Search plants" value={q} onChangeText={setQ} placeholder="Search: orchid, girassol, basil…" placeholderTextColor={c.ink3} returnKeyType="search" maxFontSizeMultiplier={1.5}
+        style={[type.body, { flex: 1, minHeight: 48, color: c.ink }, Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)]} />
+      {/* Identification is free: it is how many people find out what their plant is. */}
+      <Tap label="Identify from a photo" onPress={onCamera} ring={radius.inner} style={{ height: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: space[2] }}>
+        <Glyph name="camera" size={20} tone={c.leafText} /><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>Photo</T>
+      </Tap>
+    </View>
+    {!!photo && <View style={{ flexDirection: 'row', gap: space[3], alignItems: 'center' }}>
+      <Image source={{ uri: photo }} accessibilityLabel="Your photo" style={{ width: 52, height: 64, borderRadius: radius.input }} />
+      <View style={{ flex: 1, gap: space[1] }}>
+        {idState === 'loading' && <T v="subhead" tone="ink2">Looking for matches…</T>}
+        {idState === 'off' && <T v="footnote" tone="ink2">Photo identification isn’t connected in this preview. Your photo will be its picture; choose the plant below.</T>}
+        {idState === 'error' && <T v="footnote" tone="danger">Identification didn’t work. Choose the plant below.</T>}
+        {matches && !matches.length && <T v="footnote" tone="ink2">No confident match. Choose the plant below.</T>}
+        {!!matches?.length && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+          {matches.slice(0, 3).map(m => <Chip key={m.scientific_name} label={m.common_name || m.scientific_name} selected={choice?.latin === m.scientific_name}
+            onPress={() => onChoose({ kind: m.kind, name: m.common_name || m.scientific_name, latin: m.scientific_name, via: 'photo' })} />)}
+        </View>}
+      </View>
+    </View>}
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: space[2], paddingRight: space[4] }} style={{ marginHorizontal: -space.gutter, paddingLeft: space.gutter, flexGrow: 0 }}>
+      {list.map(s => tile(s.kind, choice?.kind === s.kind && choice.via !== 'custom', s.name, () => onChoose({ kind: s.kind, name: s.name, latin: s.latin, via: t ? 'search' : 'featured' }),
+        <Image source={plantArt[s.kind]} style={{ width: 56, height: 56 }} resizeMode="contain" />, s.name))}
+      {!!t && tile('custom', choice?.via === 'custom', `Add “${q.trim()}”`, () => onChoose({ kind: 'other', name: q.trim(), latin: q.trim(), via: 'custom' }),
+        <View style={{ width: 56, height: 56, borderRadius: radius.control, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.ink3, alignItems: 'center', justifyContent: 'center' }}><Glyph name="plus" size={22} tone={c.ink2} /></View>,
+        `Add ${q.trim()} as your plant. Guidance will rely on your own checks.`)}
+    </ScrollView>
+    {!!t && !list.length && <T v="footnote" tone="ink2">Not in the list yet. Add it by name: Rootera will learn it from your own checks.</T>}
+  </View>;
+}
+
+export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing, setEditing, photo, idState, matches, onCamera }: {
+  width: number; choice: Choice | null; onChoose: (c: Choice) => void;
+  answers: Answers; onAnswer: (s: Slot, i: number) => void; editing: Slot | null; setEditing: (s: Slot) => void;
+  photo?: string; idState: IdState; matches: Candidate[] | null; onCamera: () => void;
+}) {
+  const kind = choice?.kind ?? null;
+  const [q, setQ] = useState('');
+  const { reduceMotion } = useTheme();
   const slot = kind ? currentSlot(answers, editing) : null;
   const complete = !!kind && slot === null;
   // The plate takes over once the first answer is in: the strip leaves and the plant grows.
@@ -106,16 +163,7 @@ export function FirstPlant({ width, kind, setKind, answers, onAnswer, editing, s
 
   return <View style={{ gap: space[4] }}>
     {!plate && <Animated.View exiting={reduceMotion ? undefined : FadeOutUp.duration(260)}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space[2], paddingRight: space[4] }} style={{ marginHorizontal: -space.gutter, paddingLeft: space.gutter, flexGrow: 0 }}>
-        {catalog.map(s => {
-          const on = kind === s.kind;
-          return <Tap key={s.kind} role="radio" selected={on} label={s.name} onPress={() => setKind(s.kind)} ring={radius.control}
-            style={{ width: 84, alignItems: 'center', gap: 4, paddingVertical: 6, borderRadius: radius.control, backgroundColor: on ? c.raised : 'transparent', borderWidth: 1.5, borderColor: on ? c.ink : 'transparent' }}>
-            <Image source={plantArt[s.kind]} style={{ width: 56, height: 56 }} resizeMode="contain" />
-            <T v="caption" tone={on ? 'ink' : 'ink2'} lines={1}>{s.name}</T>
-          </Tap>;
-        })}
-      </ScrollView>
+      <Finder q={q} setQ={setQ} choice={choice} onChoose={onChoose} photo={photo} idState={idState} matches={matches} onCamera={onCamera} />
     </Animated.View>}
 
     <Animated.View layout={reduceMotion ? undefined : LinearTransition.duration(420)} style={[{ width, alignItems: 'center' }, areaStyle]}>

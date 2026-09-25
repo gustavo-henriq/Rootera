@@ -14,7 +14,7 @@ import { Ground, PlantArt } from '../ds/plant';
 /** Base64 of photos taken in this session, kept in memory for identification (not in navigation state). */
 export const photoData = new Map<string, string>();
 
-export function Camera({ navigation }: Props<'Camera'>) {
+export function Camera({ navigation, route }: Props<'Camera'>) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const camera = useRef<CameraView>(null);
@@ -27,7 +27,9 @@ export function Camera({ navigation }: Props<'Camera'>) {
 
   const use = (uri: string, base64?: string | null) => {
     if (base64) photoData.set(uri, base64);
-    navigation.replace('AddPlant', { photo: uri });
+    // The first-plant step opens the camera too; the photo goes back to where it was asked for.
+    if (route.params?.returnTo === 'Welcome') navigation.popTo('Welcome', { photo: uri }, { merge: true });
+    else navigation.replace('AddPlant', { photo: uri });
   };
   const capture = async () => {
     if (busy || !camera.current || !ready) return;

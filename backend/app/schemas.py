@@ -53,7 +53,8 @@ class PlantIn(PlantContext):
     id: str = Field(min_length=1, max_length=80, pattern=r'^[a-zA-Z0-9_-]+$')
     name: str = Field(min_length=1, max_length=100)
     species: str = Field(min_length=1, max_length=160)
-    kind: Literal['aloe', 'peace-lily', 'monstera', 'pothos', 'snake-plant', 'zz', 'pilea', 'cactus', 'other']
+    kind: Literal['aloe', 'peace-lily', 'monstera', 'pothos', 'snake-plant', 'zz', 'pilea', 'cactus',
+                  'gerbera', 'sunflower', 'orchid', 'fern', 'echeveria', 'rubber-plant', 'calathea', 'basil', 'other']
     photo: str | None = Field(default=None, max_length=2000)
 
 
@@ -175,3 +176,14 @@ class DemoPlanIn(StrictModel):
 class IdentifyIn(StrictModel):
     image_base64: str = Field(min_length=100, max_length=8_000_000)
     organ: Literal['auto', 'leaf', 'flower', 'fruit', 'bark'] = 'auto'
+
+
+class ProductEventIn(StrictModel):
+    name: str = Field(pattern=r'^[a-z][a-z0-9_]{1,59}$')
+    at: str = Field(max_length=40)
+    # Small, flat, non-personal properties only (step names, counts, flags).
+    props: dict[str, str | int | float | bool] = Field(default_factory=dict, max_length=8)
+
+
+class ProductEventsIn(StrictModel):
+    events: list[ProductEventIn] = Field(max_length=50)

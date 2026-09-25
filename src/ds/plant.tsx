@@ -13,6 +13,15 @@ export const plantArt: Record<PlantKind, number> = {
   zz: require('../../assets/plants/zz.png'),
   pilea: require('../../assets/plants/pilea.png'),
   cactus: require('../../assets/plants/cactus.png'),
+  gerbera: require('../../assets/flower/5-bloom.png'),
+  // Illustrations to come; the sprout stands in until then.
+  sunflower: require('../../assets/plants/other.png'),
+  orchid: require('../../assets/plants/other.png'),
+  fern: require('../../assets/plants/other.png'),
+  echeveria: require('../../assets/plants/other.png'),
+  'rubber-plant': require('../../assets/plants/other.png'),
+  calathea: require('../../assets/plants/other.png'),
+  basil: require('../../assets/plants/other.png'),
   other: require('../../assets/plants/other.png'),
 };
 

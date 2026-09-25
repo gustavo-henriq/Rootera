@@ -1,4 +1,5 @@
-export type PlantKind = 'aloe' | 'peace-lily' | 'monstera' | 'pothos' | 'snake-plant' | 'zz' | 'pilea' | 'cactus' | 'other';
+export type PlantKind = 'aloe' | 'peace-lily' | 'monstera' | 'pothos' | 'snake-plant' | 'zz' | 'pilea' | 'cactus'
+  | 'gerbera' | 'sunflower' | 'orchid' | 'fern' | 'echeveria' | 'rubber-plant' | 'calathea' | 'basil' | 'other';
 export type Plan = 'Free' | 'Plus';
 export type Experience = 'first' | 'some' | 'many';
 export type CareType = 'Watered' | 'Soil check' | 'Fertilized' | 'Observation';
@@ -42,16 +43,25 @@ export const emptyGarden: Garden = {
   plants: [], events: [], twins: {}, integrations: { billing: false, identification: false, weather: false, demo: true },
 };
 
-export interface Species { kind: PlantKind; name: string; latin: string; aliases: string }
+/** `featured` species have their own illustration and appear in the first-plant carousel; the rest are found by search. */
+export interface Species { kind: PlantKind; name: string; latin: string; aliases: string; featured?: boolean }
 export const catalog: Species[] = [
-  { kind: 'monstera', name: 'Monstera', latin: 'Monstera deliciosa', aliases: 'swiss cheese plant costela de adao' },
-  { kind: 'pothos', name: 'Pothos', latin: 'Epipremnum aureum', aliases: 'devils ivy jiboia' },
-  { kind: 'peace-lily', name: 'Peace Lily', latin: 'Spathiphyllum wallisii', aliases: 'lirio da paz spathiphyllum' },
-  { kind: 'snake-plant', name: 'Snake Plant', latin: 'Dracaena trifasciata', aliases: 'sansevieria mother in law espada de sao jorge' },
-  { kind: 'zz', name: 'ZZ Plant', latin: 'Zamioculcas zamiifolia', aliases: 'zamioculca zanzibar gem' },
-  { kind: 'pilea', name: 'Chinese Money Plant', latin: 'Pilea peperomioides', aliases: 'pilea pancake plant' },
-  { kind: 'aloe', name: 'Aloe Vera', latin: 'Aloe barbadensis miller', aliases: 'babosa aloe' },
-  { kind: 'cactus', name: 'Cactus', latin: 'Cactaceae', aliases: 'cacto succulent' },
+  { kind: 'monstera', featured: true, name: 'Monstera', latin: 'Monstera deliciosa', aliases: 'swiss cheese plant costela de adao' },
+  { kind: 'pothos', featured: true, name: 'Pothos', latin: 'Epipremnum aureum', aliases: 'devils ivy jiboia' },
+  { kind: 'peace-lily', featured: true, name: 'Peace Lily', latin: 'Spathiphyllum wallisii', aliases: 'lirio da paz spathiphyllum' },
+  { kind: 'snake-plant', featured: true, name: 'Snake Plant', latin: 'Dracaena trifasciata', aliases: 'sansevieria mother in law espada de sao jorge' },
+  { kind: 'zz', featured: true, name: 'ZZ Plant', latin: 'Zamioculcas zamiifolia', aliases: 'zamioculca zanzibar gem' },
+  { kind: 'pilea', featured: true, name: 'Chinese Money Plant', latin: 'Pilea peperomioides', aliases: 'pilea pancake plant' },
+  { kind: 'aloe', featured: true, name: 'Aloe Vera', latin: 'Aloe barbadensis miller', aliases: 'babosa aloe' },
+  { kind: 'cactus', featured: true, name: 'Cactus', latin: 'Cactaceae', aliases: 'cacto succulent' },
+  { kind: 'gerbera', featured: true, name: 'Gerbera', latin: 'Gerbera jamesonii', aliases: 'gerbera daisy margarida africana flower flor' },
+  { kind: 'sunflower', name: 'Sunflower', latin: 'Helianthus annuus', aliases: 'girassol flower flor' },
+  { kind: 'orchid', name: 'Moth Orchid', latin: 'Phalaenopsis', aliases: 'orquidea orchid phalaenopsis flower flor' },
+  { kind: 'fern', name: 'Boston Fern', latin: 'Nephrolepis exaltata', aliases: 'samambaia fern' },
+  { kind: 'echeveria', name: 'Echeveria', latin: 'Echeveria', aliases: 'suculenta succulent rosa de pedra' },
+  { kind: 'rubber-plant', name: 'Rubber Plant', latin: 'Ficus elastica', aliases: 'falsa seringueira ficus rubber tree' },
+  { kind: 'calathea', name: 'Calathea', latin: 'Goeppertia', aliases: 'maranta calathea prayer plant' },
+  { kind: 'basil', name: 'Basil', latin: 'Ocimum basilicum', aliases: 'manjericao herb erva' },
 ];
 
 export const soilLabel: Record<Soil, string> = { dry: 'Dry', slightly_moist: 'Slightly moist', moist: 'Moist', wet: 'Very wet', not_sure: 'Not sure' };

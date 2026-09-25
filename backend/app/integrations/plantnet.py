@@ -11,6 +11,8 @@ API = 'https://my-api.plantnet.org/v2/identify/all'
 KINDS = [
     ('Aloe', 'aloe'), ('Spathiphyllum', 'peace-lily'), ('Monstera', 'monstera'), ('Epipremnum', 'pothos'),
     ('Sansevieria', 'snake-plant'), ('Dracaena trifasciata', 'snake-plant'), ('Zamioculcas', 'zz'), ('Pilea peperomioides', 'pilea'),
+    ('Gerbera', 'gerbera'), ('Helianthus annuus', 'sunflower'), ('Phalaenopsis', 'orchid'), ('Nephrolepis', 'fern'),
+    ('Echeveria', 'echeveria'), ('Ficus elastica', 'rubber-plant'), ('Calathea', 'calathea'), ('Goeppertia', 'calathea'), ('Ocimum basilicum', 'basil'),
 ]
 
 

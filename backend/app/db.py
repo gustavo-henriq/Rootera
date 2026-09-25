@@ -30,6 +30,15 @@ class UserObservation(Base):
     received_at: Mapped[str] = mapped_column(String(40))
     confidence: Mapped[float] = mapped_column(Float)
 
+class ProductEvent(Base):
+    """Anonymous product analytics (onboarding steps and the like). No personal data."""
+    __tablename__ = 'product_events'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    owner_id: Mapped[str] = mapped_column(String(80), index=True)
+    name: Mapped[str] = mapped_column(String(60), index=True)
+    props: Mapped[dict] = mapped_column(JSON)
+    at: Mapped[str] = mapped_column(String(40))
+
 class Device(Base):
     __tablename__ = 'devices'
     id: Mapped[str] = mapped_column(String(80), primary_key=True)

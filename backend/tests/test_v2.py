@@ -102,3 +102,25 @@ def test_nudge_preferences_are_validated_and_saved(client):
     assert client.get('/v1/garden', headers=ALICE).json()['nudges'] == {'kinds': ['soil_check', 'weekly'], 'time': '07:30'}
     assert client.patch('/v1/profile', json={'nudges': {'time': '25:00'}}, headers=ALICE).status_code == 422
     assert client.patch('/v1/profile', json={'nudges': {'kinds': ['spam']}}, headers=ALICE).status_code == 422
+
+
+def test_new_species_have_reference_notes_and_map_from_plantnet():
+    from app.integrations.plantnet import kind_for
+    from app.species import SPECIES_NOTES
+    for kind in ('gerbera', 'sunflower', 'orchid', 'fern', 'echeveria', 'rubber-plant', 'calathea', 'basil'):
+        notes = SPECIES_NOTES[kind]
+        assert notes['dryness'] in ('top', 'half', 'full') and notes['check_tip'] and notes['summary']
+    assert kind_for('Phalaenopsis amabilis') == 'orchid'
+    assert kind_for('Goeppertia orbifolia') == 'calathea'
+    assert kind_for('Helianthus annuus') == 'sunflower'
+
+
+def test_product_events_are_recorded_and_validated(client):
+    from tests.conftest import ALICE
+    ok = client.post('/v1/events', json={'events': [{'name': 'onboarding_step_viewed', 'at': '2026-09-25T10:00:00Z', 'props': {'step': 'story'}}]}, headers=ALICE)
+    assert ok.status_code == 202 and ok.json() == {'accepted': 1}
+    bad = client.post('/v1/events', json={'events': [{'name': 'Has Spaces', 'at': 'x', 'props': {}}]}, headers=ALICE)
+    assert bad.status_code == 422
+    nested = client.post('/v1/events', json={'events': [{'name': 'x_y', 'at': 'x', 'props': {'a': {'b': 1}}}]}, headers=ALICE)
+    assert nested.status_code == 422
+    assert client.get('/v1/events/funnel', headers=ALICE).status_code == 403  # demo only
