@@ -10,7 +10,7 @@ export type Routes = {
   Camera: { first?: boolean } | undefined;
   PlantForm: { kind: PlantKind; species: string; name: string; photo?: string; first?: boolean } | { editId: string };
   Plant: { id: string; saved?: { title: string; from?: string; to?: string } };
-  Care: { id: string; mode: 'soil' | 'water' | 'visual' };
+  Care: { id: string; mode: 'checkin' | 'soil' | 'water' | 'visual' };
   Plans: { reason?: 'limit' | 'rooms' | 'first'; then?: { plantId: string } } | undefined;
   Experience: undefined;
   Nudges: undefined;

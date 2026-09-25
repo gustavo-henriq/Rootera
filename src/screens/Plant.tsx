@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native'
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Props } from '../navigation';
 import { useStore } from '../store';
-import { ago, CareEvent, describeEvent, known, newId, Plant as PlantT, soilLabel, Twin, visualLabel } from '../model';
+import { ago, CareEvent, describeEvent, known, Plant as PlantT, soilLabel, Twin, visualLabel } from '../model';
 import { useTheme } from '../ds/theme';
 import { fonts, radius, space } from '../ds/tokens';
 import { Btn, Glass, SourceLabel, SourceMark, T, Tap, Toast } from '../ds/components';
@@ -113,17 +113,10 @@ function since(iso: string) {
   return m < 2 ? { value: 'Now' } : m < 60 ? { value: String(Math.round(m)), unit: 'min' } : m < 1440 ? { value: String(Math.round(m / 60)), unit: 'h' } : { value: String(Math.round(m / 1440)), unit: m < 2880 ? 'day' : 'days' };
 }
 
-const actions: Record<string, { title: string; icon: GlyphName; mode: 'soil' | 'water' | 'visual' } | null> = {
-  check_soil: { title: 'Check the soil', icon: 'soil', mode: 'soil' },
-  log_water: { title: 'I watered it', icon: 'water', mode: 'water' },
-  observe: { title: 'Look at the leaves', icon: 'leaf', mode: 'visual' },
-  wait: null,
-};
-const otherLabels: Record<'soil' | 'water' | 'visual', string> = { soil: 'Check the soil', water: 'Log watering', visual: 'Note the leaves' };
 
 
 export function Plant({ navigation, route }: Props<'Plant'>) {
-  const { garden, logCare, archivePlant } = useStore();
+  const { garden, archivePlant } = useStore();
   const { c } = useTheme();
   const plant = garden.plants.find(p => p.id === route.params.id);
   const twin = garden.twins[route.params.id];
@@ -133,7 +126,6 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const pendingWater = useRef<CareEvent | null>(null);
   const scroll = useRef<ScrollView>(null);
   const saved = route.params.saved;
   // Celebrate real events only: drops for a recorded watering, leaves when a pattern first appears.
@@ -158,30 +150,15 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
   }
 
   const events = garden.events.filter(e => e.plantId === plant.id).slice().reverse();
-  const primary = g ? actions[g.action] : actions.check_soil;
-  const others = (['soil', 'water', 'visual'] as const).filter(m => m !== primary?.mode);
   const water = g?.last_watered_at ? Math.max(0, Math.floor((Date.now() - new Date(g.last_watered_at).getTime()) / 86400000)) : null;
   const soil = g?.last_soil_check_at ? since(g.last_soil_check_at) : null;
   const where = [known(plant.environment?.location) ? plant.environment!.location : null, garden.plan === 'Plus' && known(plant.room) ? plant.room.toLowerCase() : null].filter(Boolean).join(', ');
 
-  const waterNow = async () => {
-    if (busy) return;
-    setBusy(true); setError('');
-    // Reuse the same id on retry so a slow network never records two waterings.
-    pendingWater.current ??= { id: newId('water'), plantId: plant.id, type: 'Watered', note: '', at: new Date().toISOString(), source: 'USER' };
-    try {
-      const r = await logCare(pendingWater.current);
-      pendingWater.current = null;
-      navigation.setParams({ saved: { title: 'Watering recorded', from: r.change?.from, to: r.change?.to } });
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.'); }
-    finally { setBusy(false); }
-  };
   const remove = async () => {
     setBusy(true);
     try { await archivePlant(plant.id); navigation.navigate('Main', { tab: 'Plants' }); }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not remove.'); setBusy(false); }
   };
-  const go = (mode: 'soil' | 'water' | 'visual') => navigation.navigate('Care', { id: plant.id, mode });
 
   return <View style={{ flex: 1 }}>
     <Page back={navigation.goBack} scrollRef={scroll} titleInBar={plant.name} gap={space[6]}
@@ -216,16 +193,9 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
           <T v="subhead" style={{ fontFamily: fonts.medium }}>{g.action === 'log_water' ? 'How to water' : g.action === 'check_soil' ? 'How to check' : 'Tip'}</T>
           <T v="subhead" tone="ink2">{g.tip}</T>
         </View>}
-        {!!error && <Toast tone="error" title="Not saved" text={error} action={{ title: 'Try again', onPress: () => void waterNow() }} onClose={() => setError('')} />}
-        <View style={{ gap: space[1], marginTop: space[2] }}>
-          {primary
-            ? <Btn title={primary.title} icon={primary.icon} busy={busy && primary.mode === 'water'} onPress={() => primary.mode === 'water' ? void waterNow() : go(primary.mode)} />
-            : <View style={{ flexDirection: 'row', gap: space[2], alignItems: 'center', paddingVertical: space[2] }}><Glyph name="leaf" size={18} tone={c.leafMark} /><T v="callout">Nothing to do right now.</T></View>}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space[5] }}>
-            {primary?.mode === 'water' && <Btn kind="plain" size="regular" title="Add amount or a note" onPress={() => go('water')} />}
-            {others.map(m => <Btn key={m} kind="plain" size="regular" title={otherLabels[m]} onPress={() => go(m)} />)}
-          </View>
-        </View>
+        {!!error && <Toast tone="error" title="Not saved" text={error} onClose={() => setError('')} />}
+        {/* One check-in covers soil, watering and leaves; resting plants can still be checked. */}
+        <Btn title="Check in" icon="soil" kind={g?.action === 'wait' ? 'outline' : 'filled'} onPress={() => navigation.navigate('Care', { id: plant.id, mode: 'checkin' })} style={{ marginTop: space[2] }} />
       </View>
 
       <View style={{ gap: space[4] }}>

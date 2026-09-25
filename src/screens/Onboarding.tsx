@@ -26,7 +26,7 @@ import { Opening } from './onboarding/Opening';
 import { SoilReveal } from './onboarding/Soil';
 import { Story } from './onboarding/Story';
 import { NudgePicker, requestNudgePermission } from './onboarding/Nudges';
-import { Answers, currentSlot, FirstPlant, LIGHT, POTS, Slot, SOILS } from './onboarding/FirstPlant';
+import { Answers, currentSlot, FirstPlant, LIGHT, POTS, Slot, SOILS, STAGES, WATERED } from './onboarding/FirstPlant';
 import { Atmosphere, experiences, GlassChoice, SeedProgress } from './onboarding/shared';
 
 
@@ -54,7 +54,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [celebrate, setCelebrate] = useState(0);
-  const ids = useRef({ plant: newId('plant'), soil: newId('care'), soilAt: '' });
+  const ids = useRef({ plant: newId('plant'), soil: newId('care'), water: newId('water'), soilAt: '' });
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => { if (step > 1 && !busy) { setStep(step - 1); return true; } return false; });
@@ -75,8 +75,14 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
       const species = catalog.find(s => s.kind === kind)!;
       const light = answers.light !== undefined ? LIGHT[answers.light].value : 'Not sure';
       const pot = answers.pot !== undefined ? POTS[answers.pot] : POTS[3];
-      const plant: Plant = { id: ids.current.plant, kind, species: species.latin, name: species.name, room: 'Not sure', pot: 'Not sure', light, drainage: pot.drainage, self_watering: pot.self, environment: { location: 'Indoors', near_window: 'Not sure' } };
+      const plant: Plant = { id: ids.current.plant, kind, species: species.latin, name: species.name, room: 'Not sure', pot: 'Not sure', light, stage: answers.stage !== undefined ? STAGES[answers.stage].value : 'Not sure', drainage: pot.drainage, self_watering: pot.self, environment: { location: 'Indoors', near_window: 'Not sure' } };
       if (!garden.plants.some(p => p.id === plant.id)) await addPlant(plant);
+      // A remembered watering is kept as approximate, and always before today's soil check.
+      const days = answers.watered !== undefined ? WATERED[answers.watered].days : null;
+      if (days !== null) {
+        const at = new Date(Date.now() - (days ? days * 86400000 : 60000)).toISOString();
+        await logCare({ id: ids.current.water, plantId: plant.id, type: 'Watered', note: 'Approximate date, from setup', at, source: 'USER' });
+      }
       // "Not sure" is not an observation: the plant starts without a soil check instead.
       const soil = answers.soil !== undefined ? SOILS[answers.soil].value : 'not_sure';
       if (soil !== 'not_sure') {

@@ -43,9 +43,9 @@ function Offline() {
   return offline ? <Toast tone="info" title="Showing your last saved garden" text="Rootera’s server can’t be reached. New records won’t save until it’s back." action={{ title: 'Try again', onPress: () => void refresh() }} /> : null;
 }
 
-const quick: Record<string, { title: string; mode: 'soil' | 'water' | 'visual'; icon: GlyphName } | null> = {
-  check_soil: { title: 'Check soil', mode: 'soil', icon: 'soil' }, log_water: { title: 'Log water', mode: 'water', icon: 'water' }, observe: { title: 'Look', mode: 'visual', icon: 'leaf' }, wait: null,
-};
+// One entry point for care: the check-in asks about soil, watering and leaves in one go.
+const CHECK_IN = { title: 'Check in', mode: 'checkin' as const, icon: 'soil' as GlyphName };
+const quick: Record<string, typeof CHECK_IN | null> = { check_soil: CHECK_IN, log_water: CHECK_IN, observe: CHECK_IN, wait: null };
 
 function greeting() {
   const h = new Date().getHours();

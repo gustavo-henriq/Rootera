@@ -16,14 +16,19 @@ import { Chip, Glass, SourceMark, T, Tap } from '../../ds/components';
 const POT = require('../../../assets/plants/aloe-pot.png');
 const RATIO = 406 / 560;
 
-export type Slot = 'light' | 'pot' | 'soil';
-export const ORDER: Slot[] = ['light', 'pot', 'soil'];
+export type Slot = 'light' | 'pot' | 'stage' | 'watered' | 'soil';
+// Soil comes last: it is the one thing you go and check, and it becomes the first observation.
+export const ORDER: Slot[] = ['light', 'pot', 'stage', 'watered', 'soil'];
 export const LIGHT: { label: string; value: string }[] = [{ label: 'Bright, indirect', value: 'Bright indirect light' }, { label: 'Low light', value: 'Low light' }, { label: 'Direct sun', value: 'Direct sun' }, { label: 'Not sure', value: 'Not sure' }];
 export const POTS: { label: string; drainage: string; self: string }[] = [{ label: 'Has a drainage hole', drainage: 'Yes', self: 'No' }, { label: 'No drainage hole', drainage: 'No', self: 'No' }, { label: 'Self-watering pot', drainage: 'Not sure', self: 'Yes' }, { label: 'Not sure', drainage: 'Not sure', self: 'Not sure' }];
+export const STAGES: { label: string; value: 'Seedling' | 'Young' | 'Mature' | 'Not sure' }[] = [{ label: 'Seedling', value: 'Seedling' }, { label: 'Young', value: 'Young' }, { label: 'Mature', value: 'Mature' }, { label: 'Not sure', value: 'Not sure' }];
+/** Days ago, roughly. Stored as an approximate watering; "Don't remember" records nothing. */
+export const WATERED: { label: string; days: number | null }[] = [{ label: 'Today', days: 0 }, { label: 'A few days ago', days: 3 }, { label: 'Over a week ago', days: 8 }, { label: 'Don’t remember', days: null }];
 export const SOILS: { label: string; value: Soil }[] = [{ label: 'Dry', value: 'dry' }, { label: 'Slightly moist', value: 'slightly_moist' }, { label: 'Moist', value: 'moist' }, { label: 'Very wet', value: 'wet' }, { label: 'Not sure', value: 'not_sure' }];
-const QUESTION: Record<Slot, string> = { light: 'How much light does it get?', pot: 'What is it planted in?', soil: 'Push a finger into the soil. How does it feel?' };
-const LABEL: Record<Slot, string> = { light: 'Light', pot: 'Pot', soil: 'Soil' };
-const options = (s: Slot) => (s === 'light' ? LIGHT : s === 'pot' ? POTS : SOILS).map(o => o.label);
+const QUESTION: Record<Slot, string> = { light: 'How much light does it get?', pot: 'What is it planted in?', stage: 'How grown is it?', watered: 'When did you last water it?', soil: 'Push a finger into the soil. How does it feel?' };
+const LABEL: Record<Slot, string> = { light: 'Light', pot: 'Pot', stage: 'Stage', watered: 'Watered', soil: 'Soil' };
+const LISTS: Record<Slot, { label: string }[]> = { light: LIGHT, pot: POTS, stage: STAGES, watered: WATERED, soil: SOILS };
+const options = (s: Slot) => LISTS[s].map(o => o.label);
 
 export type Answers = Partial<Record<Slot, number>>;
 /** The slot being asked: the one being edited, otherwise the first one without an answer. */
@@ -43,7 +48,7 @@ function Callout({ slot, side, top, value, active, onPress, anchor, width }: { s
       <Tap label={value ? `${label}: ${value}. Change` : `${label}. Choose below`} onPress={onPress} ring={radius.input}>
         <Glass level="callout" r={radius.input} shadow={active} style={{ minHeight: 52, paddingVertical: 8, paddingHorizontal: 10, borderWidth: 1.5, borderColor: active ? c.ink : 'transparent', alignItems: side === 'left' ? 'flex-start' : 'flex-end' }}>
           <View style={{ flexDirection: side === 'left' ? 'row' : 'row-reverse', alignItems: 'center', gap: 6 }}>
-            <SourceMark kind={slot === 'soil' ? 'observed' : 'told'} /><T v="caption" tone="ink2">{label}</T>
+            <SourceMark kind={slot === 'soil' || slot === 'watered' ? 'observed' : 'told'} /><T v="caption" tone="ink2">{label}</T>
           </View>
           <T v={value ? 'subhead' : 'footnote'} tone={value ? 'ink' : 'ink2'} lines={2} style={{ textAlign: side, fontFamily: value ? fonts.medium : fonts.regular }}>{value ?? 'Choose below'}</T>
         </Glass>
@@ -86,9 +91,11 @@ export function FirstPlant({ width, kind, setKind, answers, onAnswer, editing, s
   const valueOf = (s: Slot) => answers[s] === undefined ? undefined : options(s)[answers[s]!];
   const visible = (s: Slot) => answers[s] !== undefined || s === slot;
   const place: Record<Slot, { side: 'left' | 'right'; top: number; anchor: number }> = {
-    light: { side: 'left', top: size * .1, anchor: left + size * .42 },
-    soil: { side: 'right', top: size * .5, anchor: left + size * .6 },
+    light: { side: 'left', top: size * .06, anchor: left + size * .42 },
     pot: { side: 'left', top: size * .72, anchor: left + size * .38 },
+    stage: { side: 'right', top: size * .02, anchor: left + size * .62 },
+    soil: { side: 'right', top: size * .37, anchor: left + size * .6 },
+    watered: { side: 'right', top: size * .72, anchor: left + size * .58 },
   };
 
   return <View style={{ gap: space[4] }}>

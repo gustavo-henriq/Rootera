@@ -45,12 +45,117 @@ function Options<V extends string>({ values, value, onChange, label, hint, lead 
   </View>;
 }
 
-export function Care({ navigation, route }: Props<'Care'>) {
+export const STAGES = ['Seedling', 'Young', 'Mature'] as const;
+const stageHints: Record<(typeof STAGES)[number], string> = { Seedling: 'Just started, a few small leaves', Young: 'Growing steadily, not full size yet', Mature: 'Full size, established' };
+
+/**
+ * One check-in instead of three separate forms. It follows what you would do at the
+ * plant anyway: feel the soil, water if you did, glance at the leaves. Each question
+ * appears once the one before it is answered; everything after the soil is optional.
+ */
+function CheckIn({ navigation, route }: Props<'Care'>) {
+  const { garden, logCare, updatePlant } = useStore();
+  const { c } = useTheme();
+  const plant = garden.plants.find(p => p.id === route.params.id)!;
+  const g = garden.twins[plant.id]?.guidance;
+  const [soil, setSoil] = useState<Soil | ''>('');
+  const [watered, setWatered] = useState<'yes' | 'no' | ''>('');
+  const [amount, setAmount] = useState<(typeof AMOUNTS)[number]>('Not measured');
+  const [visual, setVisual] = useState<Visual | ''>('');
+  const [note, setNote] = useState('');
+  const [stage, setStage] = useState(plant.stage && plant.stage !== 'Not sure' ? plant.stage : '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  // Fixed ids for this check-in, so a retry after a network error never records anything twice.
+  const ids = useRef({ soil: newId('care'), water: newId('water'), look: newId('care'), at: Date.now() });
+  const ml = amount === 'Other' || amount === 'Not measured' ? null : Number(amount);
+
+  const save = async () => {
+    if (busy || !soil || !watered) return;
+    setBusy(true); setError('');
+    const t = ids.current.at;
+    const base = { plantId: plant.id, source: 'USER' as const, note: '' };
+    try {
+      // Report the change across the whole check-in, not just the last write.
+      let to: string | undefined;
+      const track = (x: Awaited<ReturnType<typeof logCare>>) => { if (x.change?.to) to = x.change.to; return x; };
+      track(await logCare({ ...base, id: ids.current.soil, type: 'Soil check', soil, at: new Date(t).toISOString() }));
+      // Watering comes after the check it answered, so the soil check stays the "before" reading.
+      if (watered === 'yes') track(await logCare({ ...base, id: ids.current.water, type: 'Watered', amount_ml: ml, at: new Date(t + 1000).toISOString() }));
+      if (visual) track(await logCare({ ...base, id: ids.current.look, type: 'Observation', visual, note: note.trim(), at: new Date(t + 2000).toISOString() }));
+      if (stage && stage !== plant.stage) await updatePlant(plant.id, { stage });
+      navigation.popTo('Plant', { id: plant.id, saved: { title: watered === 'yes' ? 'Check-in and watering saved' : 'Check-in saved', from: to ? g?.title : undefined, to } });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save. Please try again.');
+    } finally { setBusy(false); }
+  };
+
+  return <Page close={() => !busy && navigation.goBack()} titleInBar={plant.name} gap={space[6]}
+    footer={<>
+      {!!error && <Toast tone="error" title="Not saved" text={error} onClose={() => setError('')} />}
+      <Btn title={error ? 'Try again' : 'Save check-in'} busy={busy} disabled={!soil || !watered} onPress={() => void save()} />
+    </>}>
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space[4] }}>
+      <View style={{ flex: 1, gap: space[2] }}>
+        <T v="footnote" tone="ink2">Check in</T>
+        <T v="title">{plant.name}</T>
+      </View>
+      <PlantArt kind={plant.kind} photo={plant.photo} size={72} />
+    </View>
+
+    <View style={{ gap: space[3] }}>
+      <T v="headline">How does the soil feel?</T>
+      {!!g?.reference.check_tip && <T v="subhead" tone="ink2">{g.reference.check_tip}</T>}
+      <Options values={soilOrder} value={soil} onChange={setSoil} label={v => soilLabel[v]} hint={v => soilHints[v]}
+        lead={v => v === 'not_sure'
+          ? <View style={{ width: 30, height: 30, borderRadius: radius.inner, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.ink3 }} />
+          : <View style={{ width: 30, height: 30, borderRadius: radius.inner, backgroundColor: c.soil[soilOrder.indexOf(v)], overflow: 'hidden', justifyContent: 'flex-end' }}>{v === 'wet' && <View style={{ height: 8, backgroundColor: c.water, opacity: .6 }} />}</View>} />
+    </View>
+
+    {!!soil && <Animated.View entering={FadeIn.duration(260)} style={{ gap: space[3] }}>
+      <T v="headline">Did you water it just now?</T>
+      <View style={{ flexDirection: 'row', gap: space[2] }}>
+        <Chip label="Yes, just now" selected={watered === 'yes'} onPress={() => setWatered('yes')} />
+        <Chip label="No" selected={watered === 'no'} onPress={() => setWatered('no')} />
+      </View>
+      {watered === 'yes' && <Animated.View entering={FadeIn.duration(200)} style={{ gap: space[2] }}>
+        <T v="footnote" tone="ink2">Roughly how much? Optional.</T>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>{AMOUNTS.filter(a => a !== 'Other').map(a => <Chip key={a} label={amountLabel(a)} selected={amount === a} onPress={() => setAmount(a)} />)}</View>
+      </Animated.View>}
+    </Animated.View>}
+
+    {!!watered && <Animated.View entering={FadeIn.duration(260)} style={{ gap: space[3] }}>
+      <View style={{ gap: 2 }}>
+        <T v="headline">How do the leaves look?</T>
+        <T v="footnote" tone="ink2">Optional. This isn’t a diagnosis.</T>
+      </View>
+      <Options values={['great', 'different', 'unwell'] as Visual[]} value={visual} onChange={v => setVisual(visual === v ? '' : v)} label={v => visualLabel[v]} hint={v => visualHints[v]}
+        lead={(v, on) => <View style={{ width: 30, alignItems: 'center' }}><Glyph name={visualGlyph[v]} size={22} tone={on ? c.ink : c.ink2} /></View>} />
+      {(visual === 'different' || visual === 'unwell') && <Field label="What changed? (optional)" value={note} onChangeText={setNote} placeholder="A lower leaf turning yellow" maxLength={300} />}
+    </Animated.View>}
+
+    {!!watered && <Animated.View entering={FadeIn.delay(120).duration(260)} style={{ gap: space[3] }}>
+      <View style={{ gap: 2 }}>
+        <T v="headline">Growth stage</T>
+        <T v="footnote" tone="ink2">{stage ? stageHints[stage as (typeof STAGES)[number]] : 'Optional. Change it when your plant grows.'}</T>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>{STAGES.map(s => <Chip key={s} label={s} selected={stage === s} onPress={() => setStage(s)} />)}</View>
+    </Animated.View>}
+  </Page>;
+}
+
+export function Care(props: Props<'Care'>) {
+  const { garden } = useStore();
+  if (props.route.params.mode === 'checkin' && garden.plants.some(p => p.id === props.route.params.id)) return <CheckIn {...props} />;
+  return <SingleCare {...props} />;
+}
+
+function SingleCare({ navigation, route }: Props<'Care'>) {
   const { garden, logCare } = useStore();
   const { c } = useTheme();
   const plant = garden.plants.find(p => p.id === route.params.id);
   const g = garden.twins[route.params.id]?.guidance;
-  const mode = route.params.mode;
+  const mode = route.params.mode === 'checkin' ? 'soil' : route.params.mode;
   const [soil, setSoil] = useState<Soil | ''>('');
   const [visual, setVisual] = useState<Visual | ''>('');
   const [amount, setAmount] = useState<(typeof AMOUNTS)[number]>('Not measured');
