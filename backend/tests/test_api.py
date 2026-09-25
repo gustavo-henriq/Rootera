@@ -195,7 +195,7 @@ def test_invalid_calibration_cannot_replace_valid_version(planted, device, calib
 
 
 def test_demo_mutations_disabled_in_real_mode(planted):
-    assert planted.post('/v1/demo/plan', json={'plan': 'Thrive', 'annual': True}, headers=ALICE).status_code == 403
+    assert planted.post('/v1/demo/plan', json={'plan': 'Plus', 'annual': True}, headers=ALICE).status_code == 403
     assert planted.post('/v1/demo/sensors', json={}, headers=ALICE).status_code == 403
 
 

@@ -1,0 +1,70 @@
+from fastapi import APIRouter, Depends
+from sqlalchemy import select
+from ..db import DomainEvent, SensorObservation, UserObservation
+from ..deps import service
+from ..schemas import PlantIn, PlantUpdate, ProfileIn, UserObservationIn
+
+router = APIRouter(prefix='/v1')
+
+
+@router.get('/garden')
+def garden(s=Depends(service)):
+    return s.snapshot()
+
+
+@router.patch('/profile')
+def profile(payload: ProfileIn, s=Depends(service)):
+    return s.update_profile(payload.model_dump(exclude_unset=True, exclude_none=True))
+
+
+@router.post('/plants', status_code=201)
+def add_plant(payload: PlantIn, s=Depends(service)):
+    return s.add_plant(payload)
+
+
+@router.patch('/plants/{plant_id}')
+def update_plant(plant_id: str, payload: PlantUpdate, s=Depends(service)):
+    return s.update_plant(plant_id, payload)
+
+
+@router.delete('/plants/{plant_id}')
+def archive_plant(plant_id: str, s=Depends(service)):
+    return s.archive_plant(plant_id)
+
+
+@router.post('/plants/{plant_id}/user-observations', status_code=201)
+def observation(plant_id: str, payload: UserObservationIn, s=Depends(service)):
+    return s.add_user_observation(plant_id, payload)
+
+
+@router.get('/plants/{plant_id}/user-observations')
+def user_history(plant_id: str, s=Depends(service)):
+    s.plant(plant_id)
+    rows = s.db.scalars(select(UserObservation).where(UserObservation.plant_id == plant_id).order_by(UserObservation.observed_at)).all()
+    return [{'id': r.id, 'type': r.kind, 'source': 'USER', 'value': r.value, 'observed_at': r.observed_at, 'confidence': r.confidence} for r in rows]
+
+
+@router.get('/plants/{plant_id}/sensor-observations')
+def sensor_history(plant_id: str, s=Depends(service)):
+    s.plant(plant_id)
+    rows = s.db.scalars(select(SensorObservation).where(SensorObservation.plant_id == plant_id).order_by(SensorObservation.observed_at)).all()
+    return [{'id': r.id, 'source': 'SENSOR', 'device_id': r.device_id, 'raw_adc': r.raw_adc, 'normalized_percent': r.normalized, 'calibration_id': r.calibration_id, 'observed_at': r.observed_at, 'quality': r.quality, 'demo': r.demo} for r in rows]
+
+
+@router.get('/plants/{plant_id}/twin')
+def twin(plant_id: str, s=Depends(service)):
+    s.plant(plant_id, lock=True)
+    return s.rebuild(plant_id)
+
+
+@router.post('/plants/{plant_id}/twin/rebuild')
+def rebuild(plant_id: str, s=Depends(service)):
+    s.plant(plant_id, lock=True)
+    return s.rebuild(plant_id)
+
+
+@router.get('/plants/{plant_id}/events')
+def events(plant_id: str, s=Depends(service)):
+    s.plant(plant_id)
+    rows = s.db.scalars(select(DomainEvent).where(DomainEvent.plant_id == plant_id).order_by(DomainEvent.occurred_at)).all()
+    return [{'id': e.id, 'type': e.type, 'source': e.source, 'observation_id': e.observation_id, 'occurred_at': e.occurred_at, 'payload': e.payload} for e in rows]
