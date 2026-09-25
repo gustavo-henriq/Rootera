@@ -1,18 +1,22 @@
 import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useIsFocused } from '@react-navigation/native';
 import { Props } from '../navigation';
-import { color, space } from '../theme';
-import { Button, Icon, IconButton, PlantArt, Txt } from '../ui';
+import { useTheme } from '../ds/theme';
+import { radius, space } from '../ds/tokens';
+import { Btn, GlassIcon, T } from '../ds/components';
+import { Page } from '../ds/Page';
+import { Ground, PlantArt } from '../ds/plant';
 
 /** Base64 of photos taken in this session, kept in memory for identification (not in navigation state). */
 export const photoData = new Map<string, string>();
 
-export function Camera({ navigation, route }: Props<'Camera'>) {
-  const first = !!route.params?.first;
+export function Camera({ navigation }: Props<'Camera'>) {
+  const { c } = useTheme();
+  const insets = useSafeAreaInsets();
   const camera = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [ready, setReady] = useState(false);
@@ -23,19 +27,17 @@ export function Camera({ navigation, route }: Props<'Camera'>) {
 
   const use = (uri: string, base64?: string | null) => {
     if (base64) photoData.set(uri, base64);
-    navigation.replace('AddPlant', { first, photo: uri });
+    navigation.replace('AddPlant', { photo: uri });
   };
-
   const capture = async () => {
     if (busy || !camera.current || !ready) return;
     setBusy(true); setError('');
     try {
       const shot = await camera.current.takePictureAsync({ quality: .6, base64: true });
       if (shot) use(shot.uri, shot.base64);
-    } catch { setError('The photo didn’t work. Try again or pick one from your gallery.'); }
+    } catch { setError('The photo didn’t work. Try again or pick one from your photos.'); }
     finally { setBusy(false); }
   };
-
   const gallery = async () => {
     if (busy) return;
     setBusy(true); setError('');
@@ -46,46 +48,41 @@ export function Camera({ navigation, route }: Props<'Camera'>) {
     finally { setBusy(false); }
   };
 
-  if (!permission) return <View style={{ flex: 1, backgroundColor: color.ink }} />;
+  if (!permission) return <View style={{ flex: 1, backgroundColor: c.canvas }} />;
 
   if (!permission.granted || unavailable) {
-    return <SafeAreaView style={{ flex: 1, backgroundColor: color.paper }}>
-      <View style={{ paddingHorizontal: 8 }}><IconButton name="close" label="Close" onPress={navigation.goBack} /></View>
-      <View style={{ flex: 1, padding: space.gutter, justifyContent: 'center', gap: space.lg }}>
-        <View style={{ alignItems: 'center' }}><PlantArt kind="pothos" size={150} /></View>
-        <Txt v="title" center>{unavailable ? 'No camera here' : 'Start from a photo'}</Txt>
-        <Txt center tone={color.inkSoft}>{unavailable
-          ? 'This device has no camera available. You can still use a photo from your gallery.'
-          : 'Rootera uses the camera only while this screen is open. The photo becomes your plant’s picture.'}</Txt>
-        {!!error && <Txt v="small" center tone={color.danger}>{error}</Txt>}
+    return <Page close={navigation.goBack} footer={<>
+      {!unavailable && permission.canAskAgain && <Btn title="Allow camera" icon="camera" onPress={() => void requestPermission()} />}
+      <Btn title="Choose from photos" kind="outline" icon="photos" busy={busy} onPress={() => void gallery()} />
+    </>}>
+      <View style={{ alignItems: 'center', gap: space[4], paddingTop: space[8] }}>
+        <PlantArt kind="pothos" size={150} />
+        <Ground width={140} style={{ marginTop: -14 }} />
+        <T v="title" center>{unavailable ? 'No camera here' : 'Start from a photo'}</T>
+        <T v="callout" tone="ink2" center>{unavailable
+          ? 'This device has no camera available. You can still use a photo from your library.'
+          : permission.canAskAgain
+            ? 'Rootera uses the camera only while this screen is open. The photo becomes your plant’s picture.'
+            : 'Camera access is off for Rootera. Turn it on in Settings, or use a photo from your library.'}</T>
+        {!!error && <T v="subhead" tone="danger" center>{error}</T>}
       </View>
-      <View style={{ padding: space.gutter, gap: space.sm }}>
-        {!unavailable && permission.canAskAgain && <Button title="Allow camera" icon="camera-outline" onPress={() => void requestPermission()} />}
-        {!unavailable && !permission.canAskAgain && <Txt v="small" center>Camera access is off for Rootera. Turn it on in Settings, or use a gallery photo.</Txt>}
-        <Button title="Choose from gallery" variant="secondary" icon="images-outline" busy={busy} onPress={() => void gallery()} />
-      </View>
-    </SafeAreaView>;
+    </Page>;
   }
 
-  return <View style={{ flex: 1, backgroundColor: '#11140D' }}>
+  return <View style={{ flex: 1, backgroundColor: '#0B0E08' }}>
     {focused && <CameraView ref={camera} style={StyleSheet.absoluteFill} facing="back" onCameraReady={() => setReady(true)} onMountError={() => setUnavailable(true)} />}
-    <SafeAreaView style={{ flex: 1, justifyContent: 'space-between' }}>
-      <View style={{ paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center' }}>
-        <IconButton name="close" label="Close camera" tone={color.white} onPress={navigation.goBack} />
-        <Txt v="smallStrong" tone={color.white} center style={{ flex: 1, marginRight: 44 }}>Fit the whole plant in the frame</Txt>
+    <View style={{ position: 'absolute', top: insets.top + 6, left: space.gutter - 4 }}><GlassIcon name="close" label="Close camera" onPress={navigation.goBack} /></View>
+    <View pointerEvents="none" style={{ position: 'absolute', top: '18%', alignSelf: 'center', width: 250, height: 320, borderRadius: radius.card, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)' }} />
+    <View style={{ position: 'absolute', left: 0, right: 0, bottom: insets.bottom + space[6], alignItems: 'center', gap: space[4] }}>
+      <T v="subhead" center style={{ color: '#FFFFFF' }}>{error || 'Fit the whole plant in the frame'}</T>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[8] }}>
+        <GlassIcon name="photos" label="Choose from photos" onPress={() => void gallery()} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Take photo" disabled={busy || !ready} onPress={() => void capture()}
+          style={({ pressed }) => ({ width: 78, height: 78, borderRadius: 39, borderWidth: 4, borderColor: '#FFFFFF', padding: 5, opacity: busy || !ready ? .5 : pressed ? .75 : 1 })}>
+          <View style={{ flex: 1, borderRadius: 34, backgroundColor: '#FFFFFF' }} />
+        </Pressable>
+        <View style={{ width: 44 }} />
       </View>
-      <View pointerEvents="none" style={{ alignSelf: 'center', width: 250, height: 320, borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.55)' }} />
-      <View style={{ paddingBottom: space.xl, gap: space.md }}>
-        {!!error && <Txt v="small" center tone="#FFD9C7">{error}</Txt>}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' }}>
-          <IconButton name="images-outline" label="Choose from gallery" tone={color.white} onPress={() => void gallery()} />
-          <Pressable accessibilityRole="button" accessibilityLabel="Take photo" disabled={busy || !ready} onPress={() => void capture()}
-            style={({ pressed }) => ({ width: 76, height: 76, borderRadius: 38, borderWidth: 4, borderColor: color.white, padding: 5, opacity: busy || !ready ? .5 : pressed ? .75 : 1 })}>
-            <View style={{ flex: 1, borderRadius: 32, backgroundColor: color.white }} />
-          </Pressable>
-          <View style={{ width: 44 }}><Icon name="leaf-outline" size={20} tone="rgba(255,255,255,0.5)" /></View>
-        </View>
-      </View>
-    </SafeAreaView>
+    </View>
   </View>;
 }

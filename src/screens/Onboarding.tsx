@@ -14,7 +14,7 @@ import { Props } from '../navigation';
 import { useStore } from '../store';
 import { ApiError } from '../api';
 import { catalog, Experience, newId, NudgeKind, Plant, PlantKind, Soil } from '../model';
-import { plantArt } from '../ui';
+import { plantArt } from '../ds/plant';
 import { useTheme } from '../ds/theme';
 import { fonts, radius, space, springs } from '../ds/tokens';
 import { Btn, Chip, Field, Glass, Segmented, SourceMark, T, Tap, Toast } from '../ds/components';

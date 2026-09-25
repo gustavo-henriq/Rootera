@@ -10,7 +10,7 @@ import Animated, {
   cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming,
 } from 'react-native-reanimated';
 import { PlantKind } from '../model';
-import { plantArt } from '../ui';
+import { plantArt } from './plant';
 import { useTheme } from './theme';
 import { springs } from './tokens';
 

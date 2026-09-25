@@ -1,36 +1,37 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { BottomTabScreenProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { CompositeScreenProps, useScrollToTop } from '@react-navigation/native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Props, Routes, Tabs } from '../navigation';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useStore } from '../store';
-import { ago, atCapacity, byUrgency, CareEvent, describeEvent, experienceLabel, known, LOCALE, Plant } from '../model';
-import { color, font, radius, space } from '../theme';
-import { Banner, Button, Chips, Icon, IconButton, IconName, PlantArt, Press, Row, Screen, Section, Segmented, Tag, Txt } from '../ui';
 import { API_URL } from '../api';
-import { Pop, Stagger } from '../motion';
+import { atCapacity, byUrgency, CareEvent, describeEvent, experienceLabel, known, LOCALE, Plant } from '../model';
+import { useTheme } from '../ds/theme';
+import { fonts, radius, space } from '../ds/tokens';
+import { Btn, Chip, FloatingTabBar, Group, Row, Segmented, SourceLabel, T, Tap, Toast } from '../ds/components';
+import { Glyph, GlyphName } from '../ds/icons';
+import { Page } from '../ds/Page';
+import { Ground, PlantArt, plantArt } from '../ds/plant';
+import { Pop, Stagger } from '../ds/motion';
 
 const Tab = createBottomTabNavigator<Tabs>();
 type TabProps<T extends keyof Tabs> = CompositeScreenProps<BottomTabScreenProps<Tabs, T>, NativeStackScreenProps<Routes>>;
 
-const tabIcons: Record<keyof Tabs, [IconName, IconName]> = {
-  Today: ['sunny', 'sunny-outline'], Plants: ['leaf', 'leaf-outline'], Journal: ['book', 'book-outline'], You: ['person', 'person-outline'],
-};
+const tabs: { key: keyof Tabs; label: string; icon: GlyphName }[] = [
+  { key: 'Today', label: 'Today', icon: 'today' }, { key: 'Plants', label: 'Plants', icon: 'shelf' },
+  { key: 'Journal', label: 'Journal', icon: 'journal' }, { key: 'You', label: 'You', icon: 'person' },
+];
 
 export function Main({ route }: Props<'Main'>) {
   const insets = useSafeAreaInsets();
-  return <Tab.Navigator initialRouteName={route.params?.tab ?? 'Today'} screenOptions={({ route: r }) => ({
-    headerShown: false,
-    tabBarActiveTintColor: color.olive,
-    tabBarInactiveTintColor: color.inkMuted,
-    tabBarStyle: { backgroundColor: color.paper, borderTopColor: color.line, height: 66 + insets.bottom, paddingTop: 8, paddingBottom: Math.max(insets.bottom, 10) },
-    tabBarLabelStyle: { fontFamily: font.bodyBold, fontSize: 11 },
-    tabBarIcon: ({ focused, color: c }) => <Icon name={tabIcons[r.name][focused ? 0 : 1]} size={22} tone={c} />,
-  })}>
+  return <Tab.Navigator initialRouteName={route.params?.tab ?? 'Today'} screenOptions={{ headerShown: false }}
+    tabBar={({ state, navigation }) => <FloatingTabBar bottomInset={insets.bottom} active={state.routes[state.index].name}
+      onSelect={k => { const r = state.routes.find(x => x.name === k)!; const e = navigation.emit({ type: 'tabPress', target: r.key, canPreventDefault: true }); if (!e.defaultPrevented) navigation.navigate(k); }}
+      items={tabs} />}>
     <Tab.Screen name="Today" component={Today} />
-    <Tab.Screen name="Plants" component={Plants} options={{ title: 'Plants' }} />
+    <Tab.Screen name="Plants" component={Plants} />
     <Tab.Screen name="Journal" component={Journal} />
     <Tab.Screen name="You" component={You} />
   </Tab.Navigator>;
@@ -38,11 +39,11 @@ export function Main({ route }: Props<'Main'>) {
 
 function Offline() {
   const { offline, refresh } = useStore();
-  return offline ? <Banner tone="info" title="Showing your last saved garden" text="Rootera’s server can’t be reached. New records won’t save until it’s back." action={{ title: 'Try again', onPress: () => void refresh() }} /> : null;
+  return offline ? <Toast tone="info" title="Showing your last saved garden" text="Rootera’s server can’t be reached. New records won’t save until it’s back." action={{ title: 'Try again', onPress: () => void refresh() }} /> : null;
 }
 
-const quick: Record<string, { title: string; mode: 'soil' | 'water' | 'visual' } | null> = {
-  check_soil: { title: 'Check soil', mode: 'soil' }, log_water: { title: 'Log water', mode: 'water' }, observe: { title: 'Look', mode: 'visual' }, wait: null,
+const quick: Record<string, { title: string; mode: 'soil' | 'water' | 'visual'; icon: GlyphName } | null> = {
+  check_soil: { title: 'Check soil', mode: 'soil', icon: 'soil' }, log_water: { title: 'Log water', mode: 'water', icon: 'water' }, observe: { title: 'Look', mode: 'visual', icon: 'leaf' }, wait: null,
 };
 
 function greeting() {
@@ -50,8 +51,18 @@ function greeting() {
   return h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 }
 
+function Thumb({ plant, size = 64 }: { plant: Plant; size?: number }) {
+  const { c } = useTheme();
+  return <View style={{ width: size, height: size, borderRadius: radius.control, backgroundColor: c.sunken, alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' }}>
+    <PlantArt kind={plant.kind} photo={plant.photo} size={size * .95} />
+  </View>;
+}
+
 function Today({ navigation }: TabProps<'Today'>) {
   const { garden } = useStore();
+  const { c } = useTheme();
+  // On narrow phones the quick action becomes an icon so the plant name keeps its room.
+  const narrow = useWindowDimensions().width < 370;
   const ref = useRef<ScrollView>(null); useScrollToTop(ref);
   const sorted = byUrgency(garden);
   const needs = sorted.filter(p => garden.twins[p.id]?.guidance.action !== 'wait');
@@ -60,151 +71,175 @@ function Today({ navigation }: TabProps<'Today'>) {
   const first = garden.name.split(' ')[0];
   const open = (p: Plant) => navigation.navigate('Plant', { id: p.id });
 
-  return <Screen tab scrollRef={ref} right={<IconButton name="add" label="Add a plant" onPress={() => navigation.navigate('AddPlant')} />}
-    left={<Txt v="label" style={{ paddingLeft: 12 }}>{new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })}</Txt>}>
-    <Txt v="hero">{greeting()}{first ? `,\n${first}` : '.'}</Txt>
+  return <Page tab scrollRef={ref} titleInBar="Today" actions={[{ icon: 'plus', label: 'Add a plant', onPress: () => navigation.navigate('AddPlant') }]}
+    header={<View style={{ gap: space[1] }}>
+      <T v="footnote" tone="ink2">{new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })}</T>
+      <T v="display">{greeting()}{first ? `,\n${first}` : ''}</T>
+    </View>}>
     <Offline />
-
-    {!garden.plants.length ? <View style={{ alignItems: 'center', gap: space.lg, paddingTop: space.xl }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>{(['snake-plant', 'monstera', 'pilea'] as const).map((k, i) => <PlantArt key={k} kind={k} size={i === 1 ? 130 : 96} style={{ marginHorizontal: -10 }} />)}</View>
-      <Txt v="title" center>Your shelf is empty</Txt>
-      <Txt center tone={color.inkSoft}>Add a plant and do a first soil check. Rootera starts learning from there.</Txt>
-      <Button title="Add a plant" icon="add" onPress={() => navigation.navigate('AddPlant', { first: true })} style={{ alignSelf: 'stretch' }} />
+    {!garden.plants.length ? <View style={{ alignItems: 'center', gap: space[4], paddingTop: space[6] }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>{(['snake-plant', 'monstera', 'pilea'] as const).map((k, i) => <Image key={k} source={plantArt[k]} resizeMode="contain" style={{ width: i === 1 ? 130 : 96, height: i === 1 ? 130 : 96, marginHorizontal: -10 }} />)}</View>
+      <Ground width={240} style={{ marginTop: -18 }} />
+      <T v="title2" center>Your shelf is empty</T>
+      <T v="callout" tone="ink2" center>Add a plant and do a first soil check. Rootera starts learning from there.</T>
+      <Btn title="Add a plant" icon="plus" onPress={() => navigation.navigate('AddPlant', { first: true })} style={{ alignSelf: 'stretch' }} />
     </View> : <>
-      <Section label={needs.length ? `Needs you · ${needs.length}` : 'Needs you'}>
-        {needs.length ? needs.map((p, i) => {
-          const g = garden.twins[p.id]?.guidance;
-          const q = g ? quick[g.action] : quick.check_soil;
-          return <Stagger key={p.id} index={i} style={[s.need, i === needs.length - 1 && { borderBottomWidth: 0 }]}>
-            <Press label={`${p.name}: ${g?.title}`} onPress={() => open(p)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-              <View style={s.thumb}><PlantArt kind={p.kind} photo={p.photo} size={64} /></View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Txt v="bodyStrong" lines={1}>{p.name}</Txt>
-                <Txt v="small" lines={2}>{g?.title ?? 'Start with a soil check'}</Txt>
-              </View>
-            </Press>
-            {q && <Button compact variant={q.mode === 'water' ? 'water' : 'secondary'} title={q.title} onPress={() => navigation.navigate('Care', { id: p.id, mode: q.mode })} />}
-          </Stagger>;
-        }) : <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'center', paddingVertical: space.md }}>
-          <Icon name="checkmark-circle" size={22} tone={color.leaf} />
-          <Txt v="body" style={{ flex: 1 }}>Nothing needs you right now. Rootera will show a plant here when a check would help.</Txt>
-        </View>}
-      </Section>
-
-      {!!resting.length && <Section label="Resting">
-        {resting.map((p, i) => <Stagger key={p.id} index={needs.length + i}><Press label={`${p.name}: ${garden.twins[p.id]?.guidance.title}`} onPress={() => open(p)} style={[s.need, { paddingVertical: 8 }, i === resting.length - 1 && { borderBottomWidth: 0 }]}>
-          <View style={[s.thumb, { width: 48, height: 48 }]}><PlantArt kind={p.kind} photo={p.photo} size={46} /></View>
-          <View style={{ flex: 1 }}><Txt v="body" lines={1}>{p.name}</Txt><Txt v="small" lines={1}>{garden.twins[p.id]?.guidance.title}</Txt></View>
-          <Icon name="chevron-forward" size={16} tone={color.inkMuted} />
-        </Press></Stagger>)}
-      </Section>}
-
-      {!!recent.length && <Section label="Recently recorded" action={{ title: 'Journal', onPress: () => navigation.navigate('Journal') }}>
-        {recent.map((e, i) => <EventRow key={e.id} event={e} plant={garden.plants.find(p => p.id === e.plantId)} last={i === recent.length - 1} onPress={() => navigation.navigate('Plant', { id: e.plantId })} />)}
-      </Section>}
-    </>}
-  </Screen>;
-}
-
-/** Plant tile where the plant rises above its frame, like a pot on a shelf edge. */
-function Tile({ plant, width, onPress, status, delay = 0 }: { plant: Plant; width: number; onPress: () => void; status: 'needs' | 'rest'; delay?: number }) {
-  const { garden } = useStore();
-  const meta = [garden.plan === 'Plus' && known(plant.room) ? plant.room : null, known(plant.environment?.location) ? plant.environment!.location : null].filter(Boolean)[0] as string | undefined;
-  return <Press label={`${plant.name}, ${status === 'needs' ? 'needs you' : 'resting'}`} onPress={onPress} style={{ width, paddingTop: width * .34 }}>
-    <View style={[s.tile, { height: width * .92 }]}>
-      <View style={{ padding: 12, gap: 2 }}>
-        <Txt v="bodyStrong" lines={1}>{plant.name}</Txt>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: status === 'needs' ? color.clay : color.leaf }} />
-          <Txt v="label" style={{ fontSize: 10, flex: 1 }} lines={1} tone={status === 'needs' ? color.clay : color.leafInk}>{status === 'needs' ? 'Needs you' : 'Resting'}{meta ? <Txt v="label" style={{ fontSize: 10 }}> · {meta}</Txt> : null}</Txt>
+      <View>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space[2], marginBottom: space[2] }}>
+          <T v="section">Needs you</T>
+          {!!needs.length && <T v="footnote" tone="ink2">{needs.length} {needs.length === 1 ? 'plant' : 'plants'}</T>}
+        </View>
+        <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>
+          {needs.length ? needs.map((p, i) => {
+            const g = garden.twins[p.id]?.guidance;
+            const q = g ? quick[g.action] : quick.check_soil;
+            return <Stagger key={p.id} index={i} style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
+              <Tap label={`${p.name}: ${g?.title}`} onPress={() => open(p)} scaleTo={.99} ring={radius.control} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
+                <Thumb plant={p} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <T v="headline" lines={1}>{p.name}</T>
+                  <T v="subhead" tone="ink2" lines={2}>{g?.title ?? 'Start with a soil check'}</T>
+                </View>
+              </Tap>
+              {q && (narrow
+                ? <Tap label={`${q.title}, ${p.name}`} onPress={() => navigation.navigate('Care', { id: p.id, mode: q.mode })} ring={radius.control} style={{ width: 44, height: 44, borderRadius: radius.control, borderWidth: 1, borderColor: c.ink3, alignItems: 'center', justifyContent: 'center' }}><Glyph name={q.icon} size={20} /></Tap>
+                : <Btn size="regular" kind="outline" icon={q.icon} title={q.title} onPress={() => navigation.navigate('Care', { id: p.id, mode: q.mode })} />)}
+            </Stagger>;
+          }) : <View style={{ flexDirection: 'row', gap: space[3], alignItems: 'center', paddingVertical: space[4], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
+            <Glyph name="leaf" tone={c.leafMark} />
+            <T v="callout" style={{ flex: 1 }}>Nothing needs you right now. A plant shows up here when a check would help.</T>
+          </View>}
         </View>
       </View>
+
+      {!!resting.length && <Group header="Resting">
+        {resting.map(p => <Tap key={p.id} label={`${p.name}: ${garden.twins[p.id]?.guidance.title}`} onPress={() => open(p)} scaleTo={.99} ring={radius.inner}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[2] }}>
+          <Thumb plant={p} size={48} />
+          <View style={{ flex: 1 }}><T v="body" lines={1}>{p.name}</T><T v="footnote" tone="ink2" lines={1}>{garden.twins[p.id]?.guidance.title}</T></View>
+          <Glyph name="forward" size={15} tone={c.ink3} />
+        </Tap>)}
+      </Group>}
+
+      {!!recent.length && <View>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: space[2] }}>
+          <T v="section">Recently</T>
+          <Tap label="Open the journal" onPress={() => navigation.navigate('Journal')} ring={radius.inner} style={{ minHeight: 44, justifyContent: 'center' }}><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>Journal</T></Tap>
+        </View>
+        <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>
+          {recent.map(e => <EventRow key={e.id} event={e} plant={garden.plants.find(p => p.id === e.plantId)} onPress={() => navigation.navigate('Plant', { id: e.plantId })} />)}
+        </View>
+      </View>}
+    </>}
+  </Page>;
+}
+
+/** A plant rising out of its tile, like a pot on the edge of a shelf. */
+function Tile({ plant, width, onPress, needs, delay }: { plant: Plant; width: number; onPress: () => void; needs: boolean; delay: number }) {
+  const { garden } = useStore();
+  const { c } = useTheme();
+  const where = garden.plan === 'Plus' && known(plant.room) ? plant.room : known(plant.environment?.location) ? plant.environment!.location : null;
+  return <Tap label={`${plant.name}, ${needs ? 'needs you' : 'resting'}`} onPress={onPress} ring={radius.card} style={{ width, paddingTop: width * .36 }}>
+    <View style={{ height: width * .9, borderRadius: radius.card, borderCurve: 'continuous', backgroundColor: c.sunken, justifyContent: 'flex-end', padding: space[3], gap: 2 }}>
+      <T v="headline" lines={1}>{plant.name}</T>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: needs ? c.clay : c.leafMark }} />
+        <T v="footnote" tone={needs ? 'clayText' : 'ink2'} lines={1}>{needs ? 'Needs you' : 'Resting'}</T>
+      </View>
+      {!!where && <T v="footnote" tone="ink2" lines={1}>{where}</T>}
     </View>
-    <Pop delay={delay + 180} style={{ position: 'absolute', top: 0, left: width * .12, right: width * .12, alignItems: 'center' }}>
-      <PlantArt kind={plant.kind} photo={plant.photo} size={width * .82} />
+    <Pop delay={delay + 160} style={{ position: 'absolute', top: 0, left: width * .1, right: width * .1, alignItems: 'center' }}>
+      <PlantArt kind={plant.kind} photo={plant.photo} size={width * .8} />
     </Pop>
-  </Press>;
+  </Tap>;
 }
 
 function Plants({ navigation }: TabProps<'Plants'>) {
   const { garden } = useStore();
+  const { c } = useTheme();
   const ref = useRef<ScrollView>(null); useScrollToTop(ref);
   const [w, setW] = useState(0);
   const [room, setRoom] = useState('All');
   const plus = garden.plan === 'Plus';
   const rooms = useMemo(() => Array.from(new Set(garden.plants.map(p => p.room).filter(known))), [garden.plants]);
   const list = byUrgency(garden).filter(p => !plus || room === 'All' || p.room === room);
-  const col = w ? (w - space.md) / 2 : 0;
+  const col = w ? (w - space[3]) / 2 : 0;
   const full = atCapacity(garden);
 
-  return <Screen tab scrollRef={ref} right={<IconButton name="add" label="Add a plant" onPress={() => navigation.navigate('AddPlant')} />}>
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-      <Txt v="hero">My plants</Txt>
-      <Txt v="smallStrong" style={{ marginLeft: 4, marginTop: 2 }}>{garden.plants.length}</Txt>
-    </View>
+  return <Page tab scrollRef={ref} title="Plants" actions={[{ icon: 'plus', label: 'Add a plant', onPress: () => navigation.navigate(full ? 'Plans' : 'AddPlant', full ? { reason: 'limit' } : undefined as any) }]} gap={space[5]}>
     <Offline />
     {plus
-      ? rooms.length > 0 && <Chips values={['All', ...rooms]} value={room} onChange={setRoom} />
-      : garden.plants.length > 0 && <Press label="Group plants by room with Rootera+" onPress={() => navigation.navigate('Plans', { reason: 'rooms' })} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', minHeight: 36, paddingHorizontal: 12, borderRadius: radius.pill, borderWidth: 1, borderColor: color.lineStrong }}>
-          <Icon name="albums-outline" size={15} tone={color.inkSoft} /><Txt v="small">Rooms</Txt><Icon name="lock-closed" size={12} tone={color.inkMuted} />
-        </Press>}
-
-    <View onLayout={e => setW(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space.md, rowGap: space.lg }}>
-      {!!col && list.map((p, i) => <Stagger key={p.id} index={i}><Tile plant={p} width={col} delay={Math.min(i, 8) * 70} status={garden.twins[p.id]?.guidance.action === 'wait' ? 'rest' : 'needs'} onPress={() => navigation.navigate('Plant', { id: p.id })} /></Stagger>)}
-      {!!col && <Press label={full ? 'Plant limit reached. See Rootera+' : 'Add a plant'} onPress={() => navigation.navigate(full ? 'Plans' : 'AddPlant', full ? { reason: 'limit' } : undefined as any)} style={{ width: col, paddingTop: col * .34 }}>
-        <View style={[s.tile, s.addTile, { height: col * .92 }]}>
-          <Icon name={full ? 'lock-closed-outline' : 'add'} size={26} tone={color.olive} />
-          <Txt v="smallStrong" center>{full ? 'Shelf full' : 'Add a plant'}</Txt>
-          {garden.plan_capacity !== null && <Txt v="label" style={{ fontSize: 10 }}>{garden.plants.length} of {garden.plan_capacity} · Free</Txt>}
+      ? rooms.length > 0 && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>{['All', ...rooms].map(r => <Chip key={r} label={r} selected={room === r} onPress={() => setRoom(r)} />)}</View>
+      : garden.plants.length > 0 && <Tap label="Group plants by room with Rootera+" onPress={() => navigation.navigate('Plans', { reason: 'rooms' })} ring={radius.input}
+          style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: space[2], minHeight: 40, paddingHorizontal: 12, borderRadius: radius.input, borderWidth: 1, borderColor: c.hairline }}>
+          <Glyph name="rooms" size={16} tone={c.ink2} /><T v="subhead" tone="ink2">Group by room</T><Glyph name="lock" size={14} tone={c.ink3} />
+        </Tap>}
+    <View onLayout={e => setW(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space[3], rowGap: space[4] }}>
+      {!!col && list.map((p, i) => <Stagger key={p.id} index={i}><Tile plant={p} width={col} delay={Math.min(i, 8) * 55} needs={garden.twins[p.id]?.guidance.action !== 'wait'} onPress={() => navigation.navigate('Plant', { id: p.id })} /></Stagger>)}
+      {!!col && <Tap label={full ? 'Plant limit reached. See Rootera+' : 'Add a plant'} onPress={() => navigation.navigate(full ? 'Plans' : 'AddPlant', full ? { reason: 'limit' } : undefined as any)} ring={radius.card} style={{ width: col, paddingTop: col * .36 }}>
+        <View style={{ height: col * .9, borderRadius: radius.card, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.ink3, alignItems: 'center', justifyContent: 'center', gap: space[1], padding: space[3] }}>
+          <Glyph name={full ? 'lock' : 'plus'} size={24} tone={c.ink2} />
+          <T v="subhead" center style={{ fontFamily: fonts.medium }}>{full ? 'Shelf full' : 'Add a plant'}</T>
+          {garden.plan_capacity !== null && <T v="footnote" tone="ink2" center>{garden.plants.length} of {garden.plan_capacity} on the free plan</T>}
         </View>
-      </Press>}
+      </Tap>}
     </View>
-  </Screen>;
+  </Page>;
 }
 
-function EventRow({ event, plant, last, onPress }: { event: CareEvent; plant?: Plant; last?: boolean; onPress?: () => void }) {
-  const icon: IconName = event.type === 'Watered' ? 'water' : event.type === 'Soil check' ? 'finger-print' : 'leaf';
-  const body = <View style={[s.event, last && { borderBottomWidth: 0 }]}>
-    <View style={[s.eventIcon, event.type === 'Watered' && { backgroundColor: color.waterSoft }]}><Icon name={icon} size={15} tone={event.type === 'Watered' ? color.water : color.olive} /></View>
-    <View style={{ flex: 1, gap: 1 }}>
-      <Txt v="body">{describeEvent(event)}</Txt>
-      <Txt v="small">{plant?.name ?? 'Removed plant'} · {new Date(event.at).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })}</Txt>
-      {!!event.note && <Txt v="small" tone={color.ink}>“{event.note}”</Txt>}
+const eventGlyph = (e: CareEvent): GlyphName => e.type === 'Watered' ? 'water' : e.type === 'Soil check' ? 'soil' : 'leaf';
+
+function EventRow({ event, plant, onPress }: { event: CareEvent; plant?: Plant; onPress?: () => void }) {
+  const { c } = useTheme();
+  const water = event.type === 'Watered';
+  const body = <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[3], paddingVertical: space[3], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
+    <View style={{ width: 32, height: 32, borderRadius: radius.control, backgroundColor: water ? c.waterSoft : c.sunken, alignItems: 'center', justifyContent: 'center' }}>
+      <Glyph name={eventGlyph(event)} size={17} tone={water ? c.water : c.ink2} />
     </View>
+    <View style={{ flex: 1, gap: 1 }}>
+      <T v="body">{describeEvent(event).replace(' · ', ': ')}</T>
+      <T v="footnote" tone="ink2">{plant?.name ?? 'Removed plant'}</T>
+      {!!event.note && <T v="subhead" style={{ marginTop: 2 }}>“{event.note}”</T>}
+    </View>
+    <T v="footnote" tone="ink2">{new Date(event.at).toLocaleTimeString(LOCALE, { hour: 'numeric', minute: '2-digit' })}</T>
   </View>;
-  return onPress && plant ? <Press label={`${describeEvent(event)}, ${plant.name}`} onPress={onPress}>{body}</Press> : body;
+  return onPress && plant ? <Tap label={`${describeEvent(event)}, ${plant.name}`} onPress={onPress} scaleTo={.99} ring={radius.inner}>{body}</Tap> : body;
 }
 
 function dayLabel(iso: string) {
   const d = new Date(iso), t = new Date();
   const diff = Math.round((new Date(t.toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 86400000);
-  return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : d.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'short' });
+  return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : d.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 function Journal({ navigation }: TabProps<'Journal'>) {
   const { garden } = useStore();
+  const { c } = useTheme();
   const ref = useRef<ScrollView>(null); useScrollToTop(ref);
   const [plant, setPlant] = useState('all');
   const events = garden.events.filter(e => plant === 'all' || e.plantId === plant).slice().reverse();
   const groups: [string, CareEvent[]][] = [];
   events.forEach(e => { const k = dayLabel(e.at); const g = groups.find(x => x[0] === k); g ? g[1].push(e) : groups.push([k, [e]]); });
-  const names = Object.fromEntries(garden.plants.map(p => [p.id, p.name]));
 
-  return <Screen tab scrollRef={ref}>
-    <View style={{ gap: space.sm }}>
-      <Txt v="hero">Journal</Txt>
-      <Tag kind="user" text="Everything here was recorded by you" />
-    </View>
+  return <Page tab scrollRef={ref} title="Journal" gap={space[5]}>
+    <SourceLabel kind="observed" text="Everything here was recorded by you" />
     <Offline />
-    {garden.plants.length > 1 && <Chips values={['all', ...garden.plants.map(p => p.id)]} value={plant} onChange={setPlant} labels={{ all: 'All plants', ...names }} />}
-    {groups.length ? groups.map(([day, list]) => <Section key={day} label={day}>
-      {list.map((e, i) => <Stagger key={e.id} index={i}><EventRow event={e} plant={garden.plants.find(p => p.id === e.plantId)} last={i === list.length - 1} onPress={() => navigation.navigate('Plant', { id: e.plantId })} /></Stagger>)}
-    </Section>) : <View style={{ gap: space.sm, paddingTop: space.xl }}>
-      <Txt v="heading">Nothing recorded yet</Txt>
-      <Txt tone={color.inkSoft}>Soil checks, watering and notes about the leaves appear here, newest first.</Txt>
+    {garden.plants.length > 1 && <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.gutter, flexGrow: 0 }} contentContainerStyle={{ gap: space[2], paddingHorizontal: space.gutter }}>
+      {[{ id: 'all', name: 'All plants' }, ...garden.plants].map(p => <Chip key={p.id} label={p.name} selected={plant === p.id} onPress={() => setPlant(p.id)} />)}
+    </ScrollView>}
+    {groups.length ? groups.map(([day, list]) => <View key={day}>
+      <T v="section" style={{ marginBottom: space[2] }}>{day}</T>
+      <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>
+        {list.map((e, i) => <Stagger key={e.id} index={i}><EventRow event={e} plant={garden.plants.find(p => p.id === e.plantId)} onPress={() => navigation.navigate('Plant', { id: e.plantId })} /></Stagger>)}
+      </View>
+    </View>) : <View style={{ gap: space[2], paddingTop: space[4] }}>
+      <T v="title2">Nothing recorded yet</T>
+      <T v="callout" tone="ink2">Soil checks, watering and notes about the leaves appear here, newest first.</T>
     </View>}
-  </Screen>;
+  </Page>;
 }
+
+const nudgeNames: Record<string, string> = { soil_check: 'soil checks', pattern: 'patterns', leaves: 'leaf reminders', weekly: 'a weekly recap' };
 
 function You({ navigation }: TabProps<'You'>) {
   const { garden, saveProfile } = useStore();
@@ -215,50 +250,26 @@ function You({ navigation }: TabProps<'You'>) {
     setError('');
     try { await saveProfile(changes); } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.'); }
   };
+  const nudges = garden.nudges;
+  const nudgeText = !garden.reminders || !nudges?.kinds.length ? 'Off' : `${nudges.kinds.map(k => nudgeNames[k]).join(', ').replace(/^./, s => s.toUpperCase())}, at ${nudges.time}`;
   const host = API_URL.replace(/^https?:\/\//, '');
 
-  return <Screen tab scrollRef={ref}>
-    <Txt v="hero">{garden.name || 'You'}</Txt>
+  return <Page tab scrollRef={ref} title={garden.name || 'You'}>
     <Offline />
-    {!!error && <Banner tone="error" title="Not saved" text={error} onClose={() => setError('')} />}
-
-    <Section label="Plant care profile">
-      <Row icon="person-outline" title="Name and experience" detail={garden.caregiver ? experienceLabel[garden.caregiver.experience] : 'Not set'} onPress={() => navigation.navigate('Experience')} />
-      <View style={{ gap: space.sm, paddingVertical: space.md }}>
-        <Txt v="body">How much should Rootera explain?</Txt>
-        <Segmented values={['Guided', 'Concise'] as const} value={detail} onChange={v => void save({ caregiver: { experience: garden.caregiver?.experience ?? 'first', detail: v } })} labels={{ Guided: 'Explain the how-to', Concise: 'Just the essentials' }} />
+    {!!error && <Toast tone="error" title="Not saved" text={error} onClose={() => setError('')} />}
+    <Group header="Plant care">
+      <Row title="Name and experience" detail={garden.caregiver ? experienceLabel[garden.caregiver.experience] : 'Not set'} onPress={() => navigation.navigate('Experience')} />
+      <Row title="Nudges" detail={nudgeText} onPress={() => navigation.navigate('Nudges')} />
+      <View style={{ paddingVertical: space[3], gap: space[2] }}>
+        <T v="body">How much Rootera explains</T>
+        <Segmented values={['Guided', 'Concise'] as const} value={detail} onChange={v => void save({ caregiver: { experience: garden.caregiver?.experience ?? 'first', detail: v } })} labels={{ Guided: 'Walk me through it', Concise: 'Just tell me' }} />
       </View>
-    </Section>
-
-    <Section label="Plan">
-      <Row icon="sparkles-outline" title={garden.plan === 'Plus' ? 'Rootera+' : 'Rootera Free'}
-        detail={garden.plan === 'Plus' ? `Unlimited plants · rooms${garden.plan_source === 'demo' ? ' · preview' : ''}` : `${garden.plants.length} of ${garden.plan_capacity} plants used`}
-        onPress={() => navigation.navigate('Plans')} last />
-    </Section>
-
-    <Section label="Reminders">
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 56 }}>
-        <Icon name="notifications-outline" size={20} tone={color.inkSoft} />
-        <View style={{ flex: 1 }}>
-          <Txt>Care nudges</Txt>
-          <Txt v="small">Push delivery isn’t connected yet. Nudges appear on your Today screen.</Txt>
-        </View>
-        <Switch accessibilityLabel="Care nudges" value={garden.reminders} onValueChange={v => void save({ reminders: v })} trackColor={{ true: color.leaf, false: color.lineStrong }} thumbColor={color.white} />
-      </View>
-    </Section>
-
-    <Section label="About">
-      <Row icon="git-branch-outline" title="How Rootera learns" onPress={() => navigation.navigate('About')} />
-      <Row icon="server-outline" title="Preview data" detail={`Saved on ${host}. Photos stay on this device.`} last />
-    </Section>
-  </Screen>;
+    </Group>
+    <Group header="Plan">
+      <Row title={garden.plan === 'Plus' ? 'Rootera+' : 'Rootera Free'} detail={garden.plan === 'Plus' ? `Unlimited plants and rooms${garden.plan_source === 'demo' ? ', preview activation' : ''}` : `${garden.plants.length} of ${garden.plan_capacity} plants used`} onPress={() => navigation.navigate('Plans')} />
+    </Group>
+    <Group header="About" footer={`Preview data is saved on ${host}. Photos stay on this device.`}>
+      <Row title="How Rootera learns" onPress={() => navigation.navigate('About')} />
+    </Group>
+  </Page>;
 }
-
-const s = StyleSheet.create({
-  need: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: color.lineStrong },
-  thumb: { width: 64, height: 64, borderRadius: radius.md, backgroundColor: color.paperDeep, alignItems: 'center', justifyContent: 'flex-end', overflow: 'visible' },
-  tile: { backgroundColor: color.paperDeep, borderRadius: radius.lg, borderCurve: 'continuous', justifyContent: 'flex-end' },
-  addTile: { backgroundColor: 'transparent', borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.lineStrong, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  event: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: color.line },
-  eventIcon: { width: 30, height: 30, borderRadius: 15, backgroundColor: color.oliveSoft, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-});

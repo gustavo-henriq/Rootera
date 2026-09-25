@@ -13,6 +13,7 @@ export type Routes = {
   Care: { id: string; mode: 'soil' | 'water' | 'visual' };
   Plans: { reason?: 'limit' | 'rooms' | 'first'; then?: { plantId: string } } | undefined;
   Experience: undefined;
+  Nudges: undefined;
   About: undefined;
 };
 
