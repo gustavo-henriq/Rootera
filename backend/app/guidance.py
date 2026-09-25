@@ -80,7 +80,7 @@ class SensorlessGuidance:
 
         if not events:
             title, action = 'Start with a soil check', 'check_soil'
-            reason = f"{notes['summary']} A first check tells Rootera where this plant is starting from."
+            reason = 'A first soil check tells Rootera where this plant is starting from. Every later check is compared with it.'
             basis = ['Species reference']
             tip = notes['check_tip']
         elif visual in ('different', 'unwell') and not fresh and not unsure and not (last_water and parse_time(last_water.at) >= parse_time(recent_visual.at)):

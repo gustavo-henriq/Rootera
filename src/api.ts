@@ -1,24 +1,51 @@
 import { Platform } from 'react-native';
-import { AppData } from './model';
+import { CareEvent, Caregiver, Garden, Plan, Plant, PlantKind } from './model';
+
 export const API_URL = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://127.0.0.1:8000');
+// Preview access only. Real accounts replace this with a per-user session token.
 const token = process.env.EXPO_PUBLIC_DEMO_TOKEN || 'rootera-local-demo';
-export async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
- const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 10000);
- try { const response = await fetch(`${API_URL}${path}`, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), signal: controller.signal }); const payload = await response.json(); if (!response.ok) throw new Error(typeof payload.detail === 'string' ? payload.detail : 'Please check the submitted information.'); return payload; }
- catch (e) { if (e instanceof Error && (e.name === 'AbortError' || /fetch|network/i.test(e.message))) throw new Error('The Rootera server is unavailable. Please reconnect before saving.'); throw e; }
- finally { clearTimeout(timer); }
+
+export class ApiError extends Error {
+  constructor(message: string, public status: number, public offline = false) { super(message); }
 }
-export const getGarden = () => request<AppData>('/v1/garden');
-/** User actions and device measurements use separate API contracts. */
-export async function persistChanges(before: AppData, after: AppData): Promise<AppData> {
- if (JSON.stringify(before.caregiver) !== JSON.stringify(after.caregiver) || before.name !== after.name || before.onboarded !== after.onboarded || before.reminders !== after.reminders) await request('/v1/profile', 'PATCH', { name: after.name, onboarded: after.onboarded, reminders: after.reminders, ...(after.caregiver ? {caregiver:after.caregiver} : {}) });
- if (before.plan !== after.plan || before.annual !== after.annual) await request('/v1/demo/plan', 'POST', { plan: after.plan, annual: after.annual });
- for (const plant of after.plants.filter(p => !before.plants.some(old => old.id === p.id))) await request('/v1/plants', 'POST', plant);
- for (const e of after.events.filter(e => !before.events.some(old => old.id === e.id))) await request(`/v1/plants/${encodeURIComponent(e.plantId)}/user-observations`, 'POST', { id: e.id, type: e.type, note: e.note, soil: e.soil ?? null, amount_ml: e.amount_ml ?? null, observed_at: e.at, ...(e.visual ? {visual:e.visual} : {}) });
- for (const sensor of after.sensors.filter(s => !before.sensors.some(old => JSON.stringify(old) === JSON.stringify(s)))) {
-  if (!sensor.demo) throw new Error('Real readings must come from the device ingestion API.');
-  const { id, plantId, name, dry, wet, moisture, observedAt, source, demo } = sensor;
-  await request('/v1/demo/sensors', 'POST', { id, plantId, name, dry, wet, moisture, observedAt, source, demo });
- }
- return getGarden();
+
+export async function request<T>(path: string, method = 'GET', body?: unknown, timeoutMs = 12000): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      method, signal: controller.signal,
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    throw new ApiError('Can’t reach Rootera right now. Nothing was saved. Check your connection and try again.', 0, true);
+  } finally {
+    clearTimeout(timer);
+  }
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = typeof payload.detail === 'string' ? payload.detail : 'Please check the information and try again.';
+    throw new ApiError(detail, response.status);
+  }
+  return payload as T;
 }
+
+export interface CareResult { id: string; duplicate: boolean; change: { from: string; to: string } | null }
+export interface Candidate { scientific_name: string; common_name: string; family: string; kind: PlantKind; score: number }
+
+export const api = {
+  garden: () => request<Garden>('/v1/garden'),
+  profile: (changes: Partial<{ name: string; onboarded: boolean; reminders: boolean; caregiver: Caregiver }>) => request('/v1/profile', 'PATCH', changes),
+  addPlant: (plant: Plant) => request<Plant>('/v1/plants', 'POST', plant),
+  updatePlant: (id: string, changes: Partial<Plant>) => request<Plant>(`/v1/plants/${encodeURIComponent(id)}`, 'PATCH', changes),
+  archivePlant: (id: string) => request(`/v1/plants/${encodeURIComponent(id)}`, 'DELETE'),
+  logCare: (e: CareEvent) => request<CareResult>(`/v1/plants/${encodeURIComponent(e.plantId)}/user-observations`, 'POST', {
+    id: e.id, type: e.type, note: e.note, observed_at: e.at,
+    soil: e.soil ?? null, amount_ml: e.amount_ml ?? null, ...(e.visual ? { visual: e.visual } : {}),
+  }),
+  demoPlan: (plan: Plan, annual: boolean) => request('/v1/demo/plan', 'POST', { plan, annual }),
+  syncBilling: () => request<{ plan: Plan }>('/v1/billing/sync', 'POST'),
+  identify: (image_base64: string) => request<{ results: Candidate[] }>('/v1/identify', 'POST', { image_base64 }, 30000),
+};

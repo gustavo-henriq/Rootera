@@ -1,11 +1,19 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { PlantKind, Plan } from './model';
+import { PlantKind } from './model';
+
+export type Tabs = { Today: undefined; Plants: undefined; Journal: undefined; You: undefined };
+
 export type Routes = {
- Welcome: undefined; Email: undefined; Onboarding: { replay?: boolean } | undefined; Main: { tab?: 'Home' | 'Plants' | 'Activity' | 'Profile' } | undefined;
- AddPlant: undefined; Camera: undefined; Search: undefined; Result: { kind: PlantKind; photo?: string };
- Register: { kind: PlantKind; photo?: string }; Details: { id: string; feedback?: string }; LogCare: { id: string; mode?: 'soil'|'visual'|'water' };
- Plans: undefined; Checkout: { plan: Exclude<Plan, 'Free'>; annual: boolean }; Success: { plan: Plan; returnTo: 'AddPlant' | 'Main' };
- Sensors: undefined; Pairing: { plantId?: string } | undefined; Calibration: { plantId: string; name: string };
- Notifications: undefined; Settings: undefined; Article: { title: string; content: string };
+  Welcome: undefined;
+  Main: { tab?: keyof Tabs } | undefined;
+  AddPlant: { first?: boolean; photo?: string } | undefined;
+  Camera: { first?: boolean } | undefined;
+  PlantForm: { kind: PlantKind; species: string; name: string; photo?: string; first?: boolean } | { editId: string };
+  Plant: { id: string; saved?: { title: string; from?: string; to?: string } };
+  Care: { id: string; mode: 'soil' | 'water' | 'visual' };
+  Plans: { reason?: 'limit' | 'rooms' | 'first'; then?: { plantId: string } } | undefined;
+  Experience: undefined;
+  About: undefined;
 };
+
 export type Props<T extends keyof Routes> = NativeStackScreenProps<Routes, T>;

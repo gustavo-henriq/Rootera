@@ -1,16 +1,100 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
-import { AppData, initialData } from './model';
-import { getGarden, persistChanges } from './api';
-const KEY = 'rootera:server-cache:v1';
-const Context = createContext<{ data: AppData; update: (fn: (d: AppData) => AppData) => Promise<void>; ready: boolean; storageError: string | null; refresh: () => Promise<void> }>({ data: initialData, update: async () => {}, ready: false, storageError: null, refresh: async () => {} });
-export function StoreProvider({ children }: React.PropsWithChildren) {
- const [data, setData] = useState(initialData); const current = useRef(initialData); const [ready, setReady] = useState(false); const [storageError, setError] = useState<string | null>(null); const queue = useRef(Promise.resolve()); const pending = useRef(0); const revision = useRef(0); const refreshId = useRef(0);
- const apply = async (value: AppData) => { current.current = value; setData(value); try { await AsyncStorage.setItem(KEY, JSON.stringify(value)); } catch { setError('Saved to the server, but this device cache is unavailable.'); } };
- const refresh = async () => { if (pending.current) return; const version = revision.current; const requestId = ++refreshId.current; try { const next = await getGarden(); if (!pending.current && version === revision.current && requestId === refreshId.current) { setError(null); await apply(next); } } catch { if (version !== revision.current || requestId !== refreshId.current) return; setError('Server unavailable. Showing cached data; reconnect before saving.'); } };
- useEffect(() => { (async () => { try { const raw = await AsyncStorage.getItem(KEY); if (raw) { const cached = JSON.parse(raw); if (cached.version === 1 && Array.isArray(cached.plants) && Array.isArray(cached.events) && Array.isArray(cached.sensors)) { current.current = cached; setData(cached); } } } catch {} await refresh(); setReady(true); })(); const timer = setInterval(refresh, 30000); const sub = AppState.addEventListener('change', state => { if (state === 'active') void refresh(); }); return () => { clearInterval(timer); sub.remove(); }; }, []);
- const update = (fn: (d: AppData) => AppData) => { pending.current++; revision.current++; const operation = queue.current.then(async () => { try { const before = current.current; const after = fn(before); const saved = await persistChanges(before, after); setError(null); await apply(saved); } catch (e) { setError(e instanceof Error ? e.message : 'Could not save changes.'); try { await apply(await getGarden()); } catch {} throw e; } finally { pending.current--; } }); queue.current = operation.catch(() => {}); return operation; };
- return <Context.Provider value={{ data, update, ready, storageError, refresh }}>{children}</Context.Provider>;
+import { api, CareResult } from './api';
+import { CareEvent, Caregiver, emptyGarden, Garden, Plan, Plant } from './model';
+
+const KEY = 'rootera:garden:v2';
+
+interface Store {
+  garden: Garden;
+  ready: boolean;
+  /** True when the last refresh failed and the screen shows cached data. */
+  offline: boolean;
+  refresh: () => Promise<void>;
+  saveProfile: (changes: Partial<{ name: string; onboarded: boolean; reminders: boolean; caregiver: Caregiver }>) => Promise<void>;
+  addPlant: (plant: Plant) => Promise<void>;
+  updatePlant: (id: string, changes: Partial<Plant>) => Promise<void>;
+  archivePlant: (id: string) => Promise<void>;
+  logCare: (event: CareEvent) => Promise<CareResult>;
+  setDemoPlan: (plan: Plan, annual: boolean) => Promise<void>;
+  syncBilling: () => Promise<void>;
 }
-export const useStore = () => useContext(Context);
+
+const Context = createContext<Store | null>(null);
+
+/**
+ * The server is the source of truth. Writes go straight to the API (with stable
+ * ids, so a retry never duplicates) and are serialized; afterwards the garden is
+ * reloaded. The device keeps a read-only cache for fast start and offline viewing.
+ */
+export function StoreProvider({ children }: React.PropsWithChildren) {
+  const [garden, setGarden] = useState<Garden>(emptyGarden);
+  const [ready, setReady] = useState(false);
+  const [offline, setOffline] = useState(false);
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const writes = useRef(0);
+
+  const apply = useCallback(async (next: Garden) => {
+    setGarden(next);
+    setOffline(false);
+    try { await AsyncStorage.setItem(KEY, JSON.stringify(next)); } catch { /* cache is optional */ }
+  }, []);
+
+  const refresh = useCallback(async () => {
+    if (writes.current) return;
+    try { await apply(await api.garden()); } catch { setOffline(true); }
+  }, [apply]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(KEY);
+        if (raw) {
+          const cached = JSON.parse(raw);
+          if (Array.isArray(cached?.plants) && cached?.twins) setGarden(cached);
+        }
+      } catch { /* ignore a corrupt cache */ }
+      await refresh();
+      setReady(true);
+    })();
+    const timer = setInterval(refresh, 60000);
+    const sub = AppState.addEventListener('change', s => { if (s === 'active') void refresh(); });
+    return () => { clearInterval(timer); sub.remove(); };
+  }, [refresh]);
+
+  const write = useCallback(<T,>(run: () => Promise<T>): Promise<T> => {
+    writes.current++;
+    const op = queue.current.then(async () => {
+      try {
+        const result = await run();
+        // The write succeeded; a failed reload must not look like a failed save.
+        try { await apply(await api.garden()); } catch { setOffline(true); }
+        return result;
+      } finally {
+        writes.current--;
+      }
+    });
+    queue.current = op.catch(() => undefined);
+    return op;
+  }, [apply]);
+
+  const value = useMemo<Store>(() => ({
+    garden, ready, offline, refresh,
+    saveProfile: changes => write(() => api.profile(changes)).then(() => undefined),
+    addPlant: plant => write(() => api.addPlant(plant)).then(() => undefined),
+    updatePlant: (id, changes) => write(() => api.updatePlant(id, changes)).then(() => undefined),
+    archivePlant: id => write(() => api.archivePlant(id)).then(() => undefined),
+    logCare: event => write(() => api.logCare(event)),
+    setDemoPlan: (plan, annual) => write(() => api.demoPlan(plan, annual)).then(() => undefined),
+    syncBilling: () => write(() => api.syncBilling()).then(() => undefined),
+  }), [garden, ready, offline, refresh, write]);
+
+  return <Context.Provider value={value}>{children}</Context.Provider>;
+}
+
+export function useStore() {
+  const store = useContext(Context);
+  if (!store) throw new Error('useStore must be used inside StoreProvider');
+  return store;
+}

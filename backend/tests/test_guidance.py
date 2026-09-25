@@ -23,7 +23,7 @@ def test_no_fake_metrics_or_sensor_dependency():
 
 def test_new_plant_starts_from_species_reference():
     g = project([], {'kind': 'peace-lily'})
-    assert g['basis'] == ['Species reference'] and 'moist' in g['reason']
+    assert g['basis'] == ['Species reference'] and 'moist' in g['reference']['summary']
 
 
 def test_dry_soil_uses_declared_pot_context():
