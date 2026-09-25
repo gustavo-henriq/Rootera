@@ -5,8 +5,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
-import { InstrumentSerif_400Regular, InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif';
-import { InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold } from '@expo-google-fonts/instrument-sans';
+import { BricolageGrotesque_500Medium, BricolageGrotesque_600SemiBold } from '@expo-google-fonts/bricolage-grotesque';
+import { InstrumentSans_400Regular, InstrumentSans_400Regular_Italic, InstrumentSans_500Medium, InstrumentSans_600SemiBold } from '@expo-google-fonts/instrument-sans';
 import { StoreProvider, useStore } from './src/store';
 import { Routes } from './src/navigation';
 import { Onboarding } from './src/screens/Onboarding';
@@ -78,7 +78,7 @@ function Shell({ children }: React.PropsWithChildren) {
 }
 
 export default function App() {
-  const [loaded, error] = useFonts({ InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold, InstrumentSerif_400Regular, InstrumentSerif_400Regular_Italic });
+  const [loaded, error] = useFonts({ InstrumentSans_400Regular, InstrumentSans_400Regular_Italic, InstrumentSans_500Medium, InstrumentSans_600SemiBold, BricolageGrotesque_500Medium, BricolageGrotesque_600SemiBold });
   // Artwork loads alongside the fonts so no animation starts with a missing layer.
   const [images, setImages] = React.useState(false);
   React.useEffect(() => { preloadImages().finally(() => setImages(true)); }, []);

@@ -96,7 +96,7 @@ def test_plantnet_results_map_to_known_species():
 
 
 def test_nudge_preferences_are_validated_and_saved(client):
-    assert client.get('/v1/garden', headers=ALICE).json()['nudges'] == {'kinds': ['soil_check', 'pattern'], 'time': '08:00'}
+    assert client.get('/v1/garden', headers=ALICE).json()['nudges'] == {'kinds': ['soil_check'], 'time': '08:00'}
     body = {'nudges': {'kinds': ['soil_check', 'weekly', 'soil_check'], 'time': '07:30'}}
     assert client.patch('/v1/profile', json=body, headers=ALICE).status_code == 200
     assert client.get('/v1/garden', headers=ALICE).json()['nudges'] == {'kinds': ['soil_check', 'weekly'], 'time': '07:30'}

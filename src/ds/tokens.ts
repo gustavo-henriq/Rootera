@@ -74,26 +74,31 @@ export const palettes = { light, dark };
 export type Palette = typeof light;
 
 /**
- * Instrument Sans for the interface, Instrument Serif for plant names and editorial
- * moments: one family, two voices. Custom fonts pick weight by family name, so each
- * weight has its own family; `fontWeight` is never used.
+ * Two families: Bricolage Grotesque for titles and plant names (organic, a little
+ * quirky, like the plants), Instrument Sans for everything you read or tap.
+ * Latin names use Instrument Sans italic, the botanical-label convention.
+ * Custom fonts pick weight by family name, so each weight has its own family.
+ * `serif` keys are kept as aliases so older call sites keep working.
  */
 export const fonts = {
   regular: 'InstrumentSans_400Regular',
   medium: 'InstrumentSans_500Medium',
   semibold: 'InstrumentSans_600SemiBold',
-  serif: 'InstrumentSerif_400Regular',
-  serifItalic: 'InstrumentSerif_400Regular_Italic',
+  italic: 'InstrumentSans_400Regular_Italic',
+  display: 'BricolageGrotesque_600SemiBold',
+  displayMedium: 'BricolageGrotesque_500Medium',
+  serif: 'BricolageGrotesque_500Medium',
+  serifItalic: 'InstrumentSans_400Regular_Italic',
 };
 
 /** Quiet weights: 400 for reading, 500 for emphasis, 600 only for titles. */
 export const type = {
-  display: { fontFamily: fonts.serif, fontSize: 46, lineHeight: 48, letterSpacing: -0.6 },
-  hero: { fontFamily: fonts.serif, fontSize: 36, lineHeight: 40, letterSpacing: -0.4 },
-  section: { fontFamily: fonts.serifItalic, fontSize: 22, lineHeight: 26, letterSpacing: -0.2 },
-  latin: { fontFamily: fonts.serifItalic, fontSize: 18, lineHeight: 22 },
-  largeTitle: { fontFamily: fonts.semibold, fontSize: 32, lineHeight: 38, letterSpacing: -0.8 },
-  title: { fontFamily: fonts.semibold, fontSize: 26, lineHeight: 31, letterSpacing: -0.6 },
+  display: { fontFamily: fonts.display, fontSize: 40, lineHeight: 44, letterSpacing: -1.2 },
+  hero: { fontFamily: fonts.display, fontSize: 30, lineHeight: 35, letterSpacing: -0.8 },
+  section: { fontFamily: fonts.display, fontSize: 20, lineHeight: 25, letterSpacing: -0.4 },
+  latin: { fontFamily: fonts.italic, fontSize: 16, lineHeight: 21 },
+  largeTitle: { fontFamily: fonts.display, fontSize: 32, lineHeight: 37, letterSpacing: -0.9 },
+  title: { fontFamily: fonts.display, fontSize: 26, lineHeight: 31, letterSpacing: -0.6 },
   title2: { fontFamily: fonts.medium, fontSize: 21, lineHeight: 27, letterSpacing: -0.3 },
   headline: { fontFamily: fonts.medium, fontSize: 17, lineHeight: 22, letterSpacing: -0.2 },
   body: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 25, letterSpacing: -0.1 },
@@ -101,7 +106,7 @@ export const type = {
   subhead: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 20 },
   footnote: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
   caption: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16, letterSpacing: 0.1 },
-  figure: { fontFamily: fonts.medium, fontSize: 34, lineHeight: 38, letterSpacing: -1, fontVariant: ['tabular-nums' as const] },
+  figure: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, letterSpacing: -1, fontVariant: ['tabular-nums' as const] },
 };
 export type TypeName = keyof typeof type;
 

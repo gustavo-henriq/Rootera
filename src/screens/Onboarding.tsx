@@ -238,6 +238,7 @@ export function NudgePicker({ selected, onToggle, detail, onDetail, time, onTime
             {on && <Glyph name="check" size={15} tone={c.canvas} />}
           </View>
           <T v="body" style={{ flex: 1 }}>{nudgeCopy[k].label}</T>
+          {k === 'soil_check' && <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.input, backgroundColor: c.successSoft }}><T v="caption" tone="leafText">Recommended</T></View>}
         </Tap>;
       })}
     </View>
@@ -249,6 +250,10 @@ export function NudgePicker({ selected, onToggle, detail, onDetail, time, onTime
 
     <View style={{ gap: space[3] }}>
       <T v="footnote" tone="ink2">When they arrive</T>
+      <View style={{ flexDirection: 'row', gap: space[2], alignItems: 'center' }}>
+        <Glyph name="light" size={18} tone={morning ? c.leafText : c.amber} />
+        <T v="subhead" style={{ flex: 1 }}>Mornings are best for watering. Watering nudges arrive at this time.</T>
+      </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
         <Tap label="Earlier" onPress={() => onTime(shiftTime(time, -15))} ring={22} style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: c.ink3, alignItems: 'center', justifyContent: 'center' }}><T v="title2">−</T></Tap>
         <T v="figure" accessibilityLabel={`Nudges at ${time}`} style={{ minWidth: 110, textAlign: 'center' }}>{time}</T>
@@ -256,12 +261,6 @@ export function NudgePicker({ selected, onToggle, detail, onDetail, time, onTime
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
         {['07:00', '08:00', '09:00', '19:00'].map(t => <Chip key={t} label={t} selected={time === t} onPress={() => onTime(t)} />)}
-      </View>
-      <View style={{ flexDirection: 'row', gap: space[2], alignItems: 'flex-start' }}>
-        <Glyph name="light" size={18} tone={morning ? c.leafText : c.clayText} />
-        <T v="footnote" tone="ink2" style={{ flex: 1 }}>{morning
-          ? 'Good choice. Mornings are best for watering, so soil-check and watering nudges will almost always arrive at this time.'
-          : 'Mornings are usually best for watering. Soil-check and watering nudges will arrive at this time, so a morning hour is recommended.'}</T>
       </View>
     </View>
   </View>;
@@ -356,7 +355,8 @@ export function Onboarding({ navigation }: Props<'Welcome'>) {
   const [width, setWidth] = useState(0);
   const [experience, setExperience] = useState<Experience | ''>(garden.caregiver?.experience ?? '');
   const [name, setName] = useState(garden.name);
-  const [nudges, setNudges] = useState<NudgeKind[]>(garden.nudges?.kinds ?? ['soil_check', 'pattern']);
+  // Only the essential nudge starts on, marked as recommended; everything else is opt-in.
+  const [nudges, setNudges] = useState<NudgeKind[]>(['soil_check']);
   const [detail, setDetail] = useState<'Guided' | 'Concise'>(garden.caregiver?.detail ?? 'Guided');
   const [time, setTime] = useState(garden.nudges?.time ?? '08:00');
   const [kind, setKind] = useState<PlantKind | null>(null);

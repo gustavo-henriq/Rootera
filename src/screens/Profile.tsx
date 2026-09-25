@@ -47,7 +47,7 @@ export function Experience({ navigation }: Props<'Experience'>) {
 
 export function Nudges({ navigation }: Props<'Nudges'>) {
   const { garden, saveProfile } = useStore();
-  const [kinds, setKinds] = useState<NudgeKind[]>(garden.nudges?.kinds ?? ['soil_check', 'pattern']);
+  const [kinds, setKinds] = useState<NudgeKind[]>(garden.nudges?.kinds ?? ['soil_check']);
   const [time, setTime] = useState(garden.nudges?.time ?? '08:00');
   const [detail, setDetail] = useState<'Guided' | 'Concise'>(garden.caregiver?.detail ?? 'Guided');
   const [busy, setBusy] = useState(false);
