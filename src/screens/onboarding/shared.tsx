@@ -57,7 +57,7 @@ export function Atmosphere() {
 }
 
 const FEW = require('../../../assets/scenes/few.png');
-const GARDEN = require('../../../assets/scenes/garden.jpg');
+const GARDEN = require('../../../assets/scenes/garden-group.png');
 
 export const experiences: { value: Experience; label: string; hint: string; art: PlantKind[]; scene?: number }[] = [
   { value: 'first', label: 'My first plant', hint: 'Explain how to check and what to look for.', art: ['pilea'] },
@@ -69,8 +69,8 @@ export function GlassChoice({ on, onPress, label, hint, art, scene, wide }: { on
   const { c } = useTheme();
   return <Tap role="radio" selected={on} label={`${label}. ${hint}`} onPress={onPress} ring={radius.card} style={{ flex: wide ? undefined : 1 }}>
     <Glass level="control" r={radius.card} shadow={on} style={{ minHeight: 176, borderWidth: 1.5, borderColor: on ? c.ink : 'transparent', overflow: 'hidden' }}>
-      {/* The garden is a whole windowsill: it gets the full width of the card as a scene. */}
-      {wide && scene && <Image source={scene} resizeMode="cover" style={{ width: '100%', height: 124, borderTopLeftRadius: radius.card - 1.5, borderTopRightRadius: radius.card - 1.5 }} />}
+      {/* A whole garden: the crowd of plants gets the full width of the card. */}
+      {wide && scene && <Image source={scene} resizeMode="contain" style={{ width: '100%', height: 132, marginTop: space[3] }} />}
       <View style={{ flex: 1, padding: space[4], gap: space[2], justifyContent: 'space-between', alignItems: 'flex-start' }}>
         {!wide && <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
           {scene

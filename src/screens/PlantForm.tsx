@@ -61,7 +61,7 @@ export function PlantForm({ navigation, route }: Props<'PlantForm'>) {
 
   if (planted) {
     return <View style={{ flex: 1, backgroundColor: c.canvas, alignItems: 'center', justifyContent: 'center', gap: space[6], padding: space.gutter }}>
-      <SeedDrop size={230} run={1} kind={kind} onDone={() => setTimeout(() => navigation.dispatch(state => {
+      <SeedDrop size={290} run={1} kind={kind} onDone={() => setTimeout(() => navigation.dispatch(state => {
         const start = state.routes.findIndex(r => r.name === 'AddPlant' || r.name === 'Camera');
         const routes: any[] = [...state.routes.slice(0, start < 0 ? 1 : start), { name: 'Plant', params: { id: planted } }];
         return CommonActions.reset({ ...state, routes, index: routes.length - 1 });

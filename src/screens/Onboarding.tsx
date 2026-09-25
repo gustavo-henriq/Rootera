@@ -10,7 +10,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { BackHandler, ScrollView, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeOutUp, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Props } from '../navigation';
 import { useStore } from '../store';
@@ -109,7 +109,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
 
   if (celebrate) {
     return <View style={{ flex: 1, backgroundColor: c.canvas, alignItems: 'center', justifyContent: 'center', padding: space.gutter, gap: space[6] }}>
-      <SeedDrop size={230} run={celebrate} kind={kind!} onDone={() => void afterCelebration()} />
+      <SeedDrop size={290} run={celebrate} kind={kind!} onDone={() => void afterCelebration()} />
       <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(900)} style={{ alignItems: 'center', gap: space[1] }}>
         <T v="hero" center>{catalog.find(s => s.kind === kind)?.name} is in your garden.</T>
         <T v="callout" tone="ink2" center>{answers.soil !== undefined && SOILS[answers.soil].value !== 'not_sure' ? 'Your first check is saved. Here is what it means.' : 'Its first soil check is waiting for you.'}</T>
@@ -121,8 +121,9 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
     1: ['Rootera learns this plant, not plants in general.', 'Tap each source as it appears.'],
     2: ['How’s your plant life right now?', 'This sets how much Rootera explains. You can change it any time.'],
     3: ['Choose the nudges you want.', 'Each one comes from what you record. Change them any time in You.'],
-    4: [kind ? 'Now fill in what you know.' : 'Which plant is yours?', kind ? 'One note at a time. “Not sure” is always an answer.' : 'Start with the one you see most often.'],
+    4: ['Which plant is yours?', 'Start with the one you see most often.'],
   };
+  const hideTitle = (step === 1 && storyDone) || (step === 4 && !!kind);
   const titleDelay = step === 1 && dived ? SOIL_LIFT : 0;
   const titleTime = titleDelay + revealDuration(titles[step][0]);
   const showCta = step === 1 ? storyDone : step === 4 ? plantReady : true;
@@ -139,11 +140,12 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
         : <View style={{ width: 44 }} />}
     </View>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: space.gutter, paddingBottom: space[6], gap: space[5], flexGrow: 1 }}>
-      <View key={step + (kind ? 'k' : '')} style={{ gap: space[2], paddingTop: space[4] }}>
+      {/* The title steps away once its job is done, so what follows can rise into its place. */}
+      {!hideTitle && <Animated.View key={step} exiting={reduceMotion ? undefined : FadeOutUp.duration(280)} style={{ gap: space[2], paddingTop: space[4] }}>
         <TextReveal text={titles[step][0]} v="hero" delay={titleDelay} />
         <TextReveal text={titles[step][1]} v="callout" tone="ink2" delay={titleTime - 300} perWord={30} />
-      </View>
-      <View onLayout={e => setWidth(e.nativeEvent.layout.width)}>
+      </Animated.View>}
+      <Animated.View layout={reduceMotion ? undefined : LinearTransition.duration(420)} onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ paddingTop: hideTitle ? space[3] : 0 }}>
         {!!width && step === 1 && <Story width={width} start={titleTime} onComplete={() => setStoryDone(true)} />}
         {step === 2 && <View style={{ gap: space[3] }}>
           <View style={{ flexDirection: 'row', gap: space[3] }}>
@@ -153,7 +155,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
         </View>}
         {step === 3 && <NudgePicker selected={nudges} onToggle={k => setNudges(n => n.includes(k) ? n.filter(x => x !== k) : [...n, k])} detail={detail} onDetail={setDetail} time={time} onTime={setTime} />}
         {!!width && step === 4 && <FirstPlant width={width} kind={kind} setKind={setKind} answers={answers} onAnswer={answer} editing={editing} setEditing={setEditing} />}
-      </View>
+      </Animated.View>
     </ScrollView>
     {/* The action appears only once it can be taken: no disabled "Plant it" waiting at the bottom. */}
     {showCta && <Animated.View key={step} entering={reduceMotion || step === 2 || step === 3 ? undefined : FadeInDown.duration(380)}

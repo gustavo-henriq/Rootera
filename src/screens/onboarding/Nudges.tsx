@@ -48,7 +48,8 @@ export function NudgePicker({ selected, onToggle, detail, onDetail, time, onTime
   const { c } = useTheme();
   const [focus, setFocus] = useState<NudgeKind>(selected[0] ?? 'soil_check');
   const copy = nudgeCopy[focus];
-  const morning = Number(time.slice(0, 2)) < 12;
+  // The watering tip only appears when it is useful: nudges set for late afternoon or evening.
+  const late = Number(time.slice(0, 2)) >= 16;
   return <View style={{ gap: space[5] }}>
     <Animated.View key={focus + detail + time} entering={FadeIn.duration(220)}>
       <Glass level="control" r={radius.card} style={{ padding: space[4], gap: space[2] }}>
@@ -83,10 +84,6 @@ export function NudgePicker({ selected, onToggle, detail, onDetail, time, onTime
 
     <View style={{ gap: space[3] }}>
       <T v="footnote" tone="ink2">When they arrive</T>
-      <View style={{ flexDirection: 'row', gap: space[2], alignItems: 'center' }}>
-        <Glyph name="light" size={18} tone={morning ? c.leafText : c.amber} />
-        <T v="subhead" style={{ flex: 1 }}>Mornings are best for watering. Watering nudges arrive at this time.</T>
-      </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
         <Tap label="Earlier" onPress={() => onTime(shiftTime(time, -15))} ring={22} style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: c.ink3, alignItems: 'center', justifyContent: 'center' }}><T v="title2">−</T></Tap>
         <T v="figure" accessibilityLabel={`Nudges at ${time}`} style={{ minWidth: 110, textAlign: 'center' }}>{time}</T>
@@ -95,6 +92,10 @@ export function NudgePicker({ selected, onToggle, detail, onDetail, time, onTime
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
         {['07:00', '08:00', '09:00', '19:00'].map(t => <Chip key={t} label={t} selected={time === t} onPress={() => onTime(t)} />)}
       </View>
+      {late && <Animated.View entering={FadeIn.duration(240)} style={{ flexDirection: 'row', gap: space[2], alignItems: 'center' }}>
+        <Glyph name="light" size={18} tone={c.amber} />
+        <T v="subhead" style={{ flex: 1 }}>Watering is best in the morning, so the soil can dry during the day. An earlier time may suit watering nudges better.</T>
+      </Animated.View>}
     </View>
   </View>;
 }

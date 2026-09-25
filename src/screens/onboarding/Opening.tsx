@@ -9,14 +9,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../ds/theme';
 import { space } from '../../ds/tokens';
 import { Btn } from '../../ds/components';
-import { SeedDrop } from '../../ds/SeedDrop';
+import { SEED_AT, SeedDrop } from '../../ds/SeedDrop';
 import { LogoSprout } from '../../ds/LogoSprout';
 import { revealDuration, TextReveal } from '../../ds/TextReveal';
-import { SoilLayer } from './Soil';
+import { SOIL_DIVE, SoilLayer } from './Soil';
 
 const LINE = 'Stop guessing what your plant needs.';
 const SUB = 'Rootera learns one plant at a time: its spot, its pot and the care you give it.';
-const SOIL_POINT = 368 / 560; // soil line inside the pot artwork, see SeedDrop
 
 export function Opening({ onContinue }: { onContinue: () => void }) {
   const { c, reduceMotion } = useTheme();
@@ -24,6 +23,7 @@ export function Opening({ onContinue }: { onContinue: () => void }) {
   const [logoRun, setLogoRun] = useState(0);
   const [ready, setReady] = useState(false);
   const [diving, setDiving] = useState(false);
+  const [under, setUnder] = useState(false);
   const rise = useSharedValue(0);
   const zoom = useSharedValue(1);
   const fade = useSharedValue(1);
@@ -45,10 +45,12 @@ export function Opening({ onContinue }: { onContinue: () => void }) {
     if (reduceMotion) { onContinue(); return; }
     setDiving(true);
     fade.value = withTiming(0, { duration: 260 });
-    zoom.value = withDelay(120, withTiming(16, { duration: 820, easing: Easing.in(Easing.cubic) }));
-    soil.value = withDelay(640, withTiming(1, { duration: 280 }));
-    // Roots finish growing before the next screen lifts the soil away.
-    setTimeout(onContinue, 640 + 280 + 1150);
+    // The camera accelerates into the middle of the soil, where the seed went in.
+    zoom.value = withDelay(100, withTiming(40, { duration: SOIL_DIVE.zoom, easing: Easing.in(Easing.cubic) }));
+    soil.value = withDelay(SOIL_DIVE.soilIn, withTiming(1, { duration: SOIL_DIVE.soilFade }));
+    // The soil layer mounts once it takes over, so its descent starts from there.
+    setTimeout(() => setUnder(true), SOIL_DIVE.soilIn);
+    setTimeout(onContinue, SOIL_DIVE.soilIn + SOIL_DIVE.descend - 150);
   };
 
   return <View style={{ flex: 1, backgroundColor: c.canvas, paddingTop: insets.top, paddingBottom: insets.bottom + space[6], paddingHorizontal: space.gutter, overflow: 'hidden' }}>
@@ -60,13 +62,13 @@ export function Opening({ onContinue }: { onContinue: () => void }) {
           <TextReveal text={SUB} v="callout" tone="ink2" center delay={revealDuration(LINE)} perWord={35} />
         </View>}
       </Animated.View>
-      <Animated.View style={[{ marginTop: space[6], transformOrigin: `50% ${SOIL_POINT * 100}%` }, potStyle]}>
-        <SeedDrop size={200} run={1} onImpact={() => setLogoRun(1)} />
+      <Animated.View style={[{ marginTop: -space[4], transformOrigin: `${SEED_AT.x * 100}% ${SEED_AT.y * 100}%` }, potStyle]}>
+        <SeedDrop size={280} run={1} onImpact={() => setLogoRun(1)} />
       </Animated.View>
     </View>
     {ready && <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(1900).duration(400)} style={fadeStyle}>
       <Btn title="Get started" onPress={dive} />
     </Animated.View>}
-    {diving && <SoilLayer grow opacity={soil} />}
+    {under && <SoilLayer grow opacity={soil} />}
   </View>;
 }

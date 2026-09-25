@@ -46,7 +46,12 @@ export function LogoSprout({ width = 260, run, variant = 'full', onDone }: { wid
   const lettersStyle = useAnimatedStyle(() => ({ opacity: letters.value, transform: [{ translateY: (1 - letters.value) * 6 }] }));
   const oStyle = useAnimatedStyle(() => ({ opacity: letters.value, transform: [{ translateY: oY.value }, { scaleY: oSquash.value }, { scaleX: 2 - oSquash.value }] }));
   // The sprout rides on top of the O, so it rises with every push before it breaks out.
-  const sproutStyle = useAnimatedStyle(() => ({ transform: [{ translateY: oY.value }, { scaleY: sprout.value }, { scaleX: .5 + .5 * sprout.value }, { rotate: `${shake.value}deg` }] }));
+  // Never scale to exactly 0: on iOS that is a degenerate transform and the layer flickers.
+  // The sprout stays hidden by opacity until it actually starts to grow.
+  const sproutStyle = useAnimatedStyle(() => {
+    const s = Math.max(.04, sprout.value);
+    return { opacity: sprout.value > .04 ? 1 : 0, transform: [{ translateY: oY.value }, { scaleY: s }, { scaleX: .5 + .5 * s }, { rotate: `${shake.value}deg` }] };
+  });
 
   const layer = { position: 'absolute' as const, width, height: h };
   return <View accessible accessibilityRole="image" accessibilityLabel="Rootera" style={{ width, height: h }}>
