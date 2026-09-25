@@ -48,17 +48,23 @@ Specular edge: 1 px light line along the top + hairline rim. Shadows are tinted
 
 ## Type
 
-System UI font (SF on iOS, Roboto on Android, `-apple-system…` on web; SF is never bundled)
-plus **Instrument Serif** for plant names and editorial moments only.
+One family, two voices: **Instrument Sans** for the interface and **Instrument Serif** for plant
+names, section headings (italic) and editorial moments. Chosen over Inter in a side-by-side test
+(`review/font-A-instrument-vs-B-inter.jpg`): narrower, more character, same family as the serif.
+Custom fonts select weight by family name; `fontWeight` is never used.
 
-display 46 serif · hero 36 serif · latin 18 serif italic · largeTitle 34/700 · title 28/700 ·
-title2 22/600 · headline 17/600 · body 17 · callout 16 · subhead 15 · footnote 13 · caption 12/500 ·
-figure 34/600 tabular. Labels are sentence case footnote-600, **no letter-spaced all-caps**.
+display 46 serif · hero 36 serif · section 22 serif italic · latin 18 serif italic ·
+largeTitle 32/600 · title 26/600 · title2 21/500 · headline 17/500 · body 17/400 · callout 16 ·
+subhead 15 · footnote 13 · caption 12/500 · figure 34/500 tabular.
+Weights: 400 to read, 500 to emphasise, 600 only for titles. Labels are sentence case,
+**no letter-spaced all-caps**.
 
 ## Space, radius, elevation
 
 4-pt grid: 4 8 12 16 20 24 32 44 64; gutter 20. Spacious.
-Radius grows with size: inner 8 · input 12 · control 16 · card 24 · chrome 30 · pill. Continuous corners.
+Radius grows with size: inner 4 · input 6 · control 10 · card 16 · chrome 26 · pill (only glass chrome and tab plates). Continuous corners.
+Controls read as tools: near-square buttons, rectangular option tags, baseline-rule fields, underlined tabs.
+Lists read as a catalogue index: serif italic heading, full-width hairlines, no cards, no per-row icons.
 Elevation: `float` (glass chrome) and `lift` (selected segment). No other shadows.
 
 ## Motion
@@ -77,9 +83,9 @@ Own glyph set (`src/ds/icons.tsx`): 24-pt grid, 1.75 stroke, round caps; domain 
 
 ## Components
 
-`T` text · `Glass` · `Tap` (spring press + visible focus ring, ≥44 pt) · `Btn` filled/tinted/plain/glass/destructive ·
+`T` text · `Glass` · `Tap` (spring press + visible focus ring, ≥44 pt) · `Btn` filled/outline/plain/glass/destructive ·
 `GlassIcon` · `Chip` · `Segmented` · `Field` (label above, focus ring) · `Group` + `Row` (inset grouped) ·
-`SourceLabel` (observed / told / species / suggested / not connected) · `Figure` · `Toast` · `FloatingTabBar`.
+`SourceLabel` + `SourceMark` legend (● observed · ○ told · ■ species · ◆ suggested · – not connected) · `Figure` · `Toast` · `FloatingTabBar`.
 
 ## Anti-patterns (rejected here)
 

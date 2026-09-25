@@ -76,12 +76,10 @@ export type Palette = typeof light;
  * moments: one family, two voices. Custom fonts pick weight by family name, so each
  * weight has its own family; `fontWeight` is never used.
  */
-// Web preview comparison only: `?font=inter` swaps the UI family (temporary, see MASTER.md).
-const inter = typeof location !== 'undefined' && /[?&]font=inter/.test(location.search);
 export const fonts = {
-  regular: inter ? 'Inter_400Regular' : 'InstrumentSans_400Regular',
-  medium: inter ? 'Inter_500Medium' : 'InstrumentSans_500Medium',
-  semibold: inter ? 'Inter_600SemiBold' : 'InstrumentSans_600SemiBold',
+  regular: 'InstrumentSans_400Regular',
+  medium: 'InstrumentSans_500Medium',
+  semibold: 'InstrumentSans_600SemiBold',
   serif: 'InstrumentSerif_400Regular',
   serifItalic: 'InstrumentSerif_400Regular_Italic',
 };
