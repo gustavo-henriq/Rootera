@@ -13,11 +13,34 @@ import { Ground, PlantArt } from '../ds/plant';
 import { Appear, DrawLine, LeafBurst, Pop, Settle, WaterDrops } from '../ds/motion';
 import { CareCalendar } from '../ds/CareCalendar';
 
-interface Callout { side: 'left' | 'right'; y: number; anchor: [number, number]; label: string; value: string | null; meta: string; source: 'observed' | 'told' }
+/**
+ * Freshness of what we know, shown as one mark instead of a line of text:
+ * filled green = current, amber = getting old, terracotta = long overdue,
+ * hollow ring = nothing recorded yet. Colour is never the only cue: the ring differs
+ * in shape, every mark has a spoken label, and tapping a note shows the detail.
+ */
+type Status = 'none' | 'fresh' | 'aging' | 'overdue';
+const statusSpeech: Record<Status, string> = { none: 'nothing recorded yet', fresh: 'up to date', aging: 'getting old', overdue: 'not recorded in a long time' };
+
+function StatusMark({ status }: { status: Status }) {
+  const { c } = useTheme();
+  if (status === 'none') return <View style={{ width: 9, height: 9, borderRadius: 5, borderWidth: 1.5, borderColor: c.ink3 }} />;
+  return <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: status === 'fresh' ? c.leafMark : status === 'aging' ? c.amber : c.clay }} />;
+}
+
+const DAY = 86400000;
+function ageStatus(at: string | undefined, freshDays: number, overdueDays: number): Status {
+  if (!at) return 'none';
+  const days = (Date.now() - new Date(at).getTime()) / DAY;
+  return days <= freshDays ? 'fresh' : days <= overdueDays ? 'aging' : 'overdue';
+}
+
+interface Callout { side: 'left' | 'right'; y: number; anchor: [number, number]; label: string; value: string | null; current: boolean; detail: string; status: Status }
 
 /** Specimen plate: the plant in the middle, what we know about each part pinned to it. */
-function Specimen({ plant, twin, width, drops }: { plant: PlantT; twin?: Twin; width: number; drops: number }) {
+function Specimen({ plant, twin, width, drops, events }: { plant: PlantT; twin?: Twin; width: number; drops: number; events: CareEvent[] }) {
   const { c } = useTheme();
+  const [open, setOpen] = useState<string | null>(null);
   const g = twin?.guidance;
   const narrow = width < 330;
   const S = Math.min(240, width * (narrow ? .42 : .5));
@@ -25,14 +48,23 @@ function Specimen({ plant, twin, width, drops }: { plant: PlantT; twin?: Twin; w
   const at = (fx: number, fy: number): [number, number] => [x0 + S * fx, 8 + S * fy];
   const drainage = plant.drainage === 'No' ? 'No drainage' : plant.drainage === 'Yes' ? 'Drains' : plant.self_watering === 'Yes' ? 'Self-watering' : null;
   const light = known(plant.light) ? plant.light.replace(' light', '').replace('Bright indirect', 'Bright, indirect') : null;
+  // Latest records (events arrive newest first).
+  const lastSoil = events.find(e => e.type === 'Soil check' && e.soil && e.soil !== 'not_sure');
+  const lastLeaves = events.find(e => e.type === 'Observation' && e.visual && e.visual !== 'not_sure');
+  // Soil is current only as the Twin defines it: checked in the last day and after the last watering.
+  const soilStatus: Status = g?.soil ? 'fresh' : lastSoil ? (ageStatus(lastSoil.at, 0, 7) === 'overdue' ? 'overdue' : 'aging') : 'none';
+  const leafStatus = ageStatus(lastLeaves?.at, 3, 14);
+  const soilBeforeWatering = !!(lastSoil && g?.last_watered_at && new Date(g.last_watered_at) > new Date(lastSoil.at));
   const callouts: Callout[] = [
-    { side: 'left', y: 0, anchor: at(.47, .1), label: 'Light', value: light, meta: light ? 'you told us' : 'not set', source: 'told' },
-    { side: 'right', y: S * .12, anchor: at(.76, .3), label: 'Leaves', value: g?.visual ? visualLabel[g.visual] : null, meta: g?.visual ? 'you observed' : 'no recent note', source: 'observed' },
-    { side: 'right', y: S * (narrow ? .72 : .64), anchor: at(.6, .64), label: 'Soil', value: g?.soil ? soilLabel[g.soil] : null, meta: g?.soil ? ago(g.soil_checked_at) : 'not checked', source: 'observed' },
-    { side: 'left', y: S * (narrow ? .74 : .66), anchor: at(.34, .84), label: 'Pot', value: drainage, meta: drainage ? 'you told us' : 'not set', source: 'told' },
+    { side: 'left', y: 0, anchor: at(.47, .1), label: 'Light', value: light, current: true, detail: light ? 'You told us' : 'Add it in Edit details', status: light ? 'fresh' : 'none' },
+    { side: 'right', y: S * .12, anchor: at(.76, .3), label: 'Leaves', value: lastLeaves?.visual ? visualLabel[lastLeaves.visual] : null, current: leafStatus === 'fresh',
+      detail: lastLeaves ? `You looked ${ago(lastLeaves.at)}` : 'No note yet', status: leafStatus },
+    { side: 'right', y: S * (narrow ? .72 : .64), anchor: at(.6, .64), label: 'Soil', value: lastSoil?.soil ? soilLabel[lastSoil.soil] : null, current: soilStatus === 'fresh',
+      detail: !lastSoil ? 'Not checked yet' : soilBeforeWatering ? `Checked ${ago(lastSoil.at)}, before the last watering` : `Checked ${ago(lastSoil.at)}`, status: soilStatus },
+    { side: 'left', y: S * (narrow ? .74 : .66), anchor: at(.34, .84), label: 'Pot', value: drainage, current: true, detail: drainage ? 'You told us' : 'Add it in Edit details', status: drainage ? 'fresh' : 'none' },
   ];
   const labelW = Math.max(90, x0 - 4);
-  return <View style={{ width, height: S + (narrow ? 60 : 30) }} accessible accessibilityLabel={callouts.map(k => `${k.label}: ${k.value ?? k.meta}`).join('. ')}>
+  return <View style={{ width, height: S + (narrow ? 60 : 30) }}>
     <View style={{ position: 'absolute', left: x0, top: 8, width: S, height: S }}>
       <Ground width={S * .8} style={{ position: 'absolute', bottom: -S * .06 }} />
       <Settle><PlantArt kind={plant.kind} photo={plant.photo} size={S} /></Settle>
@@ -43,18 +75,22 @@ function Specimen({ plant, twin, width, drops }: { plant: PlantT; twin?: Twin; w
       const lineY = k.y + 10;
       const edge = k.side === 'left' ? labelW - 2 : width - labelW + 2;
       const has = !!k.value;
+      const expanded = open === k.label;
       return <React.Fragment key={k.label}>
         <DrawLine x={Math.min(edge, ax)} y={lineY} length={Math.abs(ax - edge)} delay={380 + i * 130} tone={c.ink3} from={k.side === 'left' ? 'start' : 'end'} />
         <DrawLine x={ax - .75} y={Math.min(lineY, ay)} length={Math.abs(ay - lineY)} vertical delay={620 + i * 130} tone={c.ink3} from={ay > lineY ? 'start' : 'end'} />
         <Pop delay={860 + i * 130} style={{ position: 'absolute', left: ax - 4, top: ay - 4, width: 8, height: 8, borderRadius: 4, backgroundColor: has ? c.ink : c.canvas, borderWidth: 1.5, borderColor: c.ink }} />
-        <Appear delay={260 + i * 130} style={{ position: 'absolute', top: k.y, width: labelW - 6, [k.side]: 0, alignItems: k.side === 'left' ? 'flex-start' : 'flex-end' }}>
-          <View style={{ flexDirection: k.side === 'left' ? 'row' : 'row-reverse', alignItems: 'center', gap: 6 }}>
-            <SourceMark kind={k.source} /><T v="caption" tone="ink2">{k.label}</T>
-          </View>
-          {has
-            ? <T lines={2} style={{ fontFamily: fonts.serif, fontSize: narrow ? 17 : 21, lineHeight: narrow ? 19 : 23, textAlign: k.side, color: c.ink }}>{k.value}</T>
-            : <View accessibilityElementsHidden style={{ width: 18, height: 1.5, backgroundColor: c.ink3, marginVertical: narrow ? 9 : 11 }} />}
-          <T v="caption" tone="ink2" lines={1} style={{ textAlign: k.side, fontFamily: fonts.regular }}>{k.meta}</T>
+        <Appear delay={260 + i * 130} style={{ position: 'absolute', top: k.y, width: labelW - 6, [k.side]: 0 }}>
+          <Tap label={`${k.label}: ${k.value ?? 'not set'}, ${statusSpeech[k.status]}. ${k.detail}`} onPress={() => setOpen(expanded ? null : k.label)} scaleTo={.97} ring={radius.inner}
+            style={{ alignItems: k.side === 'left' ? 'flex-start' : 'flex-end', paddingVertical: 2 }}>
+            <View style={{ flexDirection: k.side === 'left' ? 'row' : 'row-reverse', alignItems: 'center', gap: 6 }}>
+              <StatusMark status={k.status} /><T v="caption" tone="ink2">{k.label}</T>
+            </View>
+            {has
+              ? <T lines={2} style={{ fontFamily: fonts.serif, fontSize: narrow ? 17 : 21, lineHeight: narrow ? 19 : 23, textAlign: k.side, color: k.current ? c.ink : c.ink2 }}>{k.value}</T>
+              : <View accessibilityElementsHidden style={{ width: 18, height: 1.5, backgroundColor: c.ink3, marginVertical: narrow ? 9 : 11 }} />}
+            {expanded && <Animated.View entering={FadeIn.duration(180)}><T v="caption" tone="ink2" style={{ textAlign: k.side, fontFamily: fonts.regular }}>{k.detail}</T></Animated.View>}
+          </Tap>
         </Appear>
       </React.Fragment>;
     })}
@@ -85,10 +121,6 @@ const actions: Record<string, { title: string; icon: GlyphName; mode: 'soil' | '
 };
 const otherLabels: Record<'soil' | 'water' | 'visual', string> = { soil: 'Check the soil', water: 'Log watering', visual: 'Note the leaves' };
 
-function prose(list: string[]) {
-  const l = list.map(s => s.toLowerCase());
-  return l.length < 2 ? l.join('') : `${l.slice(0, -1).join(', ')} and ${l[l.length - 1]}`;
-}
 
 export function Plant({ navigation, route }: Props<'Plant'>) {
   const { garden, logCare, archivePlant } = useStore();
@@ -162,7 +194,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
 
       <View onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ alignItems: 'center', gap: space[4] }}>
         <LeafBurst run={burst} />
-        {!!width && <Specimen plant={plant} twin={twin} width={width} drops={drops} />}
+        {!!width && <Specimen plant={plant} twin={twin} width={width} drops={drops} events={events} />}
         <View style={{ alignItems: 'center', gap: 2 }}>
           <T v="display" center>{plant.name}</T>
           <T v="latin" tone="ink2" center>{plant.species}</T>
@@ -181,10 +213,9 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
         <T v="title">{g?.title ?? 'Start with a soil check'}</T>
         <T v="body" tone="ink2">{g?.reason ?? 'A first soil check tells Rootera where this plant is starting from.'}</T>
         {!!g?.tip && <View style={{ padding: space[4], borderRadius: radius.control, backgroundColor: c.sunken, gap: 4 }}>
-          <T v="subhead" style={{ fontFamily: fonts.medium }}>How to check</T>
+          <T v="subhead" style={{ fontFamily: fonts.medium }}>{g.action === 'log_water' ? 'How to water' : g.action === 'check_soil' ? 'How to check' : 'Tip'}</T>
           <T v="subhead" tone="ink2">{g.tip}</T>
         </View>}
-        {!!g?.basis.length && <T v="footnote" tone="ink2">Based on {prose(g.basis)}.</T>}
         {!!error && <Toast tone="error" title="Not saved" text={error} action={{ title: 'Try again', onPress: () => void waterNow() }} onClose={() => setError('')} />}
         <View style={{ gap: space[1], marginTop: space[2] }}>
           {primary
@@ -203,25 +234,11 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
           <SourceLabel kind="suggested" text="Learned from your records" />
           {g?.baseline_days != null
             ? <T v="body">In {g.completed_cycles} watering cycles, you first found the soil dry about {Math.round(g.baseline_days)} days after watering. How often you check affects this number.</T>
-            : <>
-                <T v="body">A pattern needs 3 watering cycles that each end with a dry soil check. So far: {g?.completed_cycles ?? 0}.</T>
-                <View style={{ flexDirection: 'row', gap: 6 }} accessible accessibilityLabel={`${g?.completed_cycles ?? 0} of 3 cycles`}>
-                  {[0, 1, 2].map(i => <View key={i} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: i < (g?.completed_cycles ?? 0) ? c.leafMark : c.hairline }} />)}
-                </View>
-              </>}
+            : <T v="body">Each watering followed by a dry soil check is one cycle. After three, Rootera shows how long this plant usually takes to dry.</T>}
         </View>
         <View style={{ gap: space[2] }}>
-          <SourceLabel kind="species" text={plant.kind === 'other' ? 'Species note: none yet' : 'Species note, general'} />
-          <T v="body">{g?.reference.summary}</T>
-          {plant.kind !== 'other' && <T v="subhead" tone="ink2">{g?.reference.when_dry}</T>}
-        </View>
-        {twin?.measured && <View style={{ gap: space[2] }}>
-          <SourceLabel kind="observed" text="Sensor reading" />
-          <T v="body">{Math.round(twin.measured.soil_moisture_percent)}% calibrated moisture, {ago(twin.measured.observed_at)}{twin.measured.stale ? ' (outdated)' : ''}</T>
-        </View>}
-        <View style={{ gap: space[2] }}>
-          <SourceLabel kind="off" />
-          <T v="subhead" tone="ink2">{twin?.sources.sensor.connected ? 'Weather.' : 'Soil sensor and weather.'} Guidance here uses only your records, the details you gave and general species notes.</T>
+          <SourceLabel kind="species" text={plant.kind === 'other' ? 'No species notes yet' : `${plant.species.split(' ')[0]} in general`} />
+          <T v="body">{plant.kind === 'other' ? 'Guidance for this plant comes from your own checks.' : g?.reference.summary}</T>
         </View>
       </View>
 

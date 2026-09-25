@@ -24,6 +24,7 @@ const light = {
   leafText: '#386F16', // green text
   leafMark: '#4F9A1C', // green status marks · 3.2:1 non-text
   clay: '#C0582E', // terracotta marks · 4.1:1
+  amber: '#A86F12', // 'getting old' status marks · 3.9:1
   clayText: '#A1461F',
   water: '#2C6474',
   waterSoft: '#DCE9EC',
@@ -53,6 +54,7 @@ const dark: typeof light = {
   leafText: '#A6D96A',
   leafMark: '#8FCB4E',
   clay: '#E08A63',
+  amber: '#E0B052',
   clayText: '#EB9A73',
   water: '#86BCCB',
   waterSoft: '#1B2A2E',
