@@ -21,6 +21,12 @@ import { Plant } from './src/screens/Plant';
 import { Care } from './src/screens/Care';
 import { Plans } from './src/screens/Plans';
 import { About, Experience } from './src/screens/Profile';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ThemeProvider } from './src/ds/theme';
+import { Gallery } from './src/ds/Gallery';
+
+// Web preview only: `?gallery=1` opens the design-system reference.
+const showGallery = Platform.OS === 'web' && typeof location !== 'undefined' && /[?&]gallery=1/.test(location.search);
 
 const Stack = createNativeStackNavigator<Routes>();
 
@@ -52,10 +58,15 @@ export default function App() {
   // On the web preview, keep a phone-width column so layouts match the device.
   return <View style={{ flex: 1, backgroundColor: color.paperDeep, alignItems: 'center' }}>
     <View style={{ flex: 1, width: '100%', maxWidth: Platform.OS === 'web' ? 430 : undefined, backgroundColor: color.paper }}>
-      <SafeAreaProvider>
-        <StatusBar style="dark" />
-        <StoreProvider><Navigator /></StoreProvider>
-      </SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <ThemeProvider>
+            {/* Screens adopt dark mode as they migrate to src/ds (phase 4); until then the bar stays dark. */}
+            <StatusBar style={showGallery ? "auto" : "dark"} />
+            {showGallery ? <Gallery /> : <StoreProvider><Navigator /></StoreProvider>}
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
     </View>
   </View>;
 }
