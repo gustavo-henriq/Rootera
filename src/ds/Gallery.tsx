@@ -19,7 +19,7 @@ export function Gallery() {
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
     <ScrollView contentContainerStyle={{ padding: space.gutter, paddingTop: insets.top + space[6], paddingBottom: 140, gap: space[8] }}>
       <View style={{ gap: space[2] }}>
-        <T v="footnote" tone="ink2" style={{ fontWeight: '600' }}>Rootera design system · {scheme}</T>
+        <T v="footnote" tone="ink2">Rootera design system · {scheme}</T>
         <T v="largeTitle">Greenhouse Glass</T>
         <T v="body" tone="ink2">Content grows on solid paper. Glass is only for what floats above it.</T>
       </View>
@@ -40,7 +40,7 @@ export function Gallery() {
         <T v="title2">Type</T>
         <T v="display">Monstera</T>
         <T v="latin" tone="ink2">Monstera deliciosa</T>
-        {(['largeTitle', 'title', 'title2', 'headline', 'body', 'subhead', 'footnote', 'caption'] as const).map(v => <View key={v} style={{ flexDirection: 'row', alignItems: 'baseline', gap: space[3] }}>
+        {(['largeTitle', 'title', 'section', 'title2', 'headline', 'body', 'subhead', 'footnote', 'caption'] as const).map(v => <View key={v} style={{ flexDirection: 'row', alignItems: 'baseline', gap: space[3] }}>
           <T v="caption" tone="ink3" style={{ width: 70 }}>{v} {type[v].fontSize}</T>
           <T v={v} style={{ flex: 1 }} lines={1}>The soil is still moist</T>
         </View>)}
@@ -69,7 +69,7 @@ export function Gallery() {
         <T v="title2">Controls</T>
         <Btn title="Check the soil" icon="soil" onPress={() => undefined} />
         <View style={{ flexDirection: 'row', gap: space[2] }}>
-          <Btn title="Log water" icon="water" kind="tinted" size="regular" onPress={() => undefined} />
+          <Btn title="Log water" icon="water" kind="outline" size="regular" onPress={() => undefined} />
           <Btn title="Not now" kind="plain" size="regular" onPress={() => undefined} />
           <Btn title="Remove" kind="destructive" size="regular" onPress={() => undefined} />
         </View>
@@ -83,9 +83,9 @@ export function Gallery() {
       <View style={{ gap: space[3] }}>
         <T v="title2">Lists and sources</T>
         <Group header="Plant care profile" footer="Changes apply to every plant.">
-          <Row icon="person" title="Name and experience" detail="A few plants" onPress={() => undefined} />
-          <Row icon="bell" title="Care nudges" value="On" />
-          <Row icon="book" title="How Rootera learns" onPress={() => undefined} />
+          <Row title="Name and experience" detail="A few plants" onPress={() => undefined} />
+          <Row title="Care nudges" value="On" />
+          <Row title="How Rootera learns" onPress={() => undefined} />
         </Group>
         <View style={{ gap: space[2] }}>
           <SourceLabel kind="observed" />

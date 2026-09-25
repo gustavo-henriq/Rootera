@@ -7,7 +7,6 @@
  * surface, and on glass over the worst-case backdrop at the given tint opacity.
  * Source of truth: design-system/rootera/MASTER.md.
  */
-import { Platform } from 'react-native';
 
 export type Scheme = 'light' | 'dark';
 
@@ -72,29 +71,37 @@ const dark: typeof light = {
 export const palettes = { light, dark };
 export type Palette = typeof light;
 
-/** Native system UI font (SF on iOS, Roboto on Android). SF is never bundled. */
-const system = Platform.select({ ios: undefined, android: undefined, default: '-apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif' });
+/**
+ * Instrument Sans for the interface, Instrument Serif for plant names and editorial
+ * moments: one family, two voices. Custom fonts pick weight by family name, so each
+ * weight has its own family; `fontWeight` is never used.
+ */
+// Web preview comparison only: `?font=inter` swaps the UI family (temporary, see MASTER.md).
+const inter = typeof location !== 'undefined' && /[?&]font=inter/.test(location.search);
 export const fonts = {
-  system,
+  regular: inter ? 'Inter_400Regular' : 'InstrumentSans_400Regular',
+  medium: inter ? 'Inter_500Medium' : 'InstrumentSans_500Medium',
+  semibold: inter ? 'Inter_600SemiBold' : 'InstrumentSans_600SemiBold',
   serif: 'InstrumentSerif_400Regular',
   serifItalic: 'InstrumentSerif_400Regular_Italic',
 };
 
-/** Apple-style type ramp. Serif only for plant names and editorial moments. */
+/** Quiet weights: 400 for reading, 500 for emphasis, 600 only for titles. */
 export const type = {
   display: { fontFamily: fonts.serif, fontSize: 46, lineHeight: 48, letterSpacing: -0.6 },
   hero: { fontFamily: fonts.serif, fontSize: 36, lineHeight: 40, letterSpacing: -0.4 },
+  section: { fontFamily: fonts.serifItalic, fontSize: 22, lineHeight: 26, letterSpacing: -0.2 },
   latin: { fontFamily: fonts.serifItalic, fontSize: 18, lineHeight: 22 },
-  largeTitle: { fontFamily: fonts.system, fontSize: 34, lineHeight: 41, fontWeight: '700' as const, letterSpacing: -0.4 },
-  title: { fontFamily: fonts.system, fontSize: 28, lineHeight: 34, fontWeight: '700' as const, letterSpacing: -0.3 },
-  title2: { fontFamily: fonts.system, fontSize: 22, lineHeight: 28, fontWeight: '600' as const, letterSpacing: -0.2 },
-  headline: { fontFamily: fonts.system, fontSize: 17, lineHeight: 22, fontWeight: '600' as const, letterSpacing: -0.2 },
-  body: { fontFamily: fonts.system, fontSize: 17, lineHeight: 24, fontWeight: '400' as const, letterSpacing: -0.2 },
-  callout: { fontFamily: fonts.system, fontSize: 16, lineHeight: 21, fontWeight: '400' as const },
-  subhead: { fontFamily: fonts.system, fontSize: 15, lineHeight: 20, fontWeight: '400' as const },
-  footnote: { fontFamily: fonts.system, fontSize: 13, lineHeight: 18, fontWeight: '400' as const },
-  caption: { fontFamily: fonts.system, fontSize: 12, lineHeight: 16, fontWeight: '500' as const },
-  figure: { fontFamily: fonts.system, fontSize: 34, lineHeight: 38, fontWeight: '600' as const, letterSpacing: -0.8, fontVariant: ['tabular-nums' as const] },
+  largeTitle: { fontFamily: fonts.semibold, fontSize: 32, lineHeight: 38, letterSpacing: -0.8 },
+  title: { fontFamily: fonts.semibold, fontSize: 26, lineHeight: 31, letterSpacing: -0.6 },
+  title2: { fontFamily: fonts.medium, fontSize: 21, lineHeight: 27, letterSpacing: -0.3 },
+  headline: { fontFamily: fonts.medium, fontSize: 17, lineHeight: 22, letterSpacing: -0.2 },
+  body: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 25, letterSpacing: -0.1 },
+  callout: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 22 },
+  subhead: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 20 },
+  footnote: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
+  caption: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16, letterSpacing: 0.1 },
+  figure: { fontFamily: fonts.medium, fontSize: 34, lineHeight: 38, letterSpacing: -1, fontVariant: ['tabular-nums' as const] },
 };
 export type TypeName = keyof typeof type;
 
@@ -102,7 +109,7 @@ export type TypeName = keyof typeof type;
 export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 20, 6: 24, 8: 32, 11: 44, 16: 64, gutter: 20 };
 
 /** Radii grow with the size of the thing: inner < control < card < chrome. */
-export const radius = { inner: 8, input: 12, control: 16, card: 24, chrome: 30, pill: 999 };
+export const radius = { inner: 4, input: 6, control: 10, card: 16, chrome: 26, pill: 999 };
 
 /** Three glass levels. Text is allowed only on `chrome` and `control`. */
 export const glass = {
