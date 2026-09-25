@@ -1,0 +1,13 @@
+const assert = require('node:assert/strict');
+const ts = require('typescript');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const source = ts.transpileModule(fs.readFileSync(require.resolve('../src/model.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
+const model={exports:{}};vm.runInNewContext(source,{exports:model.exports,module:model});
+const {moisture,plantStatus,initialData}=model.exports;
+for(const triple of [[NaN,3295,1422],[2100,NaN,1422],[2100,3295,NaN],[-1,3295,1422],[4096,3295,1422],[100,100,100],[1.5,3295,1422]])assert.throws(()=>moisture(...triple));
+assert.equal(moisture(3295,3295,1422),0);
+assert.equal(moisture(1422,3295,1422),100);
+assert.equal(moisture(2100,3295,1422),64);
+assert.equal(plantStatus(initialData,'plant-1'),'Getting started');
+console.log('PASS ADC bounds, finite integer validation, calibration endpoints, and unknown status without evidence');

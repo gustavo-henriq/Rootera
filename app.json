@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Rootera",
+    "slug": "rootera",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "rootera",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rootera.mobile"
+    },
+    "android": {
+      "package": "com.rootera.mobile"
+    },
+    "web": {
+      "bundler": "metro",
+      "name": "Rootera"
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Rootera to use a photo for your plant profile.",
+          "cameraPermission": "Allow Rootera to photograph your plant.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Rootera to photograph your plant.",
+          "recordAudioAndroid": false
+        }
+      ]
+    ]
+  }
+}
