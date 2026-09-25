@@ -16,9 +16,9 @@ assert.equal(ago(null, now), '');
 
 // A qualitative report is shown as reported, never as a percentage.
 const soil = describeEvent({ type: 'Soil check', soil: 'dry' });
-assert.equal(soil, 'Soil · Dry');
+assert.equal(soil, 'Soil: dry');
 assert.ok(!/%/.test(soil));
-assert.equal(describeEvent({ type: 'Watered', amount_ml: 250 }), 'Watered · 250 ml');
+assert.equal(describeEvent({ type: 'Watered', amount_ml: 250 }), 'Watered, 250 ml');
 
 assert.equal(known('Not sure'), false);
 assert.equal(known("I don't know"), false);

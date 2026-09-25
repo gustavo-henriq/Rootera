@@ -19,7 +19,7 @@ export function Gallery() {
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
     <ScrollView contentContainerStyle={{ padding: space.gutter, paddingTop: insets.top + space[6], paddingBottom: 140, gap: space[8] }}>
       <View style={{ gap: space[2] }}>
-        <T v="footnote" tone="ink2">Rootera design system · {scheme}</T>
+        <T v="footnote" tone="ink2">Rootera design system, {scheme}</T>
         <T v="largeTitle">Greenhouse Glass</T>
         <T v="body" tone="ink2">Content grows on solid paper. Glass is only for what floats above it.</T>
       </View>
@@ -33,7 +33,7 @@ export function Gallery() {
           </View>)}
         </View>
         <View style={{ flexDirection: 'row', height: 18, borderRadius: radius.inner, overflow: 'hidden' }}>{c.soil.map(s => <View key={s} style={{ flex: 1, backgroundColor: s }} />)}</View>
-        <T v="footnote" tone="ink3">Soil scale: dry → very wet. Used only for soil checks.</T>
+        <T v="footnote" tone="ink3">Soil scale, from dry to very wet. Used only for soil checks.</T>
       </View>
 
       <View style={{ gap: space[3] }}>
@@ -62,7 +62,7 @@ export function Gallery() {
             <Toast title="Soil check saved" text="Next step changed: you found the soil dry." onClose={() => undefined} />
           </View>
         </View>
-        <T v="footnote" tone="ink3">Chrome (tab bar, headers) · Control (buttons, toasts) · Clear (no text). With Reduce Transparency, all become solid.</T>
+        <T v="footnote" tone="ink3">Chrome for tab bar and headers, control for buttons and toasts, clear for decoration without text. With Reduce Transparency, all become solid.</T>
       </View>
 
       <View style={{ gap: space[3] }}>

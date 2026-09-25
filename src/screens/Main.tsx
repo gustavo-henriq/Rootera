@@ -197,7 +197,7 @@ function EventRow({ event, plant, onPress }: { event: CareEvent; plant?: Plant; 
       <Glyph name={eventGlyph(event)} size={17} tone={water ? c.water : c.ink2} />
     </View>
     <View style={{ flex: 1, gap: 1 }}>
-      <T v="body">{describeEvent(event).replace(' · ', ': ')}</T>
+      <T v="body">{describeEvent(event)}</T>
       <T v="footnote" tone="ink2">{plant?.name ?? 'Removed plant'}</T>
       {!!event.note && <T v="subhead" style={{ marginTop: 2 }}>“{event.note}”</T>}
     </View>

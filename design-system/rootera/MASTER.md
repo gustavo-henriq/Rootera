@@ -92,3 +92,25 @@ Own glyph set (`src/ds/icons.tsx`): 24-pt grid, 1.75 stroke, round caps; domain 
 Glass on content or lists · all-caps tracked labels everywhere · three equal boxes in a row ·
 generic icon kits · raw hex in screens · fake percentages · width/height animations ·
 more than two animated focal points per view · motion without a reduced-motion path.
+
+## Documented deviations from skill defaults
+
+- **Instrument Serif** (flagged as an over-used display serif): kept on purpose. Latin names set in
+  italic serif are the convention of botanical labels, and the specimen-catalogue identity depends on
+  it. Used only for plant names, section headings and editorial moments; the interface is Instrument Sans.
+- **Own SVG glyphs** (the anti-slop skill prefers icon libraries): the brief asked for an identity of
+  its own instead of generic icons. One 24-pt grid, one stroke, domain metaphors.
+- **Empty values** are drawn as a short rule, never typed as an em dash. No em or en dashes and no
+  middle-dot metadata strings anywhere in visible copy.
+
+## Motion moments (each with a reason)
+
+| Moment | Reason |
+|---|---|
+| Seed drops, sprout grows (`SeedDrop`) | Something new starts growing: opening, every new plant, later a plant's next stage |
+| Wordmark sprout pushes the O and bursts (`LogoSprout`) | Brand moment; full on first launch, under a second afterwards |
+| Specimen lines draw to the plant | Shows which fact belongs to which part of the plant |
+| Water drops over the plant | Feedback for a recorded watering |
+| Leaf burst | Real milestones only: Rootera+ on, first pattern found |
+| Tiles rise, plants pop out of their tile | Order of the shelf; depth |
+| Press springs, focus rings | Feedback for every touch; keyboard users see where they are |

@@ -81,9 +81,9 @@ export function ago(iso: string | null | undefined, now = Date.now()): string {
 }
 
 export function describeEvent(e: CareEvent): string {
-  if (e.type === 'Soil check') return `Soil · ${e.soil ? soilLabel[e.soil] : '—'}`;
-  if (e.type === 'Observation') return `Leaves · ${e.visual ? visualLabel[e.visual] : 'Note'}`;
-  if (e.type === 'Watered') return e.amount_ml ? `Watered · ${e.amount_ml} ml` : 'Watered';
+  if (e.type === 'Soil check') return e.soil ? `Soil: ${soilLabel[e.soil].toLowerCase()}` : 'Soil check';
+  if (e.type === 'Observation') return e.visual ? `Leaves: ${visualLabel[e.visual].toLowerCase()}` : 'Leaf note';
+  if (e.type === 'Watered') return e.amount_ml ? `Watered, ${e.amount_ml} ml` : 'Watered';
   return e.type;
 }
 

@@ -1,73 +1,77 @@
 # Rootera
 
-App React Native + TypeScript com Expo, API Python/FastAPI e Plant Twin persistente. A interface v2 prioriza observações, contexto e cuidado sem sensores. Veja [o escopo da refatoração](docs/REFACTOR-V2.md).
+App de cuidado de plantas que aprende **uma planta específica**: a planta, o lugar onde ela vive e o cuidado que recebe. Expo (React Native + TypeScript) no app, FastAPI + SQLAlchemy (SQLite local, PostgreSQL em produção) no backend. Feito para o RevenueCat Shipaton 2026.
+
+- Design system "Greenhouse Glass": [design-system/rootera/MASTER.md](design-system/rootera/MASTER.md). Referência viva na prévia web com `?gallery=1`.
+- Plant Twin e regras de orientação: [backend/app/guidance.py](backend/app/guidance.py) e [backend/app/species.py](backend/app/species.py).
 
 ## Rodar localmente
 
-Requer Node compatível com Expo SDK 57 e Python 3.12+.
+Requer Node 20+ e Python 3.12 (ou [uv](https://docs.astral.sh/uv/)).
 
 ```powershell
 # Na pasta rootera
 npm ci
-python -m venv backend/.venv
-backend/.venv/Scripts/python.exe -m pip install -r backend/requirements.txt
-# Terminal 1
 cd backend
+uv venv .venv --python 3.12        # ou: python -m venv .venv
+uv pip install --python .venv/Scripts/python.exe -r requirements.txt
 .venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-# Terminal 2, na pasta rootera
-npm run web
 ```
 
-No macOS/Linux, use `python3` e `backend/.venv/bin/python`. A API fica em http://127.0.0.1:8000 e a documentação interativa em `/docs`. A prévia web usa http://localhost:8081. Não é necessário criar uma conta para a demonstração local.
+Em outro terminal, na pasta `rootera`:
 
-## iOS e Android
-
-```sh
-npm start
-npm run android
-npm run ios
+```powershell
+npm run web      # prévia web em http://localhost:8081
+npm start        # QR code para o Expo Go
 ```
 
-O projeto usa componentes nativos, React Navigation, safe areas, câmera/galeria do Expo e animações com native driver. iOS simulator requer macOS/Xcode; Android emulator requer Android Studio. Para um aparelho físico, configure `EXPO_PUBLIC_API_URL=http://IP-DO-COMPUTADOR:8000` em `.env` e inicie a API com `--host 0.0.0.0` somente numa rede de desenvolvimento confiável. O valor padrão no emulador Android é `10.0.2.2:8000`; web/iOS simulator usam `127.0.0.1:8000`. O preview pelo Expo Go precisa de uma versão compatível com SDK 57; use development build quando necessário.
+A API fica em http://127.0.0.1:8000 (documentação em `/docs`). O banco local é `backend/rootera.db`; os testes usam bancos temporários e nunca tocam nele.
 
-## O que funciona
+## Testar no iPhone (Expo Go)
 
-- Onboarding conversacional antes do login: experiência e quantidade de plantas.
-- Cadastro por etapas com nome, tempo com o usuário, estágio, ambiente, vaso e substrato.
-- Home, Plants, Activity e Profile; detalhes com próxima ação, justificativa, aprendizagem e histórico.
-- Check-ins qualitativos do solo e da aparência; registro de rega com detalhes opcionais.
-- Perfil do cuidador, contexto e eventos persistidos; orientação guiada ou concisa.
-- Plant Twin com camada sensorless explicável, intervalos observados entre rega e primeiro relato de solo seco, sem promessa de precisão ou prazo fixo.
-- Backend de sensores preservado para uso futuro; fora do onboarding e da navegação do MVP.
-- SQLite local e configuração para PostgreSQL externo. Novos jardins começam vazios; os dados existentes são preservados.
+1. Instale o **Expo Go** na App Store (compatível com o SDK 57).
+2. Descubra o IP do computador na rede Wi-Fi (`ipconfig`, campo IPv4, por exemplo `192.168.0.12`).
+3. Crie `.env` na pasta `rootera` com `EXPO_PUBLIC_API_URL=http://SEU-IP:8000`.
+4. Suba a API aceitando conexões da rede local (só em rede confiável):
+   `.venv/Scripts/python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000`
+5. Rode `npm start` e leia o QR code com a câmera do iPhone. iPhone e computador precisam estar na mesma rede.
 
-## Limites explícitos
+Se o Windows perguntar, permita o Python e o Node no firewall para redes privadas.
 
-Login Google/Apple, identificação por IA, cobrança RevenueCat, push notifications e provisionamento BLE ainda precisam dos serviços/credenciais externos. Nenhuma cobrança real é feita. A interface de sensores foi retirada do MVP; o caminho HTTP do ESP32 continua disponível na API para integração futura. Fotos não são enviadas para storage externo: o perfil mantém uma referência local, que não é portável entre aparelhos. Catálogo inicial: Aloe Vera, Peace Lily e Monstera.
+## Prévia web: chaves de teste
 
-O Twin v1 é um mecanismo determinístico de regras, **não um modelo treinado**. Não transforma relatos de rega em percentuais de umidade. Pesos de confiança e limiares são hipóteses iniciais documentadas; precisam de validação com dados reais. Medições demo não alteram o Twin real. Leia [a arquitetura](docs/ARCHITECTURE.md) e [a integração ESP32](docs/ESP32.md).
+| URL | Efeito |
+|---|---|
+| `?gallery=1` | Galeria do design system |
+| `?scheme=dark` / `?scheme=light` | Força o tema |
+| `?reduceMotion=1` | Força movimento reduzido |
+| `?reduceTransparency=1` | Troca todo o vidro por superfícies sólidas |
 
-## Banco e segurança
+## Integrações
 
-Copie `backend/.env.example` para configurar o ambiente. O backend lê variáveis do processo; inicie com `uvicorn --env-file .env` apenas se instalar `python-dotenv`, ou exporte as variáveis no terminal. `DATABASE_URL=postgresql+psycopg://...` habilita PostgreSQL. O schema inicial é criado no primeiro boot; alterações futuras exigem migrations revisadas. Nenhum banco remoto foi conectado sem credenciais.
+Nada secreto vai para o app. Veja [.env.example](.env.example) (público) e [backend/.env.example](backend/.env.example) (só servidor).
 
-O token `rootera-local-demo` é público e serve somente ao modo de desenvolvimento. Para ambiente externo, desative `ROOTERA_DEMO`, configure credenciais individuais em `ROOTERA_USER_TOKENS`, use HTTPS e CORS restrito. A interface de identidade ainda deve ser integrada ao seu provedor OAuth/JWT antes de publicação. Não coloque tokens de produção em variáveis `EXPO_PUBLIC_*`. As credenciais de dispositivos são aleatórias, retornadas uma vez, persistidas apenas como hash e revogáveis.
+**RevenueCat (assinatura Rootera+)**
+1. Crie o projeto na RevenueCat e o app na loja (Google Play é o caminho mais rápido; iOS exige conta Apple Developer).
+2. Crie os produtos (ex.: `rootera_plus_monthly`, `rootera_plus_annual`), o entitlement `plus` e uma Offering padrão com os pacotes mensal e anual.
+3. App: `EXPO_PUBLIC_REVENUECAT_IOS_KEY` / `_ANDROID_KEY` (chaves públicas `appl_` / `goog_`). Sem loja, a chave do **Test Store** (`EXPO_PUBLIC_REVENUECAT_TEST_KEY`) funciona no Expo Go e na web.
+4. Servidor: `REVENUECAT_SECRET_KEY` (secreta, `sk_`). O backend confirma a assinatura na RevenueCat (`POST /v1/billing/sync`); o app nunca decide sozinho quem é Plus. Webhook opcional em `/v1/billing/webhook` com `REVENUECAT_WEBHOOK_AUTH`.
 
-## Verificação
+Sem chave, o paywall roda em **modo prévia**, claramente identificado, e a ativação não cobra nada.
 
-```sh
+**Pl@ntNet (identificação por foto)**: `PLANTNET_API_KEY` no servidor ativa `POST /v1/identify`. Os resultados aparecem como "possible match" e só viram espécie depois que a pessoa confirma. Sem chave, a foto continua sendo a imagem da planta e a espécie é escolhida manualmente.
+
+## Testes
+
+```powershell
 npm run typecheck
-npm run build
-# Na pasta backend
-python -m pytest tests -q
+npm run test:model
+cd backend; .venv/Scripts/python.exe -m pytest -q
 ```
 
-A exportação valida bundles JS para iOS, Android e web; não equivale a testar um binário nativo em aparelhos. Veja `design-qa.md` e `VALIDATION.md` para os resultados desta entrega.
+## O que ainda é demonstração
 
-## Referências técnicas
-
-- [Expo / criação de projetos](https://docs.expo.dev/more/create-expo/)
-- [SQLAlchemy / transações](https://docs.sqlalchemy.org/en/20/orm/session_transaction.html)
-- [FastAPI / segurança](https://fastapi.tiangolo.com/reference/security/)
-
-As três imagens fornecidas e as conversas “Arquitetura do Rootera” e “Paleta e logo Rootera” orientam a interface. O logo e algumas ilustrações foram recuperados das referências; vaso e folhagem animados foram preparados como camadas separadas. Mantive o texto do produto em inglês conforme os mockups; documentação em português.
+- Acesso sem conta (token de prévia). Contas reais substituem `EXPO_PUBLIC_DEMO_TOKEN`.
+- Notificações: preferências são salvas (tipos, tom e horário), mas a entrega push ainda não está conectada; os avisos aparecem dentro do app.
+- Clima e sensores de solo não estão conectados e aparecem como "Not connected" na tela da planta.
+- Fotos ficam no aparelho (não há armazenamento remoto).

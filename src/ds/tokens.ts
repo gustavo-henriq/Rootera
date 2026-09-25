@@ -1,5 +1,5 @@
 /**
- * Rootera design tokens — "Greenhouse Glass".
+ * Rootera design tokens: "Greenhouse Glass".
  *
  * Content (plants, text, data) lives on solid, organic paper. Glass is reserved
  * for chrome that floats above content: tab bar, headers, floating controls,

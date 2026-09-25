@@ -17,7 +17,7 @@ SPECIES_NOTES = {
         'dryness': 'top',
         'summary': 'Prefers soil that stays lightly moist and does not dry out completely.',
         'when_dry': 'Peace lilies usually prefer water once the top layer feels dry, before the whole pot dries out.',
-        'check_tip': 'Touch the top 2–3 cm of soil. Dry at that depth is usually the cue for a peace lily.',
+        'check_tip': 'Touch the top 2-3 cm of soil. Dry at that depth is usually the cue for a peace lily.',
         'thirst_sign': 'Drooping leaves are a common sign of thirst for this species.',
     },
     'monstera': {
@@ -31,7 +31,7 @@ SPECIES_NOTES = {
         'dryness': 'top',
         'summary': 'Forgiving and adaptable; recovers well from a short dry spell.',
         'when_dry': 'Pothos usually does well when the top few centimetres have dried.',
-        'check_tip': 'Touch the top 3–5 cm of soil. Dry at that depth is usually the cue for a pothos.',
+        'check_tip': 'Touch the top 3-5 cm of soil. Dry at that depth is usually the cue for a pothos.',
         'thirst_sign': 'Soft, drooping leaves often perk up after watering.',
     },
     'snake-plant': {
@@ -52,7 +52,7 @@ SPECIES_NOTES = {
         'dryness': 'top',
         'summary': 'Likes the top of the soil to dry, but not the whole pot.',
         'when_dry': 'Pileas usually do well when the top few centimetres have dried.',
-        'check_tip': 'Touch the top 2–3 cm of soil. Dry at that depth is usually the cue for a pilea.',
+        'check_tip': 'Touch the top 2-3 cm of soil. Dry at that depth is usually the cue for a pilea.',
         'thirst_sign': 'Drooping, soft leaves are a common sign of thirst.',
     },
     'cactus': {

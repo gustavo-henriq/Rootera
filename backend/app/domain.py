@@ -10,7 +10,7 @@ def parse_time(value: str) -> datetime:
 
 def normalize_adc(raw: int, dry: int, wet: int) -> float:
     if not 0 <= wet < dry <= 4095 or not 0 <= raw <= 4095:
-        raise ValueError('ADC must be 0–4095 and dry must be greater than wet.')
+        raise ValueError('ADC must be 0-4095 and dry must be greater than wet.')
     return round(max(0, min(100, (dry - raw) / (dry - wet) * 100)), 2)
 
 @dataclass(frozen=True)

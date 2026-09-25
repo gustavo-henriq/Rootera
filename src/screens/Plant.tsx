@@ -51,7 +51,9 @@ function Specimen({ plant, twin, width, drops }: { plant: PlantT; twin?: Twin; w
           <View style={{ flexDirection: k.side === 'left' ? 'row' : 'row-reverse', alignItems: 'center', gap: 6 }}>
             <SourceMark kind={k.source} /><T v="caption" tone="ink2">{k.label}</T>
           </View>
-          <T lines={2} style={{ fontFamily: fonts.serif, fontSize: narrow ? 17 : 21, lineHeight: narrow ? 19 : 23, textAlign: k.side, color: has ? c.ink : c.ink3 }}>{k.value ?? '—'}</T>
+          {has
+            ? <T lines={2} style={{ fontFamily: fonts.serif, fontSize: narrow ? 17 : 21, lineHeight: narrow ? 19 : 23, textAlign: k.side, color: c.ink }}>{k.value}</T>
+            : <View accessibilityElementsHidden style={{ width: 18, height: 1.5, backgroundColor: c.ink3, marginVertical: narrow ? 9 : 11 }} />}
           <T v="caption" tone="ink2" lines={1} style={{ textAlign: k.side, fontFamily: fonts.regular }}>{k.meta}</T>
         </Appear>
       </React.Fragment>;
@@ -61,8 +63,11 @@ function Specimen({ plant, twin, width, drops }: { plant: PlantT; twin?: Twin; w
 
 function Figure({ value, unit, caption }: { value: string; unit?: string; caption: string }) {
   const narrow = useWindowDimensions().width < 370;
+  const { c } = useTheme();
   return <View style={{ flex: 1, gap: 2 }}>
-    <T v="figure" lines={1} style={narrow ? { fontSize: 24, lineHeight: 28 } : undefined}>{value}{!!unit && <T v="subhead" tone="ink2"> {unit}</T>}</T>
+    {value
+      ? <T v="figure" lines={1} style={narrow ? { fontSize: 24, lineHeight: 28 } : undefined}>{value}{!!unit && <T v="subhead" tone="ink2"> {unit}</T>}</T>
+      : <View accessibilityElementsHidden style={{ height: narrow ? 28 : 38, justifyContent: 'center' }}><View style={{ width: 22, height: 2, backgroundColor: c.ink3 }} /></View>}
     <T v="footnote" tone="ink2">{caption}</T>
   </View>;
 }
@@ -166,8 +171,8 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
       </View>
 
       <View style={{ flexDirection: 'row', gap: space[4], paddingVertical: space[4], borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>
-        <Figure {...(water === null ? { value: '—', caption: 'No watering yet' } : water === 0 ? { value: 'Today', caption: 'Last watered' } : { value: String(water), unit: water === 1 ? 'day' : 'days', caption: 'Since watering' })} />
-        <Figure {...(soil ? { ...soil, caption: soil.value === 'Now' ? 'Soil checked' : 'Since soil check' } : { value: '—', caption: 'No soil check yet' })} />
+        <Figure {...(water === null ? { value: '', caption: 'No watering yet' } : water === 0 ? { value: 'Today', caption: 'Last watered' } : { value: String(water), unit: water === 1 ? 'day' : 'days', caption: 'Since watering' })} />
+        <Figure {...(soil ? { ...soil, caption: soil.value === 'Now' ? 'Soil checked' : 'Since soil check' } : { value: '', caption: 'No soil check yet' })} />
         <Figure {...(g?.baseline_days != null ? { value: `~${Math.round(g.baseline_days)}`, unit: 'days', caption: 'Usually dry after' } : { value: `${Math.min(g?.completed_cycles ?? 0, 3)}/3`, caption: 'Cycles to a pattern' })} />
       </View>
 
@@ -234,7 +239,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
           {events.length ? events.slice(0, 5).map(e => <View key={e.id} style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], minHeight: 52, paddingVertical: space[2], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
             <Glyph name={e.type === 'Watered' ? 'water' : e.type === 'Soil check' ? 'soil' : 'leaf'} size={18} tone={e.type === 'Watered' ? c.water : c.ink2} />
             <View style={{ flex: 1 }}>
-              <T v="body">{describeEvent(e).replace(' · ', ': ')}</T>
+              <T v="body">{describeEvent(e)}</T>
               {!!e.note && <T v="subhead" tone="ink2">“{e.note}”</T>}
             </View>
             <T v="footnote" tone="ink2">{ago(e.at)}</T>

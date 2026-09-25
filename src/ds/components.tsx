@@ -155,7 +155,7 @@ export function Field({ label, value, onChangeText, placeholder, numeric, autoFo
 
 /**
  * Where a fact comes from, as a catalogue legend: one small geometric mark per source
- * (● observed, ○ told, ■ species, ◆ suggested, – not connected) and quiet text.
+ * (● observed, ○ told, ■ species, ◆ suggested, a short rule for not connected) and quiet text.
  */
 export type Source = 'observed' | 'told' | 'species' | 'suggested' | 'off';
 const sourceText: Record<Source, string> = { observed: 'You observed', told: 'You told us', species: 'Species note', suggested: 'Rootera suggests', off: 'Not connected' };
