@@ -7,7 +7,9 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Image, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSpring, withTiming, Easing, cancelAnimation } from 'react-native-reanimated';
+import Animated, { FadeIn, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSpring, withTiming, Easing, cancelAnimation } from 'react-native-reanimated';
+import Svg, { ClipPath, Defs, Path, Rect } from 'react-native-svg';
+import { revealDuration, TextReveal } from '../ds/TextReveal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { Props } from '../navigation';
@@ -32,23 +34,24 @@ export function Opening({ onContinue }: { onContinue: () => void }) {
   const rise = useSharedValue(0);
   const logoStyle = useAnimatedStyle(() => ({ transform: [{ translateY: -rise.value * 64 }] }));
   const whenLogoDone = () => {
-    rise.value = reduceMotion ? 1 : withSpring(1, springs.smooth);
+    // The wordmark glides up (no spring) to make room for the line below it.
+    rise.value = reduceMotion ? 1 : withTiming(1, { duration: 700, easing: Easing.inOut(Easing.cubic) });
     setReady(true);
   };
   return <View style={{ flex: 1, backgroundColor: c.canvas, paddingTop: insets.top, paddingBottom: insets.bottom + space[6], paddingHorizontal: space.gutter }}>
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
       <Animated.View style={[{ alignItems: 'center', minHeight: 170 }, logoStyle]}>
         <LogoSprout width={250} run={logoRun} variant="full" onDone={whenLogoDone} />
-        {ready && <Animated.View entering={reduceMotion ? undefined : FadeInDown.duration(420).springify().damping(18)} style={{ alignItems: 'center', gap: space[2], marginTop: space[5], maxWidth: 330 }}>
-          <T v="hero" center>Stop guessing what your plant needs.</T>
-          <T v="callout" tone="ink2" center>Rootera learns one plant at a time: its spot, its pot and the care you give it.</T>
-        </Animated.View>}
+        {ready && <View style={{ alignItems: 'center', gap: space[2], marginTop: space[5], maxWidth: 330 }}>
+          <TextReveal text="Stop guessing what your plant needs." v="hero" center delay={250} />
+          <TextReveal text="Rootera learns one plant at a time: its spot, its pot and the care you give it." v="callout" tone="ink2" center delay={250 + revealDuration('Stop guessing what your plant needs.') - 250} perWord={35} />
+        </View>}
       </Animated.View>
       <View style={{ marginTop: space[6] }}>
         <SeedDrop size={200} run={1} onImpact={() => setLogoRun(1)} />
       </View>
     </View>
-    {ready && <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(350).duration(300)}>
+    {ready && <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(1900).duration(400)}>
       <Btn title="Get started" onPress={onContinue} />
     </Animated.View>}
   </View>;
@@ -56,11 +59,24 @@ export function Opening({ onContinue }: { onContinue: () => void }) {
 
 /* ------------------------------------------------------------------ shared */
 
-function Growth({ step, total }: { step: number; total: number }) {
-  const { c } = useTheme();
-  // Progress is a plant growing: each step is a taller shoot.
-  return <View accessible accessibilityLabel={`Step ${step} of ${total}`} style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 22 }}>
-    {Array.from({ length: total }, (_, i) => <View key={i} style={{ width: 4, height: 7 + i * 3.5, borderRadius: 2, backgroundColor: i < step ? c.leafMark : c.hairline }} />)}
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
+const SEED = 'M12 3C19 8.5 20.5 21 12 29C3.5 21 5 8.5 12 3Z';
+
+/** Progress is a seed filling up from the bottom; on the last step it sprouts. */
+function SeedProgress({ step, total }: { step: number; total: number }) {
+  const { c, reduceMotion } = useTheme();
+  const fill = useSharedValue(step / total);
+  useEffect(() => { fill.value = reduceMotion ? step / total : withTiming(step / total, { duration: 600, easing: Easing.out(Easing.cubic) }); }, [step]);
+  const props = useAnimatedProps(() => ({ y: 32 - 28 * fill.value, height: 28 * fill.value + 1 }));
+  const done = step >= total;
+  return <View accessible accessibilityRole="progressbar" accessibilityLabel={`Step ${step} of ${total}`} style={{ width: 28, height: 36, alignItems: 'center', justifyContent: 'flex-end' }}>
+    <Svg width={24} height={32} viewBox="0 0 24 32">
+      <Defs><ClipPath id="seed"><Path d={SEED} /></ClipPath></Defs>
+      <Path d={SEED} fill={c.sunken} />
+      <AnimatedRect x={0} width={24} fill={c.leafMark} clipPath="url(#seed)" animatedProps={props} />
+      <Path d={SEED} fill="none" stroke={c.ink2} strokeWidth={1.4} />
+      {done && <Path d="M12 3V-1M12 1C12 -1 10 -3 8 -3M12 1C12 -1 14 -3 16 -3" stroke={c.leafMark} strokeWidth={1.6} strokeLinecap="round" fill="none" />}
+    </Svg>
   </View>;
 }
 
@@ -110,7 +126,7 @@ function Learn({ width }: { width: number }) {
       <View style={{ position: 'absolute', left: (width - plantSize) / 2, top: 34, width: plantSize, height: plantSize }}>
         <Image source={plantArt.monstera} style={{ width: plantSize, height: plantSize }} resizeMode="contain" />
       </View>
-      {all && <Animated.View entering={FadeInDown.springify().damping(14)} style={{ position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' }}>
+      {all && <Animated.View entering={FadeIn.duration(420)} style={{ position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.input, backgroundColor: c.raised }}>
           <SourceMark kind="suggested" /><T v="caption">Rootera suggests</T>
         </View>
@@ -164,7 +180,7 @@ const experiences: { value: Experience; label: string; hint: string; art: PlantK
 function GlassChoice({ on, onPress, label, hint, art, wide }: { on: boolean; onPress: () => void; label: string; hint: string; art: PlantKind[]; wide?: boolean }) {
   const { c } = useTheme();
   return <Tap role="radio" selected={on} label={`${label}. ${hint}`} onPress={onPress} ring={radius.card} style={{ flex: wide ? undefined : 1 }}>
-    <Glass level="control" r={radius.card} shadow={on} style={{ minHeight: wide ? 120 : 176, borderWidth: on ? 1.5 : 0, borderColor: c.ink }}>
+    <Glass level="control" r={radius.card} shadow={on} style={{ minHeight: wide ? 120 : 176, borderWidth: 1.5, borderColor: on ? c.ink : 'transparent' }}>
       <View style={{ flex: 1, padding: space[4], gap: space[2], flexDirection: wide ? 'row-reverse' : 'column', justifyContent: 'space-between', alignItems: wide ? 'flex-end' : 'flex-start' }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
           {art.map((k, i) => <Image key={k} source={plantArt[k]} resizeMode="contain" style={{ width: i === 1 ? 62 : 48, height: i === 1 ? 62 : 48, marginHorizontal: -6 }} />)}
@@ -206,7 +222,7 @@ export function NudgePicker({ selected, onToggle, detail, onDetail, time, onTime
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
           <Glyph name="sprout" size={16} tone={c.leafMark} />
           <T v="caption" tone="ink2" style={{ flex: 1 }}>Rootera</T>
-          <T v="caption" tone="ink2">{focus === 'soil_check' ? time : 'now'}</T>
+          <T v="caption" tone="ink2">{time}</T>
         </View>
         <T v="headline">{copy.title}</T>
         <T v="subhead" tone="ink2">{detail === 'Guided' ? copy.guided : copy.concise}</T>
@@ -298,7 +314,7 @@ function FirstPlant({ width, kind, setKind, answers, setAnswer, open, setOpen }:
       {[...catalog.map(s => ({ kind: s.kind, name: s.name }))].map(s => {
         const on = kind === s.kind;
         return <Tap key={s.kind} role="radio" selected={on} label={s.name} onPress={() => { setKind(s.kind); if (open === 'plant') setOpen('light'); }} ring={radius.control}
-          style={{ width: 84, alignItems: 'center', gap: 4, paddingVertical: 6, borderRadius: radius.control, backgroundColor: on ? c.raised : 'transparent', borderWidth: on ? 1.5 : 0, borderColor: c.ink }}>
+          style={{ width: 84, alignItems: 'center', gap: 4, paddingVertical: 6, borderRadius: radius.control, backgroundColor: on ? c.raised : 'transparent', borderWidth: 1.5, borderColor: on ? c.ink : 'transparent' }}>
           <Image source={plantArt[s.kind]} style={{ width: 56, height: 56 }} resizeMode="contain" />
           <T v="caption" tone={on ? 'ink' : 'ink2'} lines={1}>{s.name}</T>
         </Tap>;
@@ -412,16 +428,16 @@ export function Onboarding({ navigation }: Props<'Welcome'>) {
     {glassy && <Atmosphere />}
     <View style={{ paddingTop: insets.top + space[2], paddingHorizontal: space.gutter, height: insets.top + 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
       <Tap label="Back" onPress={() => !busy && setStep(step - 1)} ring={22} style={{ width: 44, height: 44, alignItems: 'flex-start', justifyContent: 'center' }}><Glyph name="back" size={22} /></Tap>
-      <Growth step={step} total={TOTAL} />
+      <SeedProgress step={step} total={TOTAL} />
       {step === 1 || step === 4
         ? <Tap label="Skip this step" onPress={() => setStep(step + 1)} ring={radius.inner} style={{ minWidth: 44, height: 44, alignItems: 'flex-end', justifyContent: 'center' }}><T v="subhead" tone="ink2">Skip</T></Tap>
         : <View style={{ width: 44 }} />}
     </View>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: space.gutter, paddingBottom: space[6], gap: space[5], flexGrow: 1 }}>
-      <Animated.View key={step + (kind ? 'k' : '')} entering={reduceMotion ? undefined : FadeInDown.duration(320).springify().damping(20)} style={{ gap: space[2], paddingTop: space[4] }}>
-        <T v="hero">{titles[step][0]}</T>
-        <T v="callout" tone="ink2">{titles[step][1]}</T>
-      </Animated.View>
+      <View key={step + (kind ? 'k' : '')} style={{ gap: space[2], paddingTop: space[4] }}>
+        <TextReveal text={titles[step][0]} v="hero" />
+        <TextReveal text={titles[step][1]} v="callout" tone="ink2" delay={revealDuration(titles[step][0]) - 300} perWord={30} />
+      </View>
       <View onLayout={e => setWidth(e.nativeEvent.layout.width)}>
         {!!width && step === 1 && <Learn width={width} />}
         {step === 2 && <View style={{ gap: space[3] }}>

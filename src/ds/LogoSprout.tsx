@@ -26,20 +26,20 @@ export function LogoSprout({ width = 260, run, variant = 'full', onDone }: { wid
     if (!run) return;
     if (reduceMotion) { letters.value = 1; sprout.value = 1; onDone?.(); return; }
     letters.value = 0; sprout.value = 0; shake.value = 0; oY.value = 0; oSquash.value = 1;
-    letters.value = withTiming(1, { duration: 260 });
+    letters.value = withTiming(1, { duration: 500 });
     // Each push lifts the O a little higher and squashes it, then it settles back.
     const pushes = variant === 'full' ? [-5, -8, -12] : [-9];
-    const beat = variant === 'full' ? 230 : 170;
+    const beat = variant === 'full' ? 420 : 200;
     const lift = pushes.flatMap(p => [withTiming(p, { duration: beat * .45 }), withTiming(p * .25, { duration: beat * .55 })]);
     const squash = pushes.flatMap(() => [withTiming(.9, { duration: beat * .45 }), withTiming(1, { duration: beat * .55 })]);
-    const start = variant === 'full' ? 320 : 120;
+    const start = variant === 'full' ? 700 : 150;
     oY.value = withDelay(start, withSequence(...lift, withSpring(0, { damping: 7, stiffness: 260 })));
     oSquash.value = withDelay(start, withSequence(...squash, withSpring(1, { damping: 7, stiffness: 260 })));
     const burst = start + pushes.length * beat;
     sprout.value = withDelay(burst, withSpring(1, { damping: 8, stiffness: 190 }));
-    shake.value = withDelay(burst + 120, withSequence(withTiming(-14, { duration: 80 }), withTiming(10, { duration: 100 }), withTiming(-6, { duration: 90 }), withSpring(0, { damping: 5, stiffness: 200 })));
+    shake.value = withDelay(burst + 160, withSequence(withTiming(-12, { duration: 120 }), withTiming(9, { duration: 150 }), withTiming(-5, { duration: 140 }), withSpring(0, { damping: 6, stiffness: 160 })));
     // Finish on a timer: spring callbacks inside sequences are not reliable on every platform.
-    const t = setTimeout(() => onDone?.(), burst + 120 + 520);
+    const t = setTimeout(() => onDone?.(), burst + 160 + 800);
     return () => { clearTimeout(t); [letters, oY, oSquash, sprout, shake].forEach(cancelAnimation); };
   }, [run]);
 

@@ -23,6 +23,11 @@ import { About, Experience, Nudges } from './src/screens/Profile';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider } from './src/ds/theme';
 import { Gallery } from './src/ds/Gallery';
+import { preloadImages } from './src/ds/preload';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep the native splash up until fonts and artwork are ready.
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 // Web preview only: `?gallery=1` opens the design-system reference.
 const showGallery = Platform.OS === 'web' && typeof location !== 'undefined' && /[?&]gallery=1/.test(location.search);
@@ -74,7 +79,12 @@ function Shell({ children }: React.PropsWithChildren) {
 
 export default function App() {
   const [loaded, error] = useFonts({ InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold, InstrumentSerif_400Regular, InstrumentSerif_400Regular_Italic });
-  if (!loaded && !error) return <View style={{ flex: 1 }} />;
+  // Artwork loads alongside the fonts so no animation starts with a missing layer.
+  const [images, setImages] = React.useState(false);
+  React.useEffect(() => { preloadImages().finally(() => setImages(true)); }, []);
+  const ready = (loaded || !!error) && images;
+  React.useEffect(() => { if (ready) SplashScreen.hideAsync().catch(() => undefined); }, [ready]);
+  if (!ready) return <View style={{ flex: 1 }} />;
   if (error) return <Text style={{ padding: 40 }}>Rootera couldn’t load its fonts. Please restart the app.</Text>;
   return <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
