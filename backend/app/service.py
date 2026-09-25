@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from .db import Calibration, Device, DomainEvent, Plant, Profile, SensorObservation, TwinSnapshot, UserObservation
 from .domain import Evidence, PlantTwinEngine, normalize_adc, utcnow
 from .guidance import SensorlessGuidance
-from .schemas import PLAN_CAPACITY, CaregiverProfile, CalibrationIn, PlantIn, PlantUpdate, SensorIn, UserObservationIn, normalize_plan
+from .schemas import PLAN_CAPACITY, CaregiverProfile, NudgePrefs, CalibrationIn, PlantIn, PlantUpdate, SensorIn, UserObservationIn, normalize_plan
 
 EVENT_TYPES = {'Watered': 'PlantWatered', 'Soil check': 'SoilConditionReported', 'Fertilized': 'PlantFertilized', 'Observation': 'PlantObserved'}
 
@@ -47,6 +47,7 @@ class GardenService:
         view.setdefault('name', '')
         if data.get('caregiver'):
             view['caregiver'] = CaregiverProfile.model_validate(data['caregiver']).model_dump(exclude_none=True)
+        view['nudges'] = NudgePrefs.model_validate(data.get('nudges') or {}).model_dump()
         return view
 
     # ---- plants ------------------------------------------------------------

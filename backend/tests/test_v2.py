@@ -93,3 +93,12 @@ def test_plantnet_results_map_to_known_species():
     client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=body)))
     results = plantnet.identify(base64.b64encode(b'jpeg' * 60).decode(), 'auto', 'key', client)
     assert [r['kind'] for r in results] == ['pothos', 'cactus'] and results[0]['common_name'] == 'Golden pothos'
+
+
+def test_nudge_preferences_are_validated_and_saved(client):
+    assert client.get('/v1/garden', headers=ALICE).json()['nudges'] == {'kinds': ['soil_check', 'pattern'], 'time': '08:00'}
+    body = {'nudges': {'kinds': ['soil_check', 'weekly', 'soil_check'], 'time': '07:30'}}
+    assert client.patch('/v1/profile', json=body, headers=ALICE).status_code == 200
+    assert client.get('/v1/garden', headers=ALICE).json()['nudges'] == {'kinds': ['soil_check', 'weekly'], 'time': '07:30'}
+    assert client.patch('/v1/profile', json={'nudges': {'time': '25:00'}}, headers=ALICE).status_code == 422
+    assert client.patch('/v1/profile', json={'nudges': {'kinds': ['spam']}}, headers=ALICE).status_code == 422

@@ -39,6 +39,13 @@ export function Glass({ level = 'chrome', r = radius.card, style, children, shad
   </View>;
 }
 
+// Focus rings are for keyboard users (like :focus-visible): a pointer press hides them.
+let keyboardModality = false;
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  window.addEventListener('keydown', e => { if (e.key === 'Tab' || e.key.startsWith('Arrow')) keyboardModality = true; }, true);
+  window.addEventListener('pointerdown', () => { keyboardModality = false; }, true);
+}
+
 /** Every touchable: spring press, visible keyboard focus ring, 44-pt minimum target. */
 export function Tap({ onPress, label, hint, role = 'button', selected, disabled, style, children, ring = radius.control, scaleTo = .97 }: React.PropsWithChildren<{ onPress?: () => void; label: string; hint?: string; role?: 'button' | 'link' | 'tab' | 'radio' | 'switch'; selected?: boolean; disabled?: boolean; style?: StyleProp<ViewStyle>; ring?: number; scaleTo?: number }>) {
   const { c, reduceMotion } = useTheme();
@@ -50,7 +57,7 @@ export function Tap({ onPress, label, hint, role = 'button', selected, disabled,
     accessibilityState={{ disabled: !!disabled, selected: role === 'tab' ? selected : undefined, checked: role === 'radio' || role === 'switch' ? !!selected : undefined }}
     onPressIn={() => { if (!reduceMotion) s.value = withSpring(scaleTo, springs.snappy); }}
     onPressOut={() => { s.value = withSpring(1, springs.snappy); }}
-    onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
+    onFocus={() => setFocus(Platform.OS !== 'web' || keyboardModality)} onBlur={() => setFocus(false)}
     style={[{ flex: flat.flex, alignSelf: flat.alignSelf, width: flat.width, flexGrow: flat.flexGrow }, noOutline]}>
     <Animated.View style={[style, anim, disabled && { opacity: .4 }]}>
       {children}

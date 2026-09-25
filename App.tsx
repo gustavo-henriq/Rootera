@@ -13,7 +13,9 @@ import { StoreProvider, useStore } from './src/store';
 import { Routes } from './src/navigation';
 import { color } from './src/theme';
 import { useReducedMotion } from './src/ui';
-import { Welcome } from './src/screens/Welcome';
+import { Onboarding } from './src/screens/Onboarding';
+import { LogoSprout } from './src/ds/LogoSprout';
+import { useTheme } from './src/ds/theme';
 import { Main } from './src/screens/Main';
 import { AddPlant } from './src/screens/AddPlant';
 import { Camera } from './src/screens/Camera';
@@ -32,14 +34,28 @@ const showGallery = Platform.OS === 'web' && typeof location !== 'undefined' && 
 
 const Stack = createNativeStackNavigator<Routes>();
 
+/** Later launches: the short sprout, under a second, then straight into the garden. */
+function Launch({ onDone }: { onDone: () => void }) {
+  const { c } = useTheme();
+  return <View style={{ flex: 1, backgroundColor: c.canvas, alignItems: 'center', justifyContent: 'center' }}>
+    <LogoSprout width={200} run={1} variant="short" onDone={() => setTimeout(onDone, 150)} />
+  </View>;
+}
+
 function Navigator() {
   const { ready, garden } = useStore();
+  const { c } = useTheme();
   const reduce = useReducedMotion();
-  if (!ready) return <View style={{ flex: 1, justifyContent: 'center', backgroundColor: color.paper }}><ActivityIndicator color={color.olive} /></View>;
+  // Decided once, when the garden first loads: the short sprout plays only if the app
+  // opened on an existing garden, never in the middle of onboarding.
+  const [launch, setLaunch] = React.useState<'pending' | 'play' | 'done'>('pending');
+  React.useEffect(() => { if (ready && launch === 'pending') setLaunch(garden.onboarded ? 'play' : 'done'); }, [ready]);
+  if (!ready || launch === 'pending') return <View style={{ flex: 1, justifyContent: 'center', backgroundColor: c.canvas }}><ActivityIndicator color={c.ink2} /></View>;
+  if (launch === 'play') return <Launch onDone={() => setLaunch('done')} />;
   const modal = { presentation: 'modal' as const, animation: reduce ? 'none' as const : 'slide_from_bottom' as const };
   return <NavigationContainer theme={{ ...DefaultTheme, colors: { ...DefaultTheme.colors, background: color.paper, card: color.paper, text: color.ink, primary: color.olive, border: color.line } }}>
     <Stack.Navigator initialRouteName={garden.onboarded ? 'Main' : 'Welcome'} screenOptions={{ headerShown: false, animation: reduce ? 'none' : 'slide_from_right', contentStyle: { backgroundColor: color.paper } }}>
-      <Stack.Screen name="Welcome" component={Welcome} options={{ animation: 'fade' }} />
+      <Stack.Screen name="Welcome" component={Onboarding} options={{ animation: 'fade' }} />
       <Stack.Screen name="Main" component={Main} options={{ animation: 'fade' }} />
       <Stack.Screen name="AddPlant" component={AddPlant} />
       <Stack.Screen name="Camera" component={Camera} options={modal} />

@@ -28,9 +28,11 @@ export interface Twin {
   sources: { user: { observations: number }; sensor: { connected: boolean; readings: number }; external: { weather: boolean; identification: boolean }; reference: { species_notes: boolean } };
 }
 export interface Caregiver { experience: Experience; detail: 'Guided' | 'Concise' }
+export type NudgeKind = 'soil_check' | 'pattern' | 'leaves' | 'weekly';
+export interface Nudges { kinds: NudgeKind[]; time: string }
 export interface Integrations { billing: boolean; identification: boolean; weather: boolean; demo: boolean }
 export interface Garden {
-  user_id: string; name: string; onboarded: boolean; reminders: boolean; caregiver?: Caregiver;
+  user_id: string; name: string; onboarded: boolean; reminders: boolean; caregiver?: Caregiver; nudges?: Nudges;
   plan: Plan; annual: boolean; plan_source?: string; plan_capacity: number | null;
   plants: Plant[]; events: CareEvent[]; twins: Record<string, Twin>; integrations: Integrations;
 }

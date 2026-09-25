@@ -140,11 +140,26 @@ class DemoSensorIn(CalibrationIn):
     demo: Literal[True]
 
 
+NudgeKind = Literal['soil_check', 'pattern', 'leaves', 'weekly']
+
+
+class NudgePrefs(StrictModel):
+    """Which nudges the caregiver wants and when. Watering-related nudges use this time."""
+    kinds: list[NudgeKind] = Field(default_factory=lambda: ['soil_check', 'pattern'], max_length=4)
+    time: str = Field(default='08:00', pattern=r'^([01]\d|2[0-3]):[0-5]\d$')
+
+    @field_validator('kinds')
+    @classmethod
+    def unique(cls, v):
+        return list(dict.fromkeys(v))
+
+
 class ProfileIn(StrictModel):
     name: str | None = Field(default=None, max_length=100)
     onboarded: bool | None = None
     reminders: bool | None = None
     caregiver: CaregiverProfile | None = None
+    nudges: NudgePrefs | None = None
 
 
 class DemoPlanIn(StrictModel):

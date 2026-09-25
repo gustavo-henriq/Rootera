@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 import { api, CareResult } from './api';
-import { CareEvent, Caregiver, emptyGarden, Garden, Plan, Plant } from './model';
+import { CareEvent, Caregiver, emptyGarden, Garden, Nudges, Plan, Plant } from './model';
 
 const KEY = 'rootera:garden:v2';
 
@@ -12,7 +12,7 @@ interface Store {
   /** True when the last refresh failed and the screen shows cached data. */
   offline: boolean;
   refresh: () => Promise<void>;
-  saveProfile: (changes: Partial<{ name: string; onboarded: boolean; reminders: boolean; caregiver: Caregiver }>) => Promise<void>;
+  saveProfile: (changes: Partial<{ name: string; onboarded: boolean; reminders: boolean; caregiver: Caregiver; nudges: Nudges }>) => Promise<void>;
   addPlant: (plant: Plant) => Promise<void>;
   updatePlant: (id: string, changes: Partial<Plant>) => Promise<void>;
   archivePlant: (id: string) => Promise<void>;

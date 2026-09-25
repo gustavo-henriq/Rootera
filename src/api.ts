@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { CareEvent, Caregiver, Garden, Plan, Plant, PlantKind } from './model';
+import { CareEvent, Caregiver, Garden, Nudges, Plan, Plant, PlantKind } from './model';
 
 export const API_URL = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://127.0.0.1:8000');
 // Preview access only. Real accounts replace this with a per-user session token.
@@ -37,7 +37,7 @@ export interface Candidate { scientific_name: string; common_name: string; famil
 
 export const api = {
   garden: () => request<Garden>('/v1/garden'),
-  profile: (changes: Partial<{ name: string; onboarded: boolean; reminders: boolean; caregiver: Caregiver }>) => request('/v1/profile', 'PATCH', changes),
+  profile: (changes: Partial<{ name: string; onboarded: boolean; reminders: boolean; caregiver: Caregiver; nudges: Nudges }>) => request('/v1/profile', 'PATCH', changes),
   addPlant: (plant: Plant) => request<Plant>('/v1/plants', 'POST', plant),
   updatePlant: (id: string, changes: Partial<Plant>) => request<Plant>(`/v1/plants/${encodeURIComponent(id)}`, 'PATCH', changes),
   archivePlant: (id: string) => request(`/v1/plants/${encodeURIComponent(id)}`, 'DELETE'),
