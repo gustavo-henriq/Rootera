@@ -272,6 +272,7 @@ function You({ navigation }: TabProps<'You'>) {
     </Group>
     <Group header="About" footer={`Preview data is saved on ${host}. Photos stay on this device.`}>
       <Row title="How Rootera learns" onPress={() => navigation.navigate('About')} />
+      <Row title="Preview onboarding" detail="Plays it again. Nothing is saved." onPress={() => navigation.navigate('Welcome', { preview: true })} />
     </Group>
   </Page>;
 }

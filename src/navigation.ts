@@ -4,7 +4,7 @@ import { PlantKind } from './model';
 export type Tabs = { Today: undefined; Plants: undefined; Journal: undefined; You: undefined };
 
 export type Routes = {
-  Welcome: undefined;
+  Welcome: { preview?: boolean } | undefined;
   Main: { tab?: keyof Tabs } | undefined;
   AddPlant: { first?: boolean; photo?: string } | undefined;
   Camera: { first?: boolean } | undefined;

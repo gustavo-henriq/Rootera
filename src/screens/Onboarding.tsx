@@ -33,7 +33,9 @@ import { Atmosphere, experiences, GlassChoice, SeedProgress } from './onboarding
 const TOTAL = 4;
 const SOIL_LIFT = 800; // the soil from the opening lifts away before the story starts
 
-export function Onboarding({ navigation }: Props<'Welcome'>) {
+export function Onboarding({ navigation, route }: Props<'Welcome'>) {
+  // Preview replays the whole flow from You; it saves nothing and returns there.
+  const preview = !!route.params?.preview;
   const { garden, saveProfile, addPlant, logCare } = useStore();
   const { c, reduceMotion } = useTheme();
   const insets = useSafeAreaInsets();
@@ -66,6 +68,7 @@ export function Onboarding({ navigation }: Props<'Welcome'>) {
 
   const finish = async () => {
     if (busy || !kind) return;
+    if (preview) { setCelebrate(1); return; }
     setBusy(true); setError('');
     try {
       await saveProfile({ name: garden.name, onboarded: true, reminders: nudges.length > 0, caregiver: { experience: experience || 'first', detail }, nudges: { kinds: nudges, time } });
@@ -91,6 +94,7 @@ export function Onboarding({ navigation }: Props<'Welcome'>) {
   // when a nudge about it obviously makes sense. Never on first launch.
   const afterCelebration = async () => {
     await new Promise(r => setTimeout(r, reduceMotion ? 900 : 1500));
+    if (preview) { navigation.goBack(); return; }
     if (nudges.length) await requestNudgePermission();
     navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
   };
@@ -137,9 +141,9 @@ export function Onboarding({ navigation }: Props<'Welcome'>) {
         {!!width && step === 1 && <Story width={width} start={titleTime} onComplete={() => setStoryDone(true)} />}
         {step === 2 && <View style={{ gap: space[3] }}>
           <View style={{ flexDirection: 'row', gap: space[3] }}>
-            {experiences.slice(0, 2).map(o => <GlassChoice key={o.value} on={experience === o.value} onPress={() => chooseExperience(o.value)} label={o.label} hint={o.hint} art={o.art} />)}
+            {experiences.slice(0, 2).map(o => <GlassChoice key={o.value} on={experience === o.value} onPress={() => chooseExperience(o.value)} label={o.label} hint={o.hint} art={o.art} scene={o.scene} />)}
           </View>
-          <GlassChoice wide on={experience === 'many'} onPress={() => chooseExperience('many')} label={experiences[2].label} hint={experiences[2].hint} art={experiences[2].art} />
+          <GlassChoice wide on={experience === 'many'} onPress={() => chooseExperience('many')} label={experiences[2].label} hint={experiences[2].hint} art={experiences[2].art} scene={experiences[2].scene} />
         </View>}
         {step === 3 && <NudgePicker selected={nudges} onToggle={k => setNudges(n => n.includes(k) ? n.filter(x => x !== k) : [...n, k])} detail={detail} onDetail={setDetail} time={time} onTime={setTime} />}
         {!!width && step === 4 && <FirstPlant width={width} kind={kind} setKind={setKind} answers={answers} onAnswer={answer} editing={editing} setEditing={setEditing} />}

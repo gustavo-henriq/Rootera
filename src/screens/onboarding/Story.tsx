@@ -27,7 +27,13 @@ const SOIL = 368 / 560;
  * same canvas so they can cross-fade. While it is empty the placeholder below is used:
  * the pot, a sprout growing in steps, then a peace lily in flower.
  */
-export const flowerStages: number[] = [];
+export const flowerStages: number[] = [
+  require('../../../assets/flower/1-seed.png'),
+  require('../../../assets/flower/2-sprout.png'),
+  require('../../../assets/flower/3-leaves.png'),
+  require('../../../assets/flower/4-bud.png'),
+  require('../../../assets/flower/5-bloom.png'),
+];
 const PLACEHOLDER_SPROUT = [0, .42, .72, 1];
 
 const SOURCES = [
@@ -71,7 +77,7 @@ function Flower({ stage, size }: { stage: number; size: number }) {
 
   const label = ['A seed in a pot', 'A sprout', 'A young plant', 'A growing plant', 'The plant in flower'][Math.min(stage, 4)];
   return <View accessible accessibilityRole="image" accessibilityLabel={label} style={{ width: size, height: size, alignItems: 'center' }}>
-    <View style={{ position: 'absolute', bottom: -size * .02, width: w * .76, height: size * .05, borderRadius: size, backgroundColor: c.hairline }} />
+    {!flowerStages.length && <View style={{ position: 'absolute', bottom: -size * .02, width: w * .76, height: size * .05, borderRadius: size, backgroundColor: c.hairline }} />}
     {flowerStages.length
       ? flowerStages.map((src, i) => <StageImage key={i} src={src} on={i === Math.min(stage, flowerStages.length - 1)} size={size} />)
       : <>
@@ -108,27 +114,37 @@ function Explanation({ text, clear }: { text: string; clear: boolean }) {
   const textStyle = useAnimatedStyle(() => ({ opacity: reduceTransparency ? 1 - .82 * veil.value : 1 }));
   const veilStyle = useAnimatedStyle(() => ({ opacity: veil.value }));
   return <View style={{ flex: 1 }}>
-    <Animated.View style={textStyle}><T v="subhead" tone={clear ? 'ink' : 'ink2'}>{text}</T></Animated.View>
+    <Animated.View style={textStyle}><T v="body" tone={clear ? 'ink' : 'ink2'}>{text}</T></Animated.View>
     {!reduceTransparency && <Animated.View pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={[StyleSheet.absoluteFill, { margin: -4 }, veilStyle]}>
       <BlurView intensity={28} tint={scheme === 'dark' ? 'dark' : 'light'} blurMethod="dimezisBlurViewSdk31Plus" style={StyleSheet.absoluteFill} />
     </Animated.View>}
   </View>;
 }
 
-function SourceRow({ source, state, onPress }: { source: typeof SOURCES[number]; state: 'waiting' | 'done'; onPress: () => void }) {
+/** A connector from a source to the plant, drawn when that source is tapped. */
+function Line({ on, from, to }: { on: boolean; from: { x: number; y: number }; to: { x: number; y: number } }) {
+  const { c, reduceMotion } = useTheme();
+  const p = useSharedValue(0);
+  useEffect(() => { p.value = reduceMotion ? (on ? 1 : 0) : withTiming(on ? 1 : 0, { duration: 380, easing: Easing.out(Easing.cubic) }); }, [on]);
+  const vertical = from.x === to.x;
+  const len = vertical ? Math.abs(to.y - from.y) : Math.abs(to.x - from.x);
+  const style = useAnimatedStyle(() => vertical ? { transform: [{ scaleY: p.value }] } : { transform: [{ scaleX: p.value }] });
+  const box = vertical
+    ? { left: from.x - .75, top: Math.min(from.y, to.y), width: 1.5, height: len, transformOrigin: from.y > to.y ? 'bottom' : 'top' }
+    : { top: from.y - .75, left: Math.min(from.x, to.x), height: 1.5, width: len, transformOrigin: from.x < to.x ? 'left' : 'right' };
+  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', backgroundColor: c.ink2 }, box as any, style]} />;
+}
+
+function Node({ source, state, onPress }: { source: typeof SOURCES[number]; state: 'waiting' | 'done'; onPress: () => void }) {
   const { c } = useTheme();
   const waiting = state === 'waiting';
-  return <Animated.View entering={FadeInDown.duration(360)} style={{ flexDirection: 'row', gap: space[3], alignItems: 'flex-start' }}>
-    <View style={{ width: 152 }}>
-      <Glow on={waiting} />
-      <Tap label={waiting ? `${source.title}. Tap to see what it adds.` : `${source.title}. ${source.text}`} onPress={waiting ? onPress : undefined} ring={radius.control}
-        style={{ minHeight: 44, paddingHorizontal: 12, borderRadius: radius.control, borderWidth: 1, borderColor: waiting ? c.ink : c.hairline, backgroundColor: c.raised, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <SourceMark kind={source.key} />
-        <T v="subhead" style={{ fontFamily: fonts.medium, flex: 1 }}>{source.title}</T>
-        {!waiting && <Glyph name="check" size={14} tone={c.leafText} />}
-      </Tap>
-    </View>
-    <View style={{ flex: 1, paddingTop: 2 }}><Explanation text={source.text} clear={!waiting} /></View>
+  return <Animated.View entering={FadeIn.duration(360)}>
+    <Glow on={waiting} />
+    <Tap label={waiting ? `${source.title}. Tap to see what it adds.` : `${source.title}. ${source.text}`} onPress={waiting ? onPress : undefined} ring={radius.control}
+      style={{ minHeight: 44, paddingHorizontal: 10, paddingVertical: 10, borderRadius: radius.control, borderWidth: 1, borderColor: c.ink, backgroundColor: c.raised, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <SourceMark kind={source.key} />
+      <T v="subhead" style={{ fontFamily: fonts.medium, flex: 1 }}>{source.title}</T>
+    </Tap>
   </Animated.View>;
 }
 
@@ -162,21 +178,35 @@ export function Story({ width, start, onComplete }: { width: number; start: numb
     else later(onComplete, 900);
   };
 
-  const size = Math.min(210, width * .55);
+  // Same diagram as before: two sources above the plant, species notes below it.
+  const nodeW = 116, H = 320, size = 170;
+  const plantTop = 44, plantBottom = plantTop + size;
+  const pos = [{ x: 0, y: 30 }, { x: width - nodeW, y: 30 }, { x: (width - nodeW) / 2, y: H - 48 }];
+  const lines = [
+    { from: { x: nodeW, y: 52 }, to: { x: width / 2 - size * .12, y: 52 } },
+    { from: { x: width - nodeW, y: 52 }, to: { x: width / 2 + size * .12, y: 52 } },
+    { from: { x: width / 2, y: H - 48 }, to: { x: width / 2, y: plantBottom } },
+  ];
   const bloomed = done >= SOURCES.length;
-  return <View style={{ gap: space[5] }}>
-    <Animated.View style={[{ alignItems: 'center', height: size + 34, justifyContent: 'flex-end' }, bloomed ? undefined : dimStyle]}>
-      {bloomed && <Animated.View entering={FadeIn.delay(450).duration(420)} style={{ position: 'absolute', top: 0, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.input, backgroundColor: c.successSoft }}>
-        <SourceMark kind="suggested" /><T v="caption" tone="leafText">Rootera suggests</T>
+  // The line under the diagram follows the taps: a blurred preview while a source waits, then its sentence.
+  const focus = waiting ? shown - 1 : Math.max(0, done - 1);
+  return <View style={{ gap: space[4] }}>
+    <View style={{ width, height: H }}>
+      <Animated.View style={[{ position: 'absolute', left: (width - size) / 2, top: plantTop }, dimStyle]}><Flower stage={stage} size={size} /></Animated.View>
+      {bloomed && <Animated.View entering={FadeIn.delay(450).duration(420)} style={{ position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.input, backgroundColor: c.successSoft }}>
+          <SourceMark kind="suggested" /><T v="caption" tone="leafText">Rootera suggests</T>
+        </View>
       </Animated.View>}
-      <Flower stage={stage} size={size} />
-    </Animated.View>
-    <View style={{ gap: space[4], minHeight: 3 * 64 }}>
-      {SOURCES.slice(0, shown).map((s, i) => <Animated.View key={s.key} style={i < done && waiting ? dimStyle : undefined}>
-        <SourceRow source={s} state={i < done ? 'done' : 'waiting'} onPress={() => tap(i)} />
-      </Animated.View>)}
+      {SOURCES.map((s, i) => <Line key={'l' + s.key} on={i < done} {...lines[i]} />)}
+      {SOURCES.slice(0, shown).map((s, i) => <View key={s.key} style={{ position: 'absolute', left: pos[i].x, top: pos[i].y, width: nodeW }}>
+        <Node source={s} state={i < done ? 'done' : 'waiting'} onPress={() => tap(i)} />
+      </View>)}
+    </View>
+    <View style={{ minHeight: 96, gap: space[2] }}>
+      {shown > 0 && <Explanation key={focus} text={SOURCES[focus].text} clear={!waiting} />}
       {bloomed && <Animated.View entering={FadeInDown.delay(450).duration(420)}>
-        <T v="subhead" tone="ink2">Suggestions combine all three, and each one shows which it came from.</T>
+        <T v="subhead" tone="ink2">Every suggestion shows which of these it came from.</T>
       </Animated.View>}
     </View>
   </View>;

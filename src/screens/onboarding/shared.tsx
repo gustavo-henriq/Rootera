@@ -56,21 +56,28 @@ export function Atmosphere() {
   </View>;
 }
 
-export const experiences: { value: Experience; label: string; hint: string; art: PlantKind[] }[] = [
+const FEW = require('../../../assets/scenes/few.png');
+const GARDEN = require('../../../assets/scenes/garden.jpg');
+
+export const experiences: { value: Experience; label: string; hint: string; art: PlantKind[]; scene?: number }[] = [
   { value: 'first', label: 'My first plant', hint: 'Explain how to check and what to look for.', art: ['pilea'] },
-  { value: 'some', label: 'A few plants', hint: 'Short tips for each plant.', art: ['pilea', 'pothos'] },
-  { value: 'many', label: 'Lots of plants, or a whole garden', hint: 'Straight to the point.', art: ['snake-plant', 'pothos', 'zz'] },
+  { value: 'some', label: 'A few plants', hint: 'Short tips for each plant.', art: [], scene: FEW },
+  { value: 'many', label: 'Lots of plants, or a whole garden', hint: 'Straight to the point.', art: [], scene: GARDEN },
 ];
 
-export function GlassChoice({ on, onPress, label, hint, art, wide }: { on: boolean; onPress: () => void; label: string; hint: string; art: PlantKind[]; wide?: boolean }) {
+export function GlassChoice({ on, onPress, label, hint, art, scene, wide }: { on: boolean; onPress: () => void; label: string; hint: string; art: PlantKind[]; scene?: number; wide?: boolean }) {
   const { c } = useTheme();
   return <Tap role="radio" selected={on} label={`${label}. ${hint}`} onPress={onPress} ring={radius.card} style={{ flex: wide ? undefined : 1 }}>
-    <Glass level="control" r={radius.card} shadow={on} style={{ minHeight: wide ? 120 : 176, borderWidth: 1.5, borderColor: on ? c.ink : 'transparent' }}>
-      <View style={{ flex: 1, padding: space[4], gap: space[2], flexDirection: wide ? 'row-reverse' : 'column', justifyContent: 'space-between', alignItems: wide ? 'flex-end' : 'flex-start' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-          {art.map((k, i) => <Image key={k} source={plantArt[k]} resizeMode="contain" style={{ width: i === 1 ? 62 : 48, height: i === 1 ? 62 : 48, marginHorizontal: -6 }} />)}
-        </View>
-        <View style={{ gap: 2, flex: wide ? 1 : undefined }}>
+    <Glass level="control" r={radius.card} shadow={on} style={{ minHeight: 176, borderWidth: 1.5, borderColor: on ? c.ink : 'transparent', overflow: 'hidden' }}>
+      {/* The garden is a whole windowsill: it gets the full width of the card as a scene. */}
+      {wide && scene && <Image source={scene} resizeMode="cover" style={{ width: '100%', height: 124, borderTopLeftRadius: radius.card - 1.5, borderTopRightRadius: radius.card - 1.5 }} />}
+      <View style={{ flex: 1, padding: space[4], gap: space[2], justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        {!wide && <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+          {scene
+            ? <Image source={scene} resizeMode="contain" style={{ width: 76, height: 76, marginLeft: -4 }} />
+            : art.map((k, i) => <Image key={k} source={plantArt[k]} resizeMode="contain" style={{ width: i === 1 ? 62 : 58, height: i === 1 ? 62 : 58, marginHorizontal: -6 }} />)}
+        </View>}
+        <View style={{ gap: 2 }}>
           <T v="headline">{label}</T>
           <T v="footnote" tone="ink2">{hint}</T>
         </View>

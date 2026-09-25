@@ -17,6 +17,13 @@ const modules = [
   require('../../assets/logo/o.png'),
   require('../../assets/logo/sprout.png'),
   require('../../assets/logo.png'),
+  require('../../assets/flower/1-seed.png'),
+  require('../../assets/flower/2-sprout.png'),
+  require('../../assets/flower/3-leaves.png'),
+  require('../../assets/flower/4-bud.png'),
+  require('../../assets/flower/5-bloom.png'),
+  require('../../assets/scenes/few.png'),
+  require('../../assets/scenes/garden.jpg'),
 ];
 
 export async function preloadImages() {
