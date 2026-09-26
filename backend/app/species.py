@@ -129,5 +129,9 @@ GENERIC = {
 }
 
 
-def notes_for(kind: str | None) -> dict:
-    return SPECIES_NOTES.get(kind or '', GENERIC)
+def notes_for(kind: str | None, lang: str = 'en') -> dict:
+    notes = SPECIES_NOTES.get(kind or '', GENERIC)
+    if lang == 'pt':
+        from .i18n import SPECIES_PT
+        return {**notes, **SPECIES_PT.get(kind if kind in SPECIES_NOTES else '', {})}
+    return notes

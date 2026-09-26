@@ -11,6 +11,7 @@ import { useTheme } from '../../ds/theme';
 import { fonts, radius, space, springs } from '../../ds/tokens';
 import { Chip, Glass, T, Tap } from '../../ds/components';
 import { Glyph } from '../../ds/icons';
+import { t } from '../../i18n';
 
 /**
  * Asks the OS for notification permission. Returns whether nudges can reach the phone.
@@ -66,9 +67,9 @@ function DetailSwitch({ detail, onDetail }: { detail: 'Guided' | 'Concise'; onDe
   React.useEffect(() => { x.value = reduceMotion ? (on ? 1 : 0) : withSpring(on ? 1 : 0, { damping: 15, stiffness: 260 }); }, [on]);
   const thumb = useAnimatedStyle(() => ({ transform: [{ translateX: 3 + x.value * 24 }, { scale: 1 + .06 * Math.sin(x.value * Math.PI) }] }));
   const track = useAnimatedStyle(() => ({ opacity: x.value }));
-  const title = on ? 'Walk me through it' : 'Just tell me';
-  const hint = on ? 'Explains what to check, how, and why.' : 'One short line. Straight to the point.';
-  return <Tap role="switch" selected={on} label={`Detailed nudges. ${title}. ${hint}`} onPress={() => onDetail(on ? 'Concise' : 'Guided')} ring={radius.card} scaleTo={.98}>
+  const title = on ? t('Walk me through it') : t('Just tell me');
+  const hint = on ? t('Explains what to check, how, and why.') : t('One short line. Straight to the point.');
+  return <Tap role="switch" selected={on} label={`${t('Detailed nudges')}. ${title}. ${hint}`} onPress={() => onDetail(on ? 'Concise' : 'Guided')} ring={radius.card} scaleTo={.98}>
     <Glass level="control" r={radius.card} shadow={false} style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], padding: space[3], minHeight: 72 }}>
       <MessageGlyph on={on} />
       <View style={{ flex: 1, gap: 2 }}>
@@ -96,46 +97,46 @@ export function NudgePicker({ selected, onToggle, detail, onDetail, time, onTime
       <Glass level="control" r={radius.card} style={{ padding: space[4], gap: space[2] }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
           <Glyph name="sprout" size={16} tone={c.leafMark} />
-          <T v="caption" tone="ink2" style={{ flex: 1 }}>Rootera</T>
+          <T v="caption" tone="ink2" style={{ flex: 1 }}>{t("Rootera")}</T>
           <T v="caption" tone="ink2">{time}</T>
         </View>
-        <T v="headline">{copy.title}</T>
-        <T v="subhead" tone="ink2">{detail === 'Guided' ? copy.guided : copy.concise}</T>
+        <T v="headline">{t(copy.title)}</T>
+        <T v="subhead" tone="ink2">{t(detail === 'Guided' ? copy.guided : copy.concise)}</T>
       </Glass>
     </Animated.View>
 
     <View>
       {kinds.map(k => {
         const on = selected.includes(k);
-        return <Tap key={k} role="switch" selected={on} label={nudgeCopy[k].label} onPress={() => { onToggle(k); setFocus(k); }} ring={radius.inner} scaleTo={.99}
+        return <Tap key={k} role="switch" selected={on} label={t(nudgeCopy[k].label)} onPress={() => { onToggle(k); setFocus(k); }} ring={radius.inner} scaleTo={.99}
           style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: space[3], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
           <View style={{ width: 22, height: 22, borderRadius: radius.inner, borderWidth: 1.5, borderColor: on ? c.ink : c.ink3, backgroundColor: on ? c.ink : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
             {on && <Glyph name="check" size={15} tone={c.canvas} />}
           </View>
-          <T v="body" style={{ flex: 1 }}>{nudgeCopy[k].label}</T>
-          {k === 'soil_check' && <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.input, backgroundColor: c.successSoft }}><T v="caption" tone="leafText">Recommended</T></View>}
+          <T v="body" style={{ flex: 1 }}>{t(nudgeCopy[k].label)}</T>
+          {k === 'soil_check' && <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.input, backgroundColor: c.successSoft }}><T v="caption" tone="leafText">{t("Recommended")}</T></View>}
         </Tap>;
       })}
     </View>
 
     <View style={{ gap: space[2] }}>
-      <T v="footnote" tone="ink2">How they sound</T>
+      <T v="footnote" tone="ink2">{t("How they sound")}</T>
       <DetailSwitch detail={detail} onDetail={onDetail} />
     </View>
 
     <View style={{ gap: space[3] }}>
-      <T v="footnote" tone="ink2">When they arrive</T>
+      <T v="footnote" tone="ink2">{t("When they arrive")}</T>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
-        <Tap label="Earlier" onPress={() => onTime(shiftTime(time, -15))} ring={22} style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: c.ink3, alignItems: 'center', justifyContent: 'center' }}><T v="title2">−</T></Tap>
-        <T v="figure" accessibilityLabel={`Nudges at ${time}`} style={{ minWidth: 110, textAlign: 'center' }}>{time}</T>
-        <Tap label="Later" onPress={() => onTime(shiftTime(time, 15))} ring={22} style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: c.ink3, alignItems: 'center', justifyContent: 'center' }}><T v="title2">+</T></Tap>
+        <Tap label={t("Earlier")} onPress={() => onTime(shiftTime(time, -15))} ring={22} style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: c.ink3, alignItems: 'center', justifyContent: 'center' }}><T v="title2">−</T></Tap>
+        <T v="figure" accessibilityLabel={t('Nudges at {time}', { time })} style={{ minWidth: 110, textAlign: 'center' }}>{time}</T>
+        <Tap label={t("Later")} onPress={() => onTime(shiftTime(time, 15))} ring={22} style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: c.ink3, alignItems: 'center', justifyContent: 'center' }}><T v="title2">+</T></Tap>
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-        {['07:00', '08:00', '09:00', '19:00'].map(t => <Chip key={t} label={t} selected={time === t} onPress={() => onTime(t)} />)}
+        {['07:00', '08:00', '09:00', '19:00'].map(h => <Chip key={h} label={h} selected={time === h} onPress={() => onTime(h)} />)}
       </View>
       {late && <Animated.View entering={FadeIn.duration(240)} style={{ flexDirection: 'row', gap: space[2], alignItems: 'center' }}>
         <Glyph name="light" size={18} tone={c.amber} />
-        <T v="subhead" style={{ flex: 1 }}>Watering is best in the morning, so the soil can dry during the day. An earlier time may suit watering nudges better.</T>
+        <T v="subhead" style={{ flex: 1 }}>{t("Watering is best in the morning, so the soil can dry during the day. An earlier time may suit watering nudges better.")}</T>
       </Animated.View>}
     </View>
   </View>;

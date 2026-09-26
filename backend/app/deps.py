@@ -3,6 +3,7 @@ import secrets
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from .config import Settings
+from .i18n import lang_from
 from .service import GardenService
 
 bearer = HTTPBearer()
@@ -30,7 +31,7 @@ def integrations(config: Settings) -> dict:
 
 
 def service(request: Request, user: str = Depends(owner), db=Depends(session)) -> GardenService:
-    return GardenService(db, user, integrations(request.app.state.settings))
+    return GardenService(db, user, integrations(request.app.state.settings), lang_from(request.headers.get('accept-language')))
 
 
 def demo_only(config: Settings = Depends(settings)):

@@ -5,7 +5,8 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const source = ts.transpileModule(fs.readFileSync(require.resolve('../src/model.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 const mod = { exports: {} };
-vm.runInNewContext(source, { exports: mod.exports, module: mod, Date, Math });
+const i18nStub = { t: (s, v) => v ? s.replace(/\{(\w+)\}/g, (m, k) => (k in v ? String(v[k]) : m)) : s, locale: () => 'en-US' };
+vm.runInNewContext(source, { exports: mod.exports, module: mod, Date, Math, Intl, Proxy, require: id => { if (id === './i18n') return i18nStub; throw new Error(id); } });
 const { ago, atCapacity, byUrgency, catalog, describeEvent, emptyGarden, known, matchesSpecies, searchText } = mod.exports;
 
 const now = Date.parse('2026-09-25T12:00:00Z');

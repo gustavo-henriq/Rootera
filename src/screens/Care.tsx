@@ -14,6 +14,7 @@ import { haptic } from '../ds/feedback';
 import { DepthRuler } from '../ds/DepthRuler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CHECKED_IN } from './NameInvite';
+import { t } from '../i18n';
 
 const soilHints: Record<Soil, string> = {
   dry: 'Crumbly, no coolness on your finger',
@@ -26,7 +27,7 @@ const soilOrder: Soil[] = ['dry', 'slightly_moist', 'moist', 'wet', 'not_sure'];
 const visualGlyph: Record<Visual, GlyphName> = { great: 'leaf', different: 'spark', unwell: 'alert', not_sure: 'info' };
 const visualHints: Record<Visual, string> = { great: 'Leaves look like usual', different: 'Colour, droop or spots you hadn’t seen', unwell: 'Clearly struggling', not_sure: 'Can’t tell right now' };
 const AMOUNTS = ['Not measured', '100', '250', '500', 'Other'] as const;
-const amountLabel = (a: (typeof AMOUNTS)[number]) => a === 'Not measured' || a === 'Other' ? a : `${a} ml`;
+const amountLabel = (a: (typeof AMOUNTS)[number]) => a === 'Not measured' || a === 'Other' ? t(a) : `${a} ml`;
 
 /** One choice per row; the soil scale doubles as a legend of soil colour, dry to wet. */
 function Options<V extends string>({ values, value, onChange, label, hint, lead }: { values: V[]; value: V | ''; onChange: (v: V) => void; label: (v: V) => string; hint: (v: V) => string; lead: (v: V, on: boolean) => React.ReactNode }) {
@@ -77,80 +78,80 @@ function CheckIn({ navigation, route }: Props<'Care'>) {
   const save = async () => {
     if (busy || !soil || !watered) return;
     setBusy(true); setError('');
-    const t = ids.current.at;
+    const at0 = ids.current.at;
     const base = { plantId: plant.id, source: 'USER' as const, note: '' };
     try {
       // Report the change across the whole check-in, not just the last write.
       let to: string | undefined;
       const track = (x: Awaited<ReturnType<typeof logCare>>) => { if (x.change?.to) to = x.change.to; return x; };
-      track(await logCare({ ...base, id: ids.current.soil, type: 'Soil check', soil, at: new Date(t).toISOString() }));
+      track(await logCare({ ...base, id: ids.current.soil, type: 'Soil check', soil, at: new Date(at0).toISOString() }));
       // Watering comes after the check it answered, so the soil check stays the "before" reading.
-      if (watered === 'yes') track(await logCare({ ...base, id: ids.current.water, type: 'Watered', amount_ml: ml, at: new Date(t + 1000).toISOString() }));
-      if (visual) track(await logCare({ ...base, id: ids.current.look, type: 'Observation', visual, note: note.trim(), at: new Date(t + 2000).toISOString() }));
+      if (watered === 'yes') track(await logCare({ ...base, id: ids.current.water, type: 'Watered', amount_ml: ml, at: new Date(at0 + 1000).toISOString() }));
+      if (visual) track(await logCare({ ...base, id: ids.current.look, type: 'Observation', visual, note: note.trim(), at: new Date(at0 + 2000).toISOString() }));
       if (stage && stage !== plant.stage) await updatePlant(plant.id, { stage });
       AsyncStorage.setItem(CHECKED_IN, '1').catch(() => undefined);
       // What this check-in created, so the confirmation can offer Undo.
       const created = [ids.current.soil, ...(watered === 'yes' ? [ids.current.water] : []), ...(visual ? [ids.current.look] : [])];
-      navigation.popTo('Plant', { id: plant.id, saved: { title: watered === 'yes' ? 'Check-in and watering saved' : 'Check-in saved', from: to ? g?.title : undefined, to,
+      navigation.popTo('Plant', { id: plant.id, saved: { title: watered === 'yes' ? t('Check-in and watering saved') : t('Check-in saved'), from: to ? g?.title : undefined, to,
         undo: { ids: created, stage: stage && stage !== plant.stage ? plant.stage ?? 'Not sure' : undefined },
         // A stage moving forward is a milestone worth a moment (and only then).
         milestone: stage && STAGES.indexOf(stage as any) > STAGES.indexOf((plant.stage ?? '') as any) && STAGES.includes((plant.stage ?? '') as any) ? stage : undefined } });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save. Please try again.');
+      setError(e instanceof Error ? e.message : t('Could not save. Please try again.'));
     } finally { setBusy(false); }
   };
 
   return <Page close={() => !busy && navigation.goBack()} titleInBar={plant.name} gap={space[6]}
     footer={<>
-      {!!error && <Toast tone="error" title="Not saved" text={error} onClose={() => setError('')} />}
-      <Btn title={error ? 'Try again' : 'Save check-in'} busy={busy} disabled={!soil || !watered} hint={!soil ? 'Choose how the soil feels to save.' : 'Say whether you watered it to save.'} onPress={() => void save()} />
+      {!!error && <Toast tone="error" title={t("Not saved")} text={error} onClose={() => setError('')} />}
+      <Btn title={error ? t('Try again') : t('Save check-in')} busy={busy} disabled={!soil || !watered} hint={!soil ? t('Choose how the soil feels to save.') : t('Say whether you watered it to save.')} onPress={() => void save()} />
     </>}>
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space[4] }}>
       <View style={{ flex: 1, gap: space[2] }}>
-        <T v="footnote" tone="ink2">Check in</T>
+        <T v="footnote" tone="ink2">{t("Check in")}</T>
         <T v="title">{plant.name}</T>
       </View>
       <PlantArt kind={plant.kind} photo={plant.photo} size={72} />
     </View>
 
     <View style={{ gap: space[3] }}>
-      <T v="headline">How does the soil feel?</T>
+      <T v="headline">{t("How does the soil feel?")}</T>
       <DepthRuler dryness={plant.kind === 'other' ? 'unknown' : g?.reference.dryness} />
       {!!g?.reference.check_tip && <T v="subhead" tone="ink2">{g.reference.check_tip}</T>}
-      <Options values={soilOrder} value={soil} onChange={setSoil} label={v => soilLabel[v]} hint={v => soilHints[v]}
+      <Options values={soilOrder} value={soil} onChange={setSoil} label={v => soilLabel[v]} hint={v => t(soilHints[v])}
         lead={v => v === 'not_sure'
           ? <View style={{ width: 30, height: 30, borderRadius: radius.inner, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.ink3 }} />
           : <View style={{ width: 30, height: 30, borderRadius: radius.inner, backgroundColor: c.soil[soilOrder.indexOf(v)], overflow: 'hidden', justifyContent: 'flex-end' }}>{v === 'wet' && <View style={{ height: 8, backgroundColor: c.water, opacity: .6 }} />}</View>} />
     </View>
 
     {!!soil && <Animated.View entering={FadeIn.duration(260)} style={{ gap: space[3] }}>
-      <T v="headline">Did you water it just now?</T>
+      <T v="headline">{t("Did you water it just now?")}</T>
       <View style={{ flexDirection: 'row', gap: space[2] }}>
-        <Chip label="Yes, just now" selected={watered === 'yes'} onPress={() => setWatered('yes')} />
-        <Chip label="No" selected={watered === 'no'} onPress={() => setWatered('no')} />
+        <Chip label={t("Yes, just now")} selected={watered === 'yes'} onPress={() => setWatered('yes')} />
+        <Chip label={t("No")} selected={watered === 'no'} onPress={() => setWatered('no')} />
       </View>
       {watered === 'yes' && <Animated.View entering={FadeIn.duration(200)} style={{ gap: space[2] }}>
-        <T v="footnote" tone="ink2">Roughly how much? Optional.</T>
+        <T v="footnote" tone="ink2">{t("Roughly how much? Optional.")}</T>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>{AMOUNTS.filter(a => a !== 'Other').map(a => <Chip key={a} label={amountLabel(a)} selected={amount === a} onPress={() => setAmount(a)} />)}</View>
       </Animated.View>}
     </Animated.View>}
 
     {!!watered && <Animated.View entering={FadeIn.duration(260)} style={{ gap: space[3] }}>
       <View style={{ gap: 2 }}>
-        <T v="headline">How do the leaves look?</T>
-        <T v="footnote" tone="ink2">Optional. This isn’t a diagnosis.</T>
+        <T v="headline">{t("How do the leaves look?")}</T>
+        <T v="footnote" tone="ink2">{t("Optional. This isn’t a diagnosis.")}</T>
       </View>
-      <Options values={['great', 'different', 'unwell'] as Visual[]} value={visual} onChange={v => setVisual(visual === v ? '' : v)} label={v => visualLabel[v]} hint={v => visualHints[v]}
+      <Options values={['great', 'different', 'unwell'] as Visual[]} value={visual} onChange={v => setVisual(visual === v ? '' : v)} label={v => visualLabel[v]} hint={v => t(visualHints[v])}
         lead={(v, on) => <View style={{ width: 30, alignItems: 'center' }}><Glyph name={visualGlyph[v]} size={22} tone={on ? c.ink : c.ink2} /></View>} />
-      {(visual === 'different' || visual === 'unwell') && <Field label="What changed? (optional)" value={note} onChangeText={setNote} placeholder="A lower leaf turning yellow" maxLength={300} />}
+      {(visual === 'different' || visual === 'unwell') && <Field label={t("What changed? (optional)")} value={note} onChangeText={setNote} placeholder={t("A lower leaf turning yellow")} maxLength={300} />}
     </Animated.View>}
 
     {!!watered && <Animated.View entering={FadeIn.delay(120).duration(260)} style={{ gap: space[3] }}>
       <View style={{ gap: 2 }}>
-        <T v="headline">Growth stage</T>
-        <T v="footnote" tone="ink2">{stage ? stageHints[stage as (typeof STAGES)[number]] : 'Optional. Change it when your plant grows.'}</T>
+        <T v="headline">{t("Growth stage")}</T>
+        <T v="footnote" tone="ink2">{stage ? t(stageHints[stage as (typeof STAGES)[number]]) : t('Optional. Change it when your plant grows.')}</T>
       </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>{STAGES.map(s => <Chip key={s} label={s} selected={stage === s} onPress={() => setStage(s)} />)}</View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>{STAGES.map(s => <Chip key={s} label={t(s)} selected={stage === s} onPress={() => setStage(s)} />)}</View>
     </Animated.View>}
   </Page>;
 }
@@ -176,7 +177,7 @@ function SingleCare({ navigation, route }: Props<'Care'>) {
   const [error, setError] = useState('');
   const pending = useRef<CareEvent | null>(null);
 
-  if (!plant) return <Page close={navigation.goBack}><T v="title">This plant isn’t in your garden anymore.</T></Page>;
+  if (!plant) return <Page close={navigation.goBack}><T v="title">{t("This plant isn’t in your garden anymore.")}</T></Page>;
 
   const ml = amount === 'Other' ? Number(custom) : amount === 'Not measured' ? null : Number(amount);
   const invalid = amount === 'Other' && (!custom.trim() || !Number.isFinite(ml) || (ml ?? 0) <= 0 || (ml ?? 0) > 20000);
@@ -195,20 +196,20 @@ function SingleCare({ navigation, route }: Props<'Care'>) {
     if (!same) pending.current = { id: newId('care'), plantId: plant.id, at: new Date().toISOString(), source: 'USER', ...content };
     try {
       const r = await logCare(pending.current!);
-      const title = mode === 'soil' ? `Soil check saved: ${soilLabel[soil as Soil].toLowerCase()}` : mode === 'visual' ? 'Leaf note saved' : 'Watering recorded';
+      const title = mode === 'soil' ? t('Soil check saved: {v}', { v: soilLabel[soil as Soil].toLowerCase() }) : mode === 'visual' ? t('Leaf note saved') : t('Watering recorded');
       navigation.popTo('Plant', { id: plant.id, saved: { title, from: r.change?.from, to: r.change?.to, undo: { ids: [pending.current!.id] } } });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save. Please try again.');
+      setError(e instanceof Error ? e.message : t('Could not save. Please try again.'));
     } finally { setBusy(false); }
   };
 
-  const titles = { soil: 'How does the soil feel?', visual: 'How do the leaves look?', water: 'Record watering' };
-  const subtitle = mode === 'soil' ? g?.reference.check_tip : mode === 'water' ? 'Saved as now. Amount and a note are optional.' : 'What you notice matters more than a perfect answer. This isn’t a diagnosis.';
+  const titles = { soil: t('How does the soil feel?'), visual: t('How do the leaves look?'), water: t('Record watering') };
+  const subtitle = mode === 'soil' ? g?.reference.check_tip : mode === 'water' ? t('Saved as now. Amount and a note are optional.') : t('What you notice matters more than a perfect answer. This isn’t a diagnosis.');
 
   return <Page close={() => !busy && navigation.goBack()} titleInBar={plant.name} gap={space[5]}
     footer={<>
-      {!!error && <Toast tone="error" title="Not saved" text={error} onClose={() => setError('')} />}
-      <Btn title={error ? 'Try again' : mode === 'water' ? 'Save watering' : 'Save'} busy={busy} disabled={!ready} onPress={() => void save()} />
+      {!!error && <Toast tone="error" title={t("Not saved")} text={error} onClose={() => setError('')} />}
+      <Btn title={error ? t('Try again') : mode === 'water' ? t('Save watering') : t('Save')} busy={busy} disabled={!ready} onPress={() => void save()} />
     </>}>
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space[4] }}>
       <View style={{ flex: 1, gap: space[2] }}>
@@ -219,25 +220,25 @@ function SingleCare({ navigation, route }: Props<'Care'>) {
     </View>
     {!!subtitle && <T v="callout" tone="ink2">{subtitle}</T>}
 
-    {mode === 'soil' && <Options values={soilOrder} value={soil} onChange={setSoil} label={v => soilLabel[v]} hint={v => soilHints[v]}
+    {mode === 'soil' && <Options values={soilOrder} value={soil} onChange={setSoil} label={v => soilLabel[v]} hint={v => t(soilHints[v])}
       lead={v => v === 'not_sure'
         ? <View style={{ width: 30, height: 30, borderRadius: radius.inner, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.ink3 }} />
         : <View style={{ width: 30, height: 30, borderRadius: radius.inner, backgroundColor: c.soil[soilOrder.indexOf(v)], overflow: 'hidden', justifyContent: 'flex-end' }}>{v === 'wet' && <View style={{ height: 8, backgroundColor: c.water, opacity: .6 }} />}</View>} />}
 
     {mode === 'visual' && <>
-      <Options values={['great', 'different', 'unwell', 'not_sure'] as Visual[]} value={visual} onChange={setVisual} label={v => visualLabel[v]} hint={v => visualHints[v]}
+      <Options values={['great', 'different', 'unwell', 'not_sure'] as Visual[]} value={visual} onChange={setVisual} label={v => visualLabel[v]} hint={v => t(visualHints[v])}
         lead={(v, on) => <View style={{ width: 30, alignItems: 'center' }}><Glyph name={visualGlyph[v]} size={22} tone={on ? c.ink : c.ink2} /></View>} />
-      {(visual === 'different' || visual === 'unwell') && <Animated.View entering={FadeIn.duration(200)}><Field label="What changed? (optional)" value={note} onChangeText={setNote} placeholder="A lower leaf turning yellow" maxLength={300} /></Animated.View>}
+      {(visual === 'different' || visual === 'unwell') && <Animated.View entering={FadeIn.duration(200)}><Field label={t("What changed? (optional)")} value={note} onChangeText={setNote} placeholder={t("A lower leaf turning yellow")} maxLength={300} /></Animated.View>}
     </>}
 
     {mode === 'water' && <>
       <View style={{ gap: space[3] }}>
-        <T v="headline">Roughly how much?</T>
+        <T v="headline">{t("Roughly how much?")}</T>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>{AMOUNTS.map(a => <Chip key={a} label={amountLabel(a)} selected={amount === a} onPress={() => setAmount(a)} />)}</View>
-        {amount === 'Other' && <Animated.View entering={FadeIn.duration(200)}><Field label="Amount in ml" value={custom} onChangeText={t => setCustom(t.replace(/[^0-9]/g, ''))} numeric autoFocus maxLength={5} /></Animated.View>}
-        {invalid && !!custom && <T v="footnote" tone="danger">Enter an amount between 1 and 20,000 ml.</T>}
+        {amount === 'Other' && <Animated.View entering={FadeIn.duration(200)}><Field label={t("Amount in ml")} value={custom} onChangeText={v => setCustom(v.replace(/[^0-9]/g, ''))} numeric autoFocus maxLength={5} /></Animated.View>}
+        {invalid && !!custom && <T v="footnote" tone="danger">{t("Enter an amount between 1 and 20,000 ml.")}</T>}
       </View>
-      <Field label="Note (optional)" value={note} onChangeText={setNote} placeholder="Watered until it drained" maxLength={300} />
+      <Field label={t("Note (optional)")} value={note} onChangeText={setNote} placeholder={t("Watered until it drained")} maxLength={300} />
     </>}
   </Page>;
 }

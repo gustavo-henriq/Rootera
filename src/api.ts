@@ -1,5 +1,6 @@
 import { NativeModules, Platform } from 'react-native';
 import { CareEvent, Caregiver, Garden, Nudges, Plan, Plant, PlantKind } from './model';
+import { lang, t } from './i18n';
 
 /**
  * Where the API lives. "metro" means: through the dev server that served this bundle
@@ -30,17 +31,18 @@ export async function request<T>(path: string, method = 'GET', body?: unknown, t
   try {
     response = await fetch(`${API_URL}${path}`, {
       method, signal: controller.signal,
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      // The server writes its guidance in the app's language.
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept-Language': lang() === 'pt' ? 'pt-BR' : 'en' },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError('Can’t reach Rootera right now. Nothing was saved. Check your connection and try again.', 0, true);
+    throw new ApiError(t('Can’t reach Rootera right now. Nothing was saved. Check your connection and try again.'), 0, true);
   } finally {
     clearTimeout(timer);
   }
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const detail = typeof payload.detail === 'string' ? payload.detail : 'Please check the information and try again.';
+    const detail = typeof payload.detail === 'string' ? payload.detail : t('Please check the information and try again.');
     throw new ApiError(detail, response.status);
   }
   return payload as T;

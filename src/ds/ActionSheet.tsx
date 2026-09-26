@@ -12,6 +12,7 @@ import { radius, space } from './tokens';
 import { T, Tap } from './components';
 import { Glyph, GlyphName } from './icons';
 import { haptic } from './feedback';
+import { t } from '../i18n';
 
 export interface SheetAction { label: string; icon: GlyphName; onPress: () => void; destructive?: boolean }
 
@@ -24,7 +25,7 @@ export function ActionSheet({ visible, title, actions, onClose }: { visible: boo
     if (Platform.OS === 'ios') {
       haptic.tap();
       ActionSheetIOS.showActionSheetWithOptions({
-        title, options: [...actions.map(a => a.label), 'Cancel'], cancelButtonIndex: actions.length,
+        title, options: [...actions.map(a => a.label), t('Cancel')], cancelButtonIndex: actions.length,
         destructiveButtonIndex: actions.findIndex(a => a.destructive),
       }, i => { onClose(); actions[i]?.onPress(); });
       return;
@@ -39,7 +40,7 @@ export function ActionSheet({ visible, title, actions, onClose }: { visible: boo
   if (Platform.OS === 'ios' || !visible) return null;
   return <Modal transparent visible animationType="none" onRequestClose={onClose} statusBarTranslucent>
     <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(160)} exiting={FadeOut.duration(120)} style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={StyleSheet.absoluteFill} />
+      <Pressable accessibilityRole="button" accessibilityLabel={t("Close")} onPress={onClose} style={StyleSheet.absoluteFill} />
     </Animated.View>
     <View pointerEvents="box-none" style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
       <Animated.View accessibilityViewIsModal entering={reduceMotion ? undefined : SlideInDown.springify().damping(26).stiffness(260)} exiting={SlideOutDown.duration(160)}
@@ -50,8 +51,8 @@ export function ActionSheet({ visible, title, actions, onClose }: { visible: boo
           <Glyph name={a.icon} size={20} tone={a.destructive ? c.danger : c.ink} /><T v="body" tone={a.destructive ? 'danger' : 'ink'}>{a.label}</T>
         </Tap>)}
         <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: c.hairline, marginVertical: space[1] }} />
-        <Tap label="Cancel" onPress={onClose} ring={radius.control} style={{ minHeight: 52, alignItems: 'center', justifyContent: 'center' }}>
-          <T v="headline">Cancel</T>
+        <Tap label={t("Cancel")} onPress={onClose} ring={radius.control} style={{ minHeight: 52, alignItems: 'center', justifyContent: 'center' }}>
+          <T v="headline">{t("Cancel")}</T>
         </Tap>
       </Animated.View>
     </View>

@@ -10,6 +10,7 @@ import Svg, { Line, Path, Rect } from 'react-native-svg';
 import { useTheme } from './theme';
 import { space } from './tokens';
 import { T } from './components';
+import { t } from '../i18n';
 
 type Dryness = 'top' | 'half' | 'full' | 'unknown' | undefined;
 const DEPTH: Record<string, { at: number; label: string }> = {
@@ -28,7 +29,7 @@ export function DepthRuler({ dryness }: { dryness: Dryness }) {
   useEffect(() => { if (!reduceMotion) p.value = withDelay(250, withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) })); }, [dryness]);
   // The finger slides down from above the rim to the checking depth.
   const finger = useAnimatedStyle(() => ({ transform: [{ translateY: (depthY - 4) * p.value - 18 }] }));
-  return <View accessible accessibilityRole="image" accessibilityLabel={`Check depth: ${d.label}`} style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
+  return <View accessible accessibilityRole="image" accessibilityLabel={t('Check depth: {v}', { v: t(d.label) })} style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
     <View style={{ width: W, height: H }}>
       <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
         <Path d={`M16 ${top} L104 ${top} L94 ${bottom} L26 ${bottom} Z`} fill={c.clay} opacity={.9} />
@@ -39,8 +40,8 @@ export function DepthRuler({ dryness }: { dryness: Dryness }) {
       <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: W / 2 - 7, top: 0, width: 14, height: 34, borderRadius: 7, backgroundColor: c.soil[0], borderWidth: 1.5, borderColor: c.ink2 }, finger]} />
     </View>
     <View style={{ flex: 1, gap: 2 }}>
-      <T v="footnote" tone="ink2">How deep to check</T>
-      <T v="subhead">{d.label}</T>
+      <T v="footnote" tone="ink2">{t("How deep to check")}</T>
+      <T v="subhead">{t(d.label)}</T>
     </View>
   </View>;
 }

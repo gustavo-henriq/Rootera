@@ -46,7 +46,8 @@
     "typecheck": "tsc --noEmit",
     "build": "expo export --platform all",
     "dev": "expo start --web",
-    "test:model": "node tests/model.cjs"
+    "test:model": "node tests/model.cjs",
+    "test:i18n": "node tests/i18n.cjs"
   },
   "private": true
 }

@@ -8,9 +8,12 @@
 import { Platform } from 'react-native';
 import { api } from './api';
 import { byUrgency, Garden, newId } from './model';
+import { lang, t, tn } from './i18n';
 
 const CATEGORY = 'rootera-soil-check';
 let configured = false;
+/** The buttons are registered in one language; register again when it changes. */
+let categoryLang = '';
 
 async function notifications() {
   if (Platform.OS === 'web') return null;
@@ -19,19 +22,23 @@ async function notifications() {
 
 async function configure() {
   const N = await notifications();
-  if (!N || configured) return N;
+  if (!N) return N;
+  if (categoryLang !== lang()) {
+    categoryLang = lang();
+    await N.setNotificationCategoryAsync(CATEGORY, [
+      { identifier: 'dry', buttonTitle: t('Dry'), options: { opensAppToForeground: false } },
+      { identifier: 'moist', buttonTitle: t('Still moist'), options: { opensAppToForeground: false } },
+    ]).catch(() => undefined);
+  }
+  if (configured) return N;
   configured = true;
   N.setNotificationHandler({ handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }) });
-  await N.setNotificationCategoryAsync(CATEGORY, [
-    { identifier: 'dry', buttonTitle: 'Dry', options: { opensAppToForeground: false } },
-    { identifier: 'moist', buttonTitle: 'Still moist', options: { opensAppToForeground: false } },
-  ]).catch(() => undefined);
   // A button press is a real soil check, recorded like any other (the app refreshes on open).
   N.addNotificationResponseReceivedListener(r => {
     const data = r.notification.request.content.data as { plantId?: string } | undefined;
     const soil = r.actionIdentifier === 'dry' ? 'dry' : r.actionIdentifier === 'moist' ? 'moist' : null;
     if (!soil || !data?.plantId) return;
-    void api.logCare({ id: newId('care'), plantId: data.plantId, type: 'Soil check', soil, note: 'From a nudge', at: new Date().toISOString(), source: 'USER' }).catch(() => undefined);
+    void api.logCare({ id: newId('care'), plantId: data.plantId, type: 'Soil check', soil, note: t('From a nudge'), at: new Date().toISOString(), source: 'USER' }).catch(() => undefined);
   });
   return N;
 }
@@ -54,8 +61,10 @@ export async function scheduleNudges(garden: Garden) {
         const others = needs.length - 1;
         await N.scheduleNotificationAsync({
           content: {
-            title: `Worth a soil check: ${first.name}`,
-            body: detail === 'Guided' ? `${g?.title ?? 'Check the soil'}. Push a finger into the soil and tell Rootera how it feels.${others ? ` ${others} more ${others === 1 ? 'plant needs' : 'plants need'} you today.` : ''}` : `${g?.title ?? 'Check the soil'}.${others ? ` +${others} more.` : ''}`,
+            title: t('Worth a soil check: {name}', { name: first.name }),
+            body: detail === 'Guided'
+              ? `${t('{title}. Push a finger into the soil and tell Rootera how it feels.', { title: g?.title ?? t('Check the soil') })}${others ? ` ${tn(others, '{n} more plant needs you today.', '{n} more plants need you today.')}` : ''}`
+              : `${g?.title ?? t('Check the soil')}.${others ? ` ${t('+{n} more.', { n: others })}` : ''}`,
             categoryIdentifier: CATEGORY, data: { plantId: first.id },
           },
           trigger: { type: N.SchedulableTriggerInputTypes.DAILY, hour, minute },
@@ -64,7 +73,7 @@ export async function scheduleNudges(garden: Garden) {
     }
     if (garden.nudges.kinds.includes('leaves') && garden.plants.length) {
       await N.scheduleNotificationAsync({
-        content: { title: 'How do the leaves look?', body: detail === 'Guided' ? 'A quick look now and then helps spot changes early. Note anything new in Rootera.' : 'Take a quick look at the leaves.' },
+        content: { title: t('How do the leaves look?'), body: detail === 'Guided' ? t('A quick look now and then helps spot changes early. Note anything new in Rootera.') : t('Take a quick look at the leaves.') },
         trigger: { type: N.SchedulableTriggerInputTypes.WEEKLY, weekday: 1, hour, minute },
       });
     }

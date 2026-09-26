@@ -7,6 +7,7 @@ import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useTheme } from './theme';
+import { t } from '../i18n';
 
 const LETTERS = require('../../assets/logo/letters.webp');
 const O = require('../../assets/logo/o.webp');
@@ -54,7 +55,7 @@ export function LogoSprout({ width = 260, run, variant = 'full', onDone }: { wid
   });
 
   const layer = { position: 'absolute' as const, width, height: h };
-  return <View accessible accessibilityRole="image" accessibilityLabel="Rootera" style={{ width, height: h }}>
+  return <View accessible accessibilityRole="image" accessibilityLabel={t("Rootera")} style={{ width, height: h }}>
     <Animated.Image source={LETTERS} resizeMode="contain" style={[layer, lettersStyle]} />
     <Animated.Image source={SPROUT} resizeMode="contain" style={[layer, { transformOrigin: `${STEM_X * 100}% ${STEM_BASE_Y * 100}%` }, sproutStyle]} />
     <Animated.Image source={O} resizeMode="contain" style={[layer, { transformOrigin: `${STEM_X * 100}% ${STEM_BASE_Y * 100 + 50 * (1 - STEM_BASE_Y)}%` }, oStyle]} />

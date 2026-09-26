@@ -12,6 +12,7 @@ import { radius, space, type } from './tokens';
 import { T, Tap } from './components';
 import { Glyph } from './icons';
 import { searchText } from '../model';
+import { t } from '../i18n';
 
 export interface PickerItem { id: string; label: string; detail?: string }
 
@@ -19,28 +20,28 @@ export function PickerSheet({ visible, title, items, selected, onSelect, onClose
   const { c, reduceMotion } = useTheme();
   const insets = useSafeAreaInsets();
   const [q, setQ] = useState('');
-  const shown = useMemo(() => { const t = searchText(q); return t ? items.filter(i => searchText(`${i.label} ${i.detail ?? ''}`).includes(t)) : items; }, [q, items]);
+  const shown = useMemo(() => { const needle = searchText(q); return needle ? items.filter(i => searchText(`${i.label} ${i.detail ?? ''}`).includes(needle)) : items; }, [q, items]);
   if (!visible) return null;
   const close = () => { setQ(''); onClose(); };
   return <Modal transparent visible animationType="none" onRequestClose={close} statusBarTranslucent>
     <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(160)} style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} style={StyleSheet.absoluteFill} />
+      <Pressable accessibilityRole="button" accessibilityLabel={t("Close")} onPress={close} style={StyleSheet.absoluteFill} />
     </Animated.View>
     <View pointerEvents="box-none" style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
       <Animated.View accessibilityViewIsModal entering={reduceMotion ? undefined : SlideInDown.springify().damping(26).stiffness(260)}
         style={{ width: '100%', maxWidth: 440, height: '78%', backgroundColor: c.raised, borderTopLeftRadius: radius.chrome, borderTopRightRadius: radius.chrome, paddingTop: space[4], paddingHorizontal: space.gutter }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space[2] }}>
           <T v="title2" accessibilityRole="header">{title}</T>
-          <Tap label="Close" onPress={close} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Glyph name="close" size={18} /></Tap>
+          <Tap label={t("Close")} onPress={close} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Glyph name="close" size={18} /></Tap>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], borderBottomWidth: 1, borderColor: c.ink3 }}>
           <Glyph name="search" size={20} tone={c.ink2} />
-          <TextInput accessibilityLabel={`Search ${title.toLowerCase()}`} value={q} onChangeText={setQ} placeholder="Search" placeholderTextColor={c.ink3} autoFocus={Platform.OS !== 'web'} maxFontSizeMultiplier={1.5}
+          <TextInput accessibilityLabel={t('Search {what}', { what: title.toLowerCase() })} value={q} onChangeText={setQ} placeholder={t("Search")} placeholderTextColor={c.ink3} autoFocus={Platform.OS !== 'web'} maxFontSizeMultiplier={1.5}
             style={[type.body, { flex: 1, minHeight: 48, color: c.ink }, Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)]} />
         </View>
         <FlatList data={shown} keyExtractor={i => i.id} keyboardShouldPersistTaps="handled" initialNumToRender={16}
           contentContainerStyle={{ paddingBottom: insets.bottom + space[6] }}
-          ListEmptyComponent={<T v="subhead" tone="ink2" style={{ paddingVertical: space[4] }}>Nothing matches “{q}”.</T>}
+          ListEmptyComponent={<T v="subhead" tone="ink2" style={{ paddingVertical: space[4] }}>{t('Nothing matches “{q}”.', { q })}</T>}
           renderItem={({ item }) => {
             const on = item.id === selected;
             return <Tap role="radio" selected={on} label={item.detail ? `${item.label}, ${item.detail}` : item.label} onPress={() => { onSelect(item.id); close(); }} scaleTo={.99} ring={radius.inner}

@@ -12,6 +12,7 @@ import { useTheme } from './theme';
 import { radius, space } from './tokens';
 import { Glass, GlassIcon, T } from './components';
 import { GlyphName } from './icons';
+import { t } from '../i18n';
 
 export interface PageAction { icon: GlyphName; label: string; onPress: () => void }
 
@@ -51,7 +52,7 @@ export function Page({ title, back, close, actions, footer, tab, children, gap =
       <LinearGradient colors={[glow, 'transparent']} style={{ flex: 1 }} />
     </Animated.View>}
     {hasBar && <View pointerEvents="box-none" style={{ position: 'absolute', zIndex: 10, top: insets.top + 6, left: space.gutter - 4, right: space.gutter - 4, height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-      <View style={{ minWidth: 44 }}>{back ? <GlassIcon name="back" label="Go back" onPress={back} /> : close ? <GlassIcon name="close" label="Close" onPress={close} /> : null}</View>
+      <View style={{ minWidth: 44 }}>{back ? <GlassIcon name="back" label={t("Go back")} onPress={back} /> : close ? <GlassIcon name="close" label={t("Close")} onPress={close} /> : null}</View>
       {!!barTitle && <Animated.View pointerEvents="none" style={[{ flexShrink: 1, marginHorizontal: space[2] }, bar]}>
         <Glass level="chrome" r={radius.pill} style={{ paddingHorizontal: space[4], height: 40, justifyContent: 'center' }}>
           <T v="headline" lines={1}>{barTitle}</T>

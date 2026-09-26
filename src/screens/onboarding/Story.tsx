@@ -12,6 +12,7 @@ import { useCompact, useTheme } from '../../ds/theme';
 import { fonts, radius, space } from '../../ds/tokens';
 import { SourceMark, T, Tap } from '../../ds/components';
 import { Ground } from '../../ds/plant';
+import { t } from '../../i18n';
 
 /** One image per stage (seed, sprout, young plant, bud, bloom), all on the same canvas. */
 export const flowerStages: number[] = [
@@ -43,7 +44,7 @@ function StageImage({ src, on, w, h }: { src: number; on: boolean; w: number; h:
 function Flower({ stage, size }: { stage: number; size: number }) {
   const w = size * RATIO;
   const label = ['A seed in a pot', 'A sprout', 'A young plant', 'A plant with a bud', 'The plant in flower'][Math.min(stage, 4)];
-  return <View accessible accessibilityRole="image" accessibilityLabel={label} style={{ width: w, height: size }}>
+  return <View accessible accessibilityRole="image" accessibilityLabel={t(label)} style={{ width: w, height: size }}>
     {/* The contact shadow is drawn in code (it follows the theme); the art has none baked in. */}
     <Ground width={w * .72} style={{ position: 'absolute', bottom: -size * .07 }} />
     {flowerStages.map((src, i) => <StageImage key={i} src={src} on={i === Math.min(stage, flowerStages.length - 1)} w={w} h={size} />)}
@@ -83,10 +84,10 @@ function Node({ source, waiting, focused, onPress, wrap }: { source: typeof SOUR
   const { c } = useTheme();
   return <Animated.View entering={FadeIn.duration(360)}>
     <Glow on={waiting} />
-    <Tap label={waiting ? `${source.title}. Tap to see what it adds.` : `${source.title}. Show what it adds.`} selected={focused} onPress={onPress} ring={radius.control}
+    <Tap label={waiting ? `${t(source.title)}. ${t('Tap to see what it adds.')}` : `${t(source.title)}. ${t('Show what it adds.')}`} selected={focused} onPress={onPress} ring={radius.control}
       style={{ minHeight: 44, paddingHorizontal: 10, paddingVertical: 10, borderRadius: radius.control, borderWidth: focused || waiting ? 1.5 : 1, borderColor: focused || waiting ? c.ink : c.ink3, backgroundColor: c.raised, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
       <SourceMark kind={source.key} />
-      <T v="subhead" lines={wrap ? undefined : 1} style={{ fontFamily: fonts.medium, flexShrink: 1 }}>{source.title}</T>
+      <T v="subhead" lines={wrap ? undefined : 1} style={{ fontFamily: fonts.medium, flexShrink: 1 }}>{t(source.title)}</T>
     </Tap>
   </Animated.View>;
 }
@@ -137,7 +138,7 @@ export function Story({ width, start, onComplete }: { width: number; start: numb
       ? <View style={{ alignItems: 'center', gap: space[3] }}>
           <Flower stage={stage} size={150} />
           {bloomed && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.input, backgroundColor: c.successSoft }}>
-            <SourceMark kind="suggested" /><T v="caption" tone="leafText">Rootera suggests</T>
+            <SourceMark kind="suggested" /><T v="caption" tone="leafText">{t("Rootera suggests")}</T>
           </View>}
           {SOURCES.slice(0, shown).map((s, i) => <View key={s.key} style={{ alignSelf: 'stretch' }}>
             <Node source={s} waiting={waiting && i === done} focused={focus === i} onPress={() => tap(i)} wrap />
@@ -147,7 +148,7 @@ export function Story({ width, start, onComplete }: { width: number; start: numb
       <View style={{ position: 'absolute', left: (width - size * RATIO) / 2, top: plantTop }}><Flower stage={stage} size={size} /></View>
       {bloomed && <Animated.View entering={FadeIn.delay(450).duration(420)} style={{ position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.input, backgroundColor: c.successSoft }}>
-          <SourceMark kind="suggested" /><T v="caption" tone="leafText">Rootera suggests</T>
+          <SourceMark kind="suggested" /><T v="caption" tone="leafText">{t("Rootera suggests")}</T>
         </View>
       </Animated.View>}
       {SOURCES.map((s, i) => <Line key={'l' + s.key} on={i < done} {...lines[i]} />)}
@@ -158,12 +159,12 @@ export function Story({ width, start, onComplete }: { width: number; start: numb
     <View style={{ minHeight: 100, gap: space[2] }} accessibilityLiveRegion="polite">
       {focus !== null
         ? <Animated.View key={focus} entering={reduceMotion ? undefined : FadeInDown.duration(300)} style={{ gap: 4 }}>
-            <T v="headline">{SOURCES[focus].title}</T>
-            <T v="body" tone="ink2">{SOURCES[focus].text}</T>
+            <T v="headline">{t(SOURCES[focus].title)}</T>
+            <T v="body" tone="ink2">{t(SOURCES[focus].text)}</T>
           </Animated.View>
-        : shown > 0 && <Animated.View entering={FadeIn.duration(300)}><T v="body" tone="ink2">Tap the glowing source to see what it adds.</T></Animated.View>}
+        : shown > 0 && <Animated.View entering={FadeIn.duration(300)}><T v="body" tone="ink2">{t("Tap the glowing source to see what it adds.")}</T></Animated.View>}
       {bloomed && <Animated.View entering={FadeInDown.delay(450).duration(420)}>
-        <T v="subhead" tone="ink2">Every suggestion shows which of these it came from.</T>
+        <T v="subhead" tone="ink2">{t("Every suggestion shows which of these it came from.")}</T>
       </Animated.View>}
     </View>
   </View>;

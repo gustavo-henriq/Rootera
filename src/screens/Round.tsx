@@ -19,6 +19,7 @@ import { Glyph } from '../ds/icons';
 import { Ground, PlantArt } from '../ds/plant';
 import { LeafBurst } from '../ds/motion';
 import { haptic } from '../ds/feedback';
+import { t, tn } from '../i18n';
 
 const ANSWERS: Soil[] = ['dry', 'slightly_moist', 'moist', 'wet'];
 /** A round is a few minutes, not an hour: the most urgent plants first, then "next" if you want more. */
@@ -60,7 +61,7 @@ export function Round({ navigation }: Props<'Round'>) {
       haptic.success();
       if (soil === 'dry') { pending.current = { soilId, at }; setAskWater(true); }
       else next({ plantId: plant.id, ids: [soilId], soil, watered: false });
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.'); }
+    } catch (e) { setError(e instanceof Error ? e.message : t('Could not save.')); }
     finally { setBusy(false); }
   };
 
@@ -73,7 +74,7 @@ export function Round({ navigation }: Props<'Round'>) {
     try {
       await logCare({ id: waterId, plantId: plant.id, type: 'Watered', note: '', at: new Date(new Date(at).getTime() + 1000).toISOString(), source: 'USER' });
       next({ plantId: plant.id, ids: [soilId, waterId], soil: 'dry', watered: true });
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.'); }
+    } catch (e) { setError(e instanceof Error ? e.message : t('Could not save.')); }
     finally { setBusy(false); }
   };
 
@@ -86,7 +87,7 @@ export function Round({ navigation }: Props<'Round'>) {
     try {
       for (const id of [...last.ids].reverse()) await removeCare(last.plantId, id);
       setDone(d => d.slice(0, -1)); setAskWater(false); pending.current = null; setI(n => n - 1);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not undo.'); }
+    } catch (e) { setError(e instanceof Error ? e.message : t('Could not undo.')); }
     finally { setBusy(false); }
   };
 
@@ -96,26 +97,26 @@ export function Round({ navigation }: Props<'Round'>) {
 
   return <View style={{ flex: 1, backgroundColor: c.canvas, paddingTop: insets.top + space[2], paddingBottom: insets.bottom + space[4], paddingHorizontal: space.gutter }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48 }}>
-      <Tap label="End the round" onPress={() => navigation.goBack()} ring={22} style={{ width: 44, height: 44, justifyContent: 'center' }}><Glyph name="close" size={20} /></Tap>
-      <T v="subhead" tone="ink2" accessibilityLabel={`Plant ${Math.min(i + 1, queue.length)} of ${queue.length}`} style={{ fontVariant: ['tabular-nums'] }}>{finished ? 'Done' : `${i + 1} of ${queue.length}`}</T>
+      <Tap label={t("End the round")} onPress={() => navigation.goBack()} ring={22} style={{ width: 44, height: 44, justifyContent: 'center' }}><Glyph name="close" size={20} /></Tap>
+      <T v="subhead" tone="ink2" accessibilityLabel={t('Plant {i} of {n}', { i: Math.min(i + 1, queue.length), n: queue.length })} style={{ fontVariant: ['tabular-nums'] }}>{finished ? t('Done') : t('{i} of {n}', { i: i + 1, n: queue.length })}</T>
       <View style={{ width: 44 }}>
-        {!!done.length && !finished && <Tap label="Undo the last plant" onPress={() => void undo()} ring={radius.inner} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'flex-end' }}><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>Undo</T></Tap>}
+        {!!done.length && !finished && <Tap label={t("Undo the last plant")} onPress={() => void undo()} ring={radius.inner} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'flex-end' }}><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{t("Undo")}</T></Tap>}
       </View>
     </View>
     <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ height: 3, borderRadius: 2, backgroundColor: c.sunken, overflow: 'hidden' }}>
       <View style={{ width: `${progress * 100}%`, height: 3, backgroundColor: c.leafMark }} />
     </View>
 
-    {!!error && <View style={{ marginTop: space[3] }}><Toast tone="error" title="Not saved" text={error} onClose={() => setError('')} /></View>}
+    {!!error && <View style={{ marginTop: space[3] }}><Toast tone="error" title={t("Not saved")} text={error} onClose={() => setError('')} /></View>}
 
     {finished
       ? <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: space[3] }}>
           <LeafBurst run={checked ? 1 : 0} />
           <Animated.View entering={reduceMotion ? undefined : ZoomIn.springify().damping(12)}><Glyph name="check" size={44} tone={c.leafText} /></Animated.View>
-          <T v="hero" center accessibilityRole="header">{queue.length ? 'Round done' : 'Nothing needs you'}</T>
+          <T v="hero" center accessibilityRole="header">{queue.length ? t('Round done') : t('Nothing needs you')}</T>
           <T v="callout" tone="ink2" center>{queue.length
-            ? `${checked} ${checked === 1 ? 'plant' : 'plants'} checked${wateredCount ? `, ${wateredCount} watered` : ''}. Rootera updated each plant’s next step.`
-            : 'Every plant is resting. Come back when one shows up in Needs you.'}</T>
+            ? `${tn(checked, '{n} plant checked', '{n} plants checked')}${wateredCount ? t(', {n} watered', { n: wateredCount }) : ''}. ${t('Rootera updated each plant’s next step.')}`
+            : t('Every plant is resting. Come back when one shows up in Needs you.')}</T>
         </View>
       : <Animated.View key={plant.id + (askWater ? '-w' : '')} entering={reduceMotion ? undefined : askWater ? FadeIn.duration(200) : SlideInRight.springify().damping(24).stiffness(220)} exiting={reduceMotion ? undefined : SlideOutLeft.duration(180)}
           style={{ flex: 1, justifyContent: 'center', gap: space[4] }}>
@@ -125,18 +126,18 @@ export function Round({ navigation }: Props<'Round'>) {
           </View>
           <View style={{ alignItems: 'center', gap: 2 }}>
             <T v="title" center lines={2}>{plant.name}</T>
-            <T v="subhead" tone="ink2" center lines={2}>{g?.title ?? 'Start with a soil check'}</T>
+            <T v="subhead" tone="ink2" center lines={2}>{g?.title ?? t('Start with a soil check')}</T>
           </View>
           {askWater
             ? <Animated.View entering={reduceMotion ? undefined : FadeInDown.duration(220)} style={{ gap: space[3] }}>
-                <T v="headline" center>Dry. Did you water it?</T>
+                <T v="headline" center>{t("Dry. Did you water it?")}</T>
                 <View style={{ flexDirection: 'row', gap: space[3] }}>
-                  <Btn title="Yes, watered" icon="water" busy={busy} onPress={() => void watered(true)} style={{ flex: 1 }} />
-                  <Btn title="Not now" kind="outline" onPress={() => void watered(false)} style={{ flex: 1 }} />
+                  <Btn title={t("Yes, watered")} icon="water" busy={busy} onPress={() => void watered(true)} style={{ flex: 1 }} />
+                  <Btn title={t("Not now")} kind="outline" onPress={() => void watered(false)} style={{ flex: 1 }} />
                 </View>
               </Animated.View>
             : <View style={{ gap: space[3] }}>
-                <T v="headline" center>How does the soil feel?</T>
+                <T v="headline" center>{t("How does the soil feel?")}</T>
                 <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
                   {ANSWERS.map((s, k) => <Tap key={s} role="radio" label={soilLabel[s]} onPress={() => void answer(s)} disabled={busy} ring={radius.control}
                     style={{ flexBasis: '47%', flexGrow: 1, minHeight: 60, borderRadius: radius.control, borderWidth: 1, borderColor: c.ink3, flexDirection: 'row', alignItems: 'center', gap: space[3], paddingHorizontal: space[3] }}>
@@ -144,13 +145,13 @@ export function Round({ navigation }: Props<'Round'>) {
                     <T v="body" style={{ fontFamily: fonts.medium }}>{soilLabel[s]}</T>
                   </Tap>)}
                 </View>
-                <Tap label="Skip this plant" onPress={skip} ring={radius.inner} style={{ alignSelf: 'center', minHeight: 44, justifyContent: 'center' }}><T v="subhead" tone="ink2">Skip</T></Tap>
+                <Tap label={t("Skip this plant")} onPress={skip} ring={radius.inner} style={{ alignSelf: 'center', minHeight: 44, justifyContent: 'center' }}><T v="subhead" tone="ink2">{t("Skip")}</T></Tap>
               </View>}
         </Animated.View>}
 
     {finished && <View style={{ gap: space[2] }}>
       {remaining.length > 0 && <Btn title={`Next ${Math.min(ROUND_SIZE, remaining.length)} plants`} onPress={nextRound} />}
-      <Btn title="Back to Today" kind={remaining.length ? 'outline' : 'filled'} onPress={() => navigation.goBack()} />
+      <Btn title={t("Back to Today")} kind={remaining.length ? 'outline' : 'filled'} onPress={() => navigation.goBack()} />
     </View>}
   </View>;
 }

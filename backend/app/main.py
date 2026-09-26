@@ -41,7 +41,7 @@ def create_app(database_url=None, demo=None, tokens=None, **overrides):
     app.state.settings, app.state.factory = config, factory
     # Garden snapshots are repetitive JSON: compression cuts them by about 10x on mobile data.
     app.add_middleware(GZipMiddleware, minimum_size=1024)
-    app.add_middleware(CORSMiddleware, allow_origins=list(config.cors_origins), allow_methods=['GET', 'POST', 'PATCH', 'DELETE'], allow_headers=['Authorization', 'Content-Type'])
+    app.add_middleware(CORSMiddleware, allow_origins=list(config.cors_origins), allow_methods=['GET', 'POST', 'PATCH', 'DELETE'], allow_headers=['Authorization', 'Content-Type', 'Accept-Language'])
 
     @app.get('/health')
     def health():

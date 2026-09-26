@@ -10,6 +10,7 @@ import { Page } from '../ds/Page';
 import { NudgePicker, requestNudgePermission } from './onboarding/Nudges';
 import { Glyph } from '../ds/icons';
 import { scheduleNudges } from '../nudges';
+import { t } from '../i18n';
 
 const hints = experienceHint;
 
@@ -23,16 +24,16 @@ export function Experience({ navigation }: Props<'Experience'>) {
   const save = async () => {
     setBusy(true); setError('');
     try { await saveProfile({ name: name.trim(), caregiver: { experience, detail: garden.caregiver?.detail ?? (experience === 'many' ? 'Concise' : 'Guided') } }); navigation.goBack(); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Could not save.'); }
+    catch (e) { setError(e instanceof Error ? e.message : t('Could not save.')); }
     finally { setBusy(false); }
   };
-  return <Page back={navigation.goBack} title="Profile" footer={<>
-    {!!error && <Toast tone="error" title="Not saved" text={error} onClose={() => setError('')} />}
-    <Btn title="Save" busy={busy} onPress={() => void save()} />
+  return <Page back={navigation.goBack} title={t("Profile")} footer={<>
+    {!!error && <Toast tone="error" title={t("Not saved")} text={error} onClose={() => setError('')} />}
+    <Btn title={t("Save")} busy={busy} onPress={() => void save()} />
   </>}>
-    <Field label="Your name" value={name} onChangeText={setName} maxLength={40} />
+    <Field label={t("Your name")} value={name} onChangeText={setName} maxLength={40} />
     <View>
-      <T v="section" style={{ marginBottom: space[2] }}>Plant experience</T>
+      <T v="section" style={{ marginBottom: space[2] }}>{t("Plant experience")}</T>
       <View accessibilityRole="radiogroup" style={{ borderTopWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>
         {(['first', 'some', 'many'] as ExperienceT[]).map(v => {
           const on = v === experience;
@@ -61,9 +62,9 @@ function PhonePermission() {
   return <View style={{ flexDirection: 'row', gap: space[3], padding: space[4], borderRadius: radius.control, backgroundColor: c.sunken, alignItems: 'flex-start' }}>
     <Glyph name={state === 'granted' ? 'check' : 'info'} size={18} tone={state === 'granted' ? c.leafText : c.ink2} />
     <View style={{ flex: 1, gap: space[2] }}>
-      <T v="subhead">{text}</T>
-      {state === 'undetermined' && <Btn size="regular" kind="outline" title="Allow notifications" onPress={() => void requestNudgePermission().then(g => { if (g) void scheduleNudges(garden); return read(); })} style={{ alignSelf: 'flex-start' }} />}
-      {state === 'denied' && <Btn size="regular" kind="outline" title="Open Settings" onPress={() => void Linking.openSettings()} style={{ alignSelf: 'flex-start' }} />}
+      <T v="subhead">{t(text)}</T>
+      {state === 'undetermined' && <Btn size="regular" kind="outline" title={t("Allow notifications")} onPress={() => void requestNudgePermission().then(g => { if (g) void scheduleNudges(garden); return read(); })} style={{ alignSelf: 'flex-start' }} />}
+      {state === 'denied' && <Btn size="regular" kind="outline" title={t("Open Settings")} onPress={() => void Linking.openSettings()} style={{ alignSelf: 'flex-start' }} />}
     </View>
   </View>;
 }
@@ -80,12 +81,12 @@ export function Nudges({ navigation }: Props<'Nudges'>) {
     try {
       await saveProfile({ reminders: kinds.length > 0, nudges: { kinds, time }, caregiver: { experience: garden.caregiver?.experience ?? 'first', detail } });
       navigation.goBack();
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save.'); }
+    } catch (e) { setError(e instanceof Error ? e.message : t('Could not save.')); }
     finally { setBusy(false); }
   };
-  return <Page back={navigation.goBack} title="Nudges" gap={space[5]} footer={<>
-    {!!error && <Toast tone="error" title="Not saved" text={error} onClose={() => setError('')} />}
-    <Btn title="Save" busy={busy} onPress={() => void save()} />
+  return <Page back={navigation.goBack} title={t("Nudges")} gap={space[5]} footer={<>
+    {!!error && <Toast tone="error" title={t("Not saved")} text={error} onClose={() => setError('')} />}
+    <Btn title={t("Save")} busy={busy} onPress={() => void save()} />
   </>}>
     <PhonePermission />
     <NudgePicker selected={kinds} onToggle={k => setKinds(n => n.includes(k) ? n.filter(x => x !== k) : [...n, k])} detail={detail} onDetail={setDetail} time={time} onTime={setTime} />
@@ -101,15 +102,15 @@ const layers: { kind: Source; title: string; text: string }[] = [
 ];
 
 export function About({ navigation }: Props<'About'>) {
-  return <Page back={navigation.goBack} titleInBar="How Rootera learns">
+  return <Page back={navigation.goBack} titleInBar={t("How Rootera learns")}>
     <View style={{ gap: space[2] }}>
-      <T v="hero">How Rootera learns</T>
-      <T v="callout" tone="ink2">Each plant has a Plant Twin: a record of this plant, its spot and your care, kept in separate layers so you always know where a suggestion comes from.</T>
+      <T v="hero">{t("How Rootera learns")}</T>
+      <T v="callout" tone="ink2">{t("Each plant has a Plant Twin: a record of this plant, its spot and your care, kept in separate layers so you always know where a suggestion comes from.")}</T>
     </View>
     {layers.map(l => <View key={l.title} style={{ gap: space[2] }}>
       <SourceLabel kind={l.kind} />
-      <T v="title2">{l.title}</T>
-      <T v="body" tone="ink2">{l.text}</T>
+      <T v="title2">{t(l.title)}</T>
+      <T v="body" tone="ink2">{t(l.text)}</T>
     </View>)}
   </Page>;
 }

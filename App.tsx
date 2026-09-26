@@ -28,6 +28,7 @@ import { preloadImages } from './src/ds/preload';
 import { TodaySkeleton, Unreachable } from './src/ds/states';
 import { scheduleNudges } from './src/nudges';
 import * as SplashScreen from 'expo-splash-screen';
+import { lang, loadLang, onLangChange, t } from './src/i18n';
 
 // Keep the native splash up until fonts and artwork are ready.
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -49,9 +50,14 @@ function Navigator() {
   const { ready, garden, source, refresh } = useStore();
   const { c, scheme, reduceMotion: reduce } = useTheme();
   // Phone nudges follow the garden: rescheduled when records, plants or settings change.
-  const twinKey = Object.values(garden.twins).map(t => t.guidance.action).join('');
+  const twinKey = Object.values(garden.twins).map(x => x.guidance.action).join('');
+  // A new language remounts the screens (so every text is read again), refetches the
+  // server's guidance in that language and reopens on You, where the choice was made.
+  const [langKey, setLangKey] = React.useState(lang());
+  React.useEffect(() => onLangChange(() => { setLangKey(lang()); void refresh(); }), [refresh]);
   React.useEffect(() => { if (source === 'server' && garden.onboarded) void scheduleNudges(garden); },
-    [source, garden.onboarded, garden.reminders, garden.nudges?.time, garden.nudges?.kinds.join(), garden.plants.length, twinKey, garden.caregiver?.detail]);
+    [source, garden.onboarded, garden.reminders, garden.nudges?.time, garden.nudges?.kinds.join(), garden.plants.length, twinKey, garden.caregiver?.detail, langKey]);
+  const firstLang = React.useRef(langKey).current;
   // Decided once, when the garden first loads: the short sprout plays only if the app
   // opened on an existing garden, never in the middle of onboarding.
   const [launch, setLaunch] = React.useState<'pending' | 'play' | 'done'>('pending');
@@ -62,10 +68,10 @@ function Navigator() {
   if (launch === 'pending') return <TodaySkeleton />;
   if (launch === 'play') return <Launch onDone={() => setLaunch('done')} />;
   const modal = { presentation: 'modal' as const, animation: reduce ? 'none' as const : 'slide_from_bottom' as const };
-  return <NavigationContainer theme={{ ...(scheme === 'dark' ? DarkTheme : DefaultTheme), colors: { ...(scheme === 'dark' ? DarkTheme : DefaultTheme).colors, background: c.canvas, card: c.canvas, text: c.ink, primary: c.action, border: c.hairline } }}>
+  return <NavigationContainer key={langKey} theme={{ ...(scheme === 'dark' ? DarkTheme : DefaultTheme), colors: { ...(scheme === 'dark' ? DarkTheme : DefaultTheme).colors, background: c.canvas, card: c.canvas, text: c.ink, primary: c.action, border: c.hairline } }}>
     <Stack.Navigator initialRouteName={garden.onboarded ? 'Main' : 'Welcome'} screenOptions={{ headerShown: false, animation: reduce ? 'none' : 'slide_from_right', contentStyle: { backgroundColor: c.canvas } }}>
       <Stack.Screen name="Welcome" component={Onboarding} options={{ animation: 'fade' }} />
-      <Stack.Screen name="Main" component={Main} options={{ animation: 'fade' }} />
+      <Stack.Screen name="Main" component={Main} options={{ animation: 'fade' }} initialParams={langKey !== firstLang ? { tab: 'You' } : undefined} />
       <Stack.Screen name="AddPlant" component={AddPlant} />
       <Stack.Screen name="Camera" component={Camera} options={modal} />
       <Stack.Screen name="PlantForm" component={PlantForm} />
@@ -100,11 +106,12 @@ export default function App() {
   const [loaded, error] = useFonts({ InstrumentSans_400Regular, InstrumentSans_400Regular_Italic, InstrumentSans_500Medium, InstrumentSans_600SemiBold, BricolageGrotesque_500Medium, BricolageGrotesque_600SemiBold });
   // Artwork loads alongside the fonts so no animation starts with a missing layer.
   const [images, setImages] = React.useState(false);
-  React.useEffect(() => { preloadImages().finally(() => setImages(true)); }, []);
+  // The saved language is read before the first screen, so nothing flashes in the wrong one.
+  React.useEffect(() => { Promise.all([preloadImages(), loadLang()]).finally(() => setImages(true)); }, []);
   const ready = (loaded || !!error) && images;
   React.useEffect(() => { if (ready) SplashScreen.hideAsync().catch(() => undefined); }, [ready]);
   if (!ready) return <View style={{ flex: 1 }} />;
-  if (error) return <Text style={{ padding: 40 }}>Rootera couldn’t load its fonts. Please restart the app.</Text>;
+  if (error) return <Text style={{ padding: 40 }}>{t("Rootera couldn’t load its fonts. Please restart the app.")}</Text>;
   return <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <ThemeProvider>

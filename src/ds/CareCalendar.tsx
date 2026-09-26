@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { View } from 'react-native';
-import { CareEvent, LOCALE } from '../model';
+import { CareEvent } from '../model';
 import { useTheme } from './theme';
 import { space, type } from './tokens';
 import { T, Tap } from './components';
 import { Glyph } from './icons';
 import { Pop } from './motion';
+import { locale, t, tn } from '../i18n';
 
-const WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+/** Weekday initials, Monday first, in the app's language (5 Jan 2026 was a Monday). */
+const week = () => Array.from({ length: 7 }, (_, i) => new Date(2026, 0, 5 + i).toLocaleDateString(locale(), { weekday: 'narrow' }).toUpperCase());
 const key = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
 /**
@@ -30,19 +32,19 @@ export function CareCalendar({ events }: { events: CareEvent[] }) {
   const count = cells.filter(d => d && watered.has(key(d))).length;
   const earliest = events.length ? new Date(Math.min(...events.map(e => new Date(e.at).getTime()))) : today;
   const canBack = month > new Date(earliest.getFullYear(), earliest.getMonth(), 1);
-  const monthName = month.toLocaleDateString(LOCALE, { month: 'long' });
+  const monthName = month.toLocaleDateString(locale(), { month: 'long' });
 
   return <View style={{ gap: space[3] }}>
     <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
       <View style={{ flex: 1 }}>
         <T style={[type.figure, { fontSize: 44, lineHeight: 48 }]}>{count}</T>
-        <T v="footnote" tone="ink2">{count === 1 ? 'watering' : 'waterings'} in {monthName}</T>
+        <T v="footnote" tone="ink2">{count === 1 ? t('watering in {month}', { month: monthName }) : t('waterings in {month}', { month: monthName })}</T>
       </View>
-      <Tap label="Previous month" disabled={!canBack} onPress={() => setOffset(offset - 1)} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Glyph name="back" size={20} /></Tap>
-      <Tap label="Next month" disabled={offset >= 0} onPress={() => setOffset(offset + 1)} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Glyph name="forward" size={20} /></Tap>
+      <Tap label={t("Previous month")} disabled={!canBack} onPress={() => setOffset(offset - 1)} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Glyph name="back" size={20} /></Tap>
+      <Tap label={t("Next month")} disabled={offset >= 0} onPress={() => setOffset(offset + 1)} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Glyph name="forward" size={20} /></Tap>
     </View>
-    <View accessible accessibilityLabel={`${month.toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' })}: ${count} waterings recorded`}>
-      <View style={{ flexDirection: 'row' }}>{WEEK.map((d, i) => <T key={i} v="caption" tone="ink2" center style={{ flex: 1 }}>{d}</T>)}</View>
+    <View accessible accessibilityLabel={`${month.toLocaleDateString(locale(), { month: 'long', year: 'numeric' })}: ${tn(count, '{n} watering recorded', '{n} waterings recorded')}`}>
+      <View style={{ flexDirection: 'row' }}>{week().map((d, i) => <T key={i} v="caption" tone="ink2" center style={{ flex: 1 }}>{d}</T>)}</View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 }}>
         {cells.map((d, i) => {
           if (!d) return <View key={`e${i}`} style={{ width: `${100 / 7}%`, aspectRatio: 1 }} />;
@@ -61,8 +63,8 @@ export function CareCalendar({ events }: { events: CareEvent[] }) {
       </View>
     </View>
     <View style={{ flexDirection: 'row', gap: space[4] }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.leaf }} /><T v="footnote" tone="ink2">Watered</T></View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.sunken, alignItems: 'center', justifyContent: 'center' }}><View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.ink2 }} /></View><T v="footnote" tone="ink2">Checked</T></View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.leaf }} /><T v="footnote" tone="ink2">{t("Watered")}</T></View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.sunken, alignItems: 'center', justifyContent: 'center' }}><View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.ink2 }} /></View><T v="footnote" tone="ink2">{t("Checked")}</T></View>
     </View>
   </View>;
 }

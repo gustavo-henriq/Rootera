@@ -17,6 +17,7 @@ import { PlantKind } from '../model';
 import { plantArt } from './plant';
 import { useTheme } from './theme';
 import { springs } from './tokens';
+import { t } from '../i18n';
 
 const EMPTY = require('../../assets/flower/0-empty.webp');
 const SEEDED = require('../../assets/flower/1-seed.webp');
@@ -84,7 +85,7 @@ export function SeedDrop({ size = 240, run, kind, onImpact, onDone, from = 'left
   const bloomStyle = useAnimatedStyle(() => ({ opacity: bloom.value, transform: [{ translateY: (1 - bloom.value) * 10 }, { scale: .92 + .08 * bloom.value }] }));
 
   const frame = { position: 'absolute' as const, width: w, height: size };
-  return <View style={{ width: w, height: size }} accessible accessibilityLabel={kind ? 'A seed lands in the pot and your plant grows' : 'A seed lands in a pot and sprouts'}>
+  return <View style={{ width: w, height: size }} accessible accessibilityLabel={kind ? t('A seed lands in the pot and your plant grows') : t('A seed lands in a pot and sprouts')}>
     {kind && <Animated.View style={[{ position: 'absolute', left: -w * .1, right: -w * .1, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'flex-end' }, bloomStyle]}>
       <Image source={plantArt[kind]} resizeMode="contain" style={{ width: size * 1.02, height: size * 1.02 }} />
     </Animated.View>}

@@ -9,33 +9,35 @@ report such as "dry" is never turned into a percentage.
 """
 from statistics import median
 from .domain import parse_time, utcnow
+from .i18n import tr
 from .species import notes_for
 
 DAY = 86400
 SOIL_WORDS = {'dry': 'dry', 'slightly_moist': 'slightly moist', 'moist': 'moist', 'wet': 'very wet'}
 
 
-def _days(value: float) -> str:
+def _days(value: float, lang: str = 'en') -> str:
     if value < 2:
-        hours = round(value * 24)
-        return f'{hours} hours'
-    return f'{round(value)} days'
+        return tr('{n} hours', lang, n=round(value * 24))
+    return tr('{n} days', lang, n=round(value))
 
 
-def _ago(seconds: float) -> str:
+def _ago(seconds: float, lang: str = 'en') -> str:
     days = seconds / DAY
     if days < 1:
-        return 'today'
+        return tr('today', lang)
     if days < 2:
-        return 'yesterday'
-    return f'{int(days)} days ago'
+        return tr('yesterday', lang)
+    return tr('{n} days ago', lang, n=int(days))
 
 
 class SensorlessGuidance:
     version = 'sensorless-2.0'
 
-    def project(self, plant, caregiver, evidence, now=None):
+    def project(self, plant, caregiver, evidence, now=None, lang='en'):
+        """`lang` only changes the wording; titles, actions and basis are decided the same way."""
         now = now or utcnow()
+        _ = lambda text, **values: tr(text, lang, **values)
         age = lambda e: (now - parse_time(e.at)).total_seconds()
         events = sorted((e for e in evidence if e.source == 'USER' and not e.demo and parse_time(e.at) <= now), key=lambda e: (parse_time(e.at), e.id))
         soils = [e for e in events if e.kind == 'Soil check' and e.value.get('soil') is not None]
@@ -51,7 +53,7 @@ class SensorlessGuidance:
         recent_visual = visuals[-1] if visuals and age(visuals[-1]) <= DAY else None
         visual = recent_visual.value['visual'] if recent_visual and recent_visual.value['visual'] != 'not_sure' else None
 
-        notes = notes_for(plant.get('kind'))
+        notes = notes_for(plant.get('kind'), lang)
         guided = (caregiver or {}).get('detail', 'Guided') != 'Concise'
         no_drainage = plant.get('drainage') == 'No'
         reservoir = plant.get('self_watering') == 'Yes'
@@ -74,73 +76,73 @@ class SensorlessGuidance:
         tip = None
         context = []
         if no_drainage:
-            context.append('Your pot has no drainage hole, so extra water can stay at the bottom.')
+            context.append(_('Your pot has no drainage hole, so extra water can stay at the bottom.'))
         if reservoir:
-            context.append('Check the self-watering reservoir before adding water.')
+            context.append(_('Check the self-watering reservoir before adding water.'))
 
         if not events:
-            title, action = 'Start with a soil check', 'check_soil'
-            reason = 'A first soil check tells Rootera where this plant is starting from. Every later check is compared with it.'
+            title, action = _('Start with a soil check'), 'check_soil'
+            reason = _('A first soil check tells Rootera where this plant is starting from. Every later check is compared with it.')
             basis = ['Species reference']
             tip = notes['check_tip']
         elif visual in ('different', 'unwell') and not fresh and not unsure and not (last_water and parse_time(last_water.at) >= parse_time(recent_visual.at)):
-            title, action = 'Check the soil next', 'check_soil'
-            reason = 'You noticed a change in how it looks. The soil adds context before you change anything in your routine.'
+            title, action = _('Check the soil next'), 'check_soil'
+            reason = _('You noticed a change in how it looks. The soil adds context before you change anything in your routine.')
             basis = ['Your appearance check']
             tip = notes['check_tip']
         elif visual in ('different', 'unwell') and not fresh and last_water and parse_time(last_water.at) >= parse_time(recent_visual.at):
-            title, action = 'Look at the leaves in a day or two', 'observe'
-            reason = 'You watered after noticing a change. Give it a day or two and look at the leaves again before adding more water.'
+            title, action = _('Look at the leaves in a day or two'), 'observe'
+            reason = _('You watered after noticing a change. Give it a day or two and look at the leaves again before adding more water.')
             basis = ['Your appearance check', 'Your watering record']
         elif fresh and visual in ('different', 'unwell'):
-            title, action = 'Look at the leaves again tomorrow', 'observe'
-            reason = f"You found the soil {SOIL_WORDS[condition]} and noticed a change in the leaves. See whether the change continues before adjusting care."
+            title, action = _('Look at the leaves again tomorrow'), 'observe'
+            reason = _('You found the soil {soil} and noticed a change in the leaves. See whether the change continues before adjusting care.', soil=_(SOIL_WORDS[condition]))
             if condition == 'dry' and notes['thirst_sign']:
                 reason += f" {notes['thirst_sign']}"
             reason = ' '.join([reason, *context[:1]])
             basis = ['Your soil check', 'Your appearance check', 'Species reference']
         elif condition == 'dry':
-            title, action = 'You found the soil dry', 'log_water'
+            title, action = _('You found the soil dry'), 'log_water'
             reason = ' '.join([notes['when_dry'], *context])
             basis = ['Your soil check', 'Species reference'] + (['Pot details you added'] if context else [])
             if not no_drainage:
-                tip = 'If you water, pour slowly until a little drains out, then empty the saucer. Record it here so Rootera can follow the next cycle.'
+                tip = _('If you water, pour slowly until a little drains out, then empty the saucer. Record it here so Rootera can follow the next cycle.')
             else:
-                tip = 'If you water, use a small amount and record it so Rootera can follow the next cycle.'
+                tip = _('If you water, use a small amount and record it so Rootera can follow the next cycle.')
         elif condition == 'slightly_moist':
-            title, action = 'Nearly dry', 'wait'
-            reason = 'There is still some moisture below the surface. Another check tomorrow will show whether it has dried through.'
+            title, action = _('Nearly dry'), 'wait'
+            reason = _('There is still some moisture below the surface. Another check tomorrow will show whether it has dried through.')
             if notes['dryness'] == 'top':
-                reason = 'The soil is close to dry. This species usually prefers water around this point, so a check tomorrow is worthwhile.'
+                reason = _('The soil is close to dry. This species usually prefers water around this point, so a check tomorrow is worthwhile.')
             basis = ['Your soil check', 'Species reference']
         elif condition in ('moist', 'wet'):
-            title, action = ('Still moist' if condition == 'moist' else 'The soil is wet'), 'wait'
-            reason = 'Your check found moisture below the surface. Holding off on water for now keeps the roots from sitting wet.'
+            title, action = _('Still moist' if condition == 'moist' else 'The soil is wet'), 'wait'
+            reason = _('Your check found moisture below the surface. Holding off on water for now keeps the roots from sitting wet.')
             if condition == 'wet' and no_drainage:
-                reason += ' With no drainage hole, excess water has nowhere to go.'
+                reason += ' ' + _('With no drainage hole, excess water has nowhere to go.')
             basis = ['Your soil check'] + (['Pot details you added'] if condition == 'wet' and no_drainage else [])
         elif unsure:
-            title, action = 'No clear answer yet', 'wait'
-            reason = 'That is fine. Soil can be hard to read at first. Next time, try a little deeper or compare with how it felt right after watering.'
+            title, action = _('No clear answer yet'), 'wait'
+            reason = _('That is fine. Soil can be hard to read at first. Next time, try a little deeper or compare with how it felt right after watering.')
             basis = ['Your soil check']
         elif last_water and since_water < 1:
-            title, action = 'Watering recorded', 'wait'
-            reason = 'Give it time to soak in. A soil check in a day or two shows how quickly this pot dries.'
+            title, action = _('Watering recorded'), 'wait'
+            reason = _('Give it time to soak in. A soil check in a day or two shows how quickly this pot dries.')
             basis = ['Your watering record']
         elif baseline is not None and last_water:
-            reason = f"In your last {len(intervals)} cycles, you first found the soil dry about {_days(baseline)} after watering. It has been {_days(since_water)}."
+            reason = _('In your last {n} cycles, you first found the soil dry about {baseline} after watering. It has been {since}.', n=len(intervals), baseline=_days(baseline, lang), since=_days(since_water, lang))
             if since_water < baseline * .75:
-                title, action = 'Probably not dry yet', 'wait'
+                title, action = _('Probably not dry yet'), 'wait'
             else:
-                title, action = 'Around when it usually dries', 'check_soil'
+                title, action = _('Around when it usually dries'), 'check_soil'
                 tip = notes['check_tip']
             basis = ['Your watering records', 'Your soil checks']
         else:
-            title, action = 'Check the soil today', 'check_soil'
+            title, action = _('Check the soil today'), 'check_soil'
             if last_soil:
-                reason = f"Your last soil check was {_ago(age(last_soil))}. Soil changes day to day, so a new check keeps the picture current."
+                reason = _('Your last soil check was {ago}. Soil changes day to day, so a new check keeps the picture current.', ago=_ago(age(last_soil), lang))
             else:
-                reason = 'There is no soil check since the last watering. A quick check shows how this pot is drying.'
+                reason = _('There is no soil check since the last watering. A quick check shows how this pot is drying.')
             basis = ['Your care history']
             tip = notes['check_tip']
 
@@ -151,10 +153,10 @@ class SensorlessGuidance:
             'title': title, 'reason': reason, 'action': action, 'tip': tip if guided else None,
             'basis': basis,
             'state': state,
-            'learning': {'NEW': 'Getting started', 'LEARNING': 'Learning', 'PATTERN': 'Pattern found'}[state],
+            'learning': _({'NEW': 'Getting started', 'LEARNING': 'Learning', 'PATTERN': 'Pattern found'}[state]),
             'evidence_ids': [e.id for e in events], 'signals': signals,
             'baseline_days': baseline, 'completed_cycles': len(intervals),
-            'baseline_note': 'Typical time until your first dry check after watering. How often you check affects this number.',
+            'baseline_note': _('Typical time until your first dry check after watering. How often you check affects this number.'),
             'soil': condition, 'soil_checked_at': last_soil.at if recent_soil else None,
             'visual': visual,
             'last_watered_at': last_water.at if last_water else None,

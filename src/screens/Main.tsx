@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Props, Routes, Tabs } from '../navigation';
 import { useStore } from '../store';
 import { api } from '../api';
-import { atCapacity, byUrgency, CareEvent, describeEvent, experienceLabel, Garden, known, LOCALE, Plant, searchText } from '../model';
+import { atCapacity, byUrgency, CareEvent, describeEvent, experienceLabel, Garden, known, Plant, searchText } from '../model';
 import { useTheme } from '../ds/theme';
 import { fonts, radius, space, type } from '../ds/tokens';
 import { Btn, Chip, FloatingTabBar, Group, Row, SourceLabel, T, Tap, Toast } from '../ds/components';
@@ -22,6 +22,7 @@ import { NameInvite } from './NameInvite';
 import { ROUND_SIZE } from './Round';
 import Swipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { haptic } from '../ds/feedback';
+import { LangChoice, langChoice, locale, setLang, t, tn } from '../i18n';
 
 const Tab = createBottomTabNavigator<Tabs>();
 type TabProps<T extends keyof Tabs> = CompositeScreenProps<BottomTabScreenProps<Tabs, T>, NativeStackScreenProps<Routes>>;
@@ -36,7 +37,7 @@ export function Main({ route }: Props<'Main'>) {
   return <Tab.Navigator initialRouteName={route.params?.tab ?? 'Today'} screenOptions={{ headerShown: false }}
     tabBar={({ state, navigation }) => <FloatingTabBar bottomInset={insets.bottom} active={state.routes[state.index].name}
       onSelect={k => { const r = state.routes.find(x => x.name === k)!; const e = navigation.emit({ type: 'tabPress', target: r.key, canPreventDefault: true }); if (!e.defaultPrevented) navigation.navigate(k); }}
-      items={tabs} />}>
+      items={tabs.map(x => ({ ...x, label: t(x.label) }))} />}>
     <Tab.Screen name="Today" component={Today} />
     <Tab.Screen name="Plants" component={Plants} />
     <Tab.Screen name="Journal" component={Journal} />
@@ -46,7 +47,7 @@ export function Main({ route }: Props<'Main'>) {
 
 function Offline() {
   const { offline, refresh } = useStore();
-  return offline ? <Toast tone="info" title="Showing your last saved garden" text="Rootera’s server can’t be reached. New records won’t save until it’s back." action={{ title: 'Try again', onPress: () => void refresh() }} /> : null;
+  return offline ? <Toast tone="info" title={t("Showing your last saved garden")} text={t("Rootera’s server can’t be reached. New records won’t save until it’s back.")} action={{ title: t('Try again'), onPress: () => void refresh() }} /> : null;
 }
 
 // One entry point for care: the check-in asks about soil, watering and leaves in one go.
@@ -69,7 +70,7 @@ function daylight(scheme: 'light' | 'dark') {
 
 function greeting() {
   const h = new Date().getHours();
-  return h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  return h < 5 ? t('Good night') : h < 12 ? t('Good morning') : h < 18 ? t('Good afternoon') : t('Good evening');
 }
 
 /** Plants by id, so rows look their plant up in O(1) instead of scanning the garden. */
@@ -92,16 +93,16 @@ function EmptyShelf({ onAdd }: { onAdd: () => void }) {
       return i === 1 ? <Settle key={k} delay={250}>{img}</Settle> : img;
     })}</View>
     <Ground width={240} style={{ marginTop: -18 }} />
-    <T v="title2" center>Your shelf is empty</T>
-    <T v="callout" tone="ink2" center>Add a plant and do a first soil check. Rootera starts learning from there.</T>
-    <Btn title="Add a plant" icon="plus" onPress={onAdd} style={{ alignSelf: 'stretch' }} />
+    <T v="title2" center>{t("Your shelf is empty")}</T>
+    <T v="callout" tone="ink2" center>{t("Add a plant and do a first soil check. Rootera starts learning from there.")}</T>
+    <Btn title={t("Add a plant")} icon="plus" onPress={onAdd} style={{ alignSelf: 'stretch' }} />
   </View>;
 }
 
 function SectionHead({ title, count, action }: { title: string; count?: number; action?: React.ReactNode }) {
   const { c } = useTheme();
   return <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space[2], paddingTop: space[5], paddingBottom: space[2], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>
-    <T v="section" style={{ flex: 1 }}>{title}{count ? <T v="footnote" tone="ink2">{`  ${count} ${count === 1 ? 'plant' : 'plants'}`}</T> : null}</T>
+    <T v="section" style={{ flex: 1 }}>{title}{count ? <T v="footnote" tone="ink2">{`  ${tn(count, '{n} plant', '{n} plants')}`}</T> : null}</T>
     {action}
   </View>;
 }
@@ -115,18 +116,18 @@ const NeedRow = memo(function NeedRow({ plant, title, action, narrow, onOpen, on
     onSwipeableOpen={() => { haptic.select(); swipe.current?.close(); onCheck(plant); }}
     renderRightActions={() => <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden
       style={{ width: 104, alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: c.successSoft, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
-      <Glyph name="soil" size={20} tone={c.leafText} /><T v="footnote" tone="leafText" style={{ fontFamily: fonts.medium }}>Check in</T>
+      <Glyph name="soil" size={20} tone={c.leafText} /><T v="footnote" tone="leafText" style={{ fontFamily: fonts.medium }}>{t("Check in")}</T>
     </View>}>
   <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline, backgroundColor: c.canvas }}>
     <Tap label={`${plant.name}: ${title}`} onPress={() => onOpen(plant)} scaleTo={.99} ring={radius.control} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
       <Thumb plant={plant} />
       <View style={{ flex: 1, gap: 2 }}>
         <T v="headline" lines={1}>{plant.name}</T>
-        <T v="subhead" tone="ink2" lines={2}>{title ?? 'Start with a soil check'}</T>
+        <T v="subhead" tone="ink2" lines={2}>{title ?? t('Start with a soil check')}</T>
       </View>
     </Tap>
     {/* The accessible name carries the plant, so a list is never "Check in, Check in, Check in". */}
-    {q && <Btn size="regular" kind="outline" icon={narrow ? undefined : q.icon} title={narrow ? 'Check' : q.title} label={`${q.title}, ${plant.name}`} onPress={() => onCheck(plant)} />}
+    {q && <Btn size="regular" kind="outline" icon={narrow ? undefined : q.icon} title={narrow ? t('Check') : t(q.title)} label={`${t(q.title)}, ${plant.name}`} onPress={() => onCheck(plant)} />}
   </View>
   </Swipeable>;
 });
@@ -164,17 +165,17 @@ function Today({ navigation }: TabProps<'Today'>) {
   // Long lists show the most urgent few; the rest is one tap away (Hick's law, less scanning).
   const shownNeeds = allNeeds || needs.length <= NEEDS_PREVIEW + 2 ? needs : needs.slice(0, NEEDS_PREVIEW);
   const items: TodayItem[] = !garden.plants.length ? [] : [
-    { k: 'head', title: 'Needs you', count: needs.length },
+    { k: 'head', title: t('Needs you'), count: needs.length },
     ...(needs.length ? shownNeeds.map(p => ({ k: 'need' as const, plant: p })) : [{ k: 'calm' as const }]),
     ...(shownNeeds.length < needs.length ? [{ k: 'more' as const, hidden: needs.length - shownNeeds.length }] : []),
     ...(allNeeds && needs.length > NEEDS_PREVIEW + 2 ? [{ k: 'more' as const, hidden: 0 }] : []),
-    ...(recent.length ? [{ k: 'head' as const, title: 'Recently', action: <Tap label="Open the journal" onPress={() => navigation.navigate('Journal')} ring={radius.inner} style={{ minHeight: 44, justifyContent: 'center' }}><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>Journal</T></Tap> }, ...recent.map(e => ({ k: 'event' as const, event: e }))] : []),
-    ...(resting.length ? [{ k: 'head' as const, title: 'Resting', count: resting.length }, ...resting.map(p => ({ k: 'rest' as const, plant: p }))] : []),
+    ...(recent.length ? [{ k: 'head' as const, title: t('Recently'), action: <Tap label={t("Open the journal")} onPress={() => navigation.navigate('Journal')} ring={radius.inner} style={{ minHeight: 44, justifyContent: 'center' }}><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{t("Journal")}</T></Tap> }, ...recent.map(e => ({ k: 'event' as const, event: e }))] : []),
+    ...(resting.length ? [{ k: 'head' as const, title: t('Resting'), count: resting.length }, ...resting.map(p => ({ k: 'rest' as const, plant: p }))] : []),
   ];
 
-  return <Page tab scrollRef={ref} titleInBar="Today" gap={space[4]} glow={daylight(scheme)} onRefresh={refresh} actions={[{ icon: 'plus', label: 'Add a plant', onPress: () => navigation.navigate('AddPlant') }]}
+  return <Page tab scrollRef={ref} titleInBar={t("Today")} gap={space[4]} glow={daylight(scheme)} onRefresh={refresh} actions={[{ icon: 'plus', label: t('Add a plant'), onPress: () => navigation.navigate('AddPlant') }]}
     header={<View style={{ gap: space[1] }}>
-      <T v="footnote" tone="ink2">{new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })}</T>
+      <T v="footnote" tone="ink2">{new Date().toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })}</T>
       <T v="display">{greeting()}{first ? `,\n${first}` : ''}</T>
     </View>}
     list={{
@@ -185,12 +186,12 @@ function Today({ navigation }: TabProps<'Today'>) {
         if (i.k === 'need') return <NeedRow plant={i.plant} title={garden.twins[i.plant.id]?.guidance.title} action={garden.twins[i.plant.id]?.guidance.action} narrow={narrow} onOpen={open} onCheck={check} />;
         if (i.k === 'rest') return <RestRow plant={i.plant} title={garden.twins[i.plant.id]?.guidance.title} onOpen={open} />;
         if (i.k === 'event') return <EventRow event={i.event} plant={index.get(i.event.plantId)} onPress={() => navigation.navigate('Plant', { id: i.event.plantId })} />;
-        if (i.k === 'more') return <Tap label={i.hidden ? `Show all ${needs.length} plants that need you` : 'Show fewer'} onPress={() => setAllNeeds(!allNeeds)} ring={radius.inner} style={{ minHeight: 48, justifyContent: 'center' }}>
-          <T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{i.hidden ? `Show all ${needs.length}` : 'Show fewer'}</T>
+        if (i.k === 'more') return <Tap label={i.hidden ? t('Show all {n} plants that need you', { n: needs.length }) : t('Show fewer')} onPress={() => setAllNeeds(!allNeeds)} ring={radius.inner} style={{ minHeight: 48, justifyContent: 'center' }}>
+          <T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{i.hidden ? t('Show all {n}', { n: needs.length }) : t('Show fewer')}</T>
         </Tap>;
         return <View style={{ flexDirection: 'row', gap: space[3], alignItems: 'center', paddingVertical: space[4], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
           <Glyph name="leaf" tone={c.leafMark} />
-          <T v="callout" style={{ flex: 1 }}>Nothing needs you right now. A plant shows up here when a check would help.</T>
+          <T v="callout" style={{ flex: 1 }}>{t("Nothing needs you right now. A plant shows up here when a check would help.")}</T>
         </View>;
       },
     }}>
@@ -208,10 +209,10 @@ function RoundCard({ count, onStart }: { count: number; onStart: () => void }) {
   const minutes = Math.max(1, Math.round(size * 10 / 60));
   return <View style={{ padding: space[4], gap: space[3], borderRadius: radius.card, backgroundColor: c.successSoft }}>
     <View style={{ gap: 2 }}>
-      <T v="headline">Check-in round</T>
-      <T v="subhead" tone="ink2">{count > size ? `The ${size} most urgent of ${count}` : `${count} plants`}, about {minutes} {minutes === 1 ? 'minute' : 'minutes'}. One question each.</T>
+      <T v="headline">{t("Check-in round")}</T>
+      <T v="subhead" tone="ink2">{count > size ? t('The {size} most urgent of {n}', { size, n: count }) : tn(count, '{n} plant', '{n} plants')}, {tn(minutes, 'about {n} minute', 'about {n} minutes')}. {t('One question each.')}</T>
     </View>
-    <Btn title="Start the round" icon="soil" onPress={onStart} />
+    <Btn title={t("Start the round")} icon="soil" onPress={onStart} />
   </View>;
 }
 
@@ -221,12 +222,12 @@ const Tile = memo(function Tile({ plant, width, onPress, needs, where, animate }
   const artRef = useRef<View>(null);
   // The illustration's position is measured on tap so it can fly into the plant page.
   const art = <View ref={artRef} collapsable={false}><PlantArt kind={plant.kind} photo={plant.photo} size={width * .8} /></View>;
-  return <Tap label={`${plant.name}, ${needs ? 'needs you' : 'resting'}`} onPress={() => { let done = false; const go = (r?: Rect) => { if (done) return; done = true; onPress(plant, r); }; measure(artRef, go); setTimeout(() => go(), 80); }} ring={radius.card} style={{ width, paddingTop: width * .36, marginBottom: space[4] }}>
+  return <Tap label={`${plant.name}, ${needs ? t('needs you') : t('resting')}`} onPress={() => { let done = false; const go = (r?: Rect) => { if (done) return; done = true; onPress(plant, r); }; measure(artRef, go); setTimeout(() => go(), 80); }} ring={radius.card} style={{ width, paddingTop: width * .36, marginBottom: space[4] }}>
     <View style={{ height: width * .9, borderRadius: radius.card, borderCurve: 'continuous', backgroundColor: c.sunken, justifyContent: 'flex-end', padding: space[3], gap: 2 }}>
       <T v="headline" lines={1}>{plant.name}</T>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: needs ? c.clay : c.leafMark }} />
-        <T v="footnote" tone={needs ? 'clayText' : 'ink2'} lines={1}>{needs ? 'Needs you' : 'Resting'}</T>
+        <T v="footnote" tone={needs ? 'clayText' : 'ink2'} lines={1}>{needs ? t('Needs you') : t('Resting')}</T>
       </View>
       {!!where && <T v="footnote" tone="ink2" lines={1}>{where}</T>}
     </View>
@@ -243,7 +244,7 @@ function SearchField({ value, onChange, label }: { value: string; onChange: (s: 
     <Glyph name="search" size={20} tone={c.ink2} />
     <TextInput accessibilityLabel={label} value={value} onChangeText={onChange} placeholder={label} placeholderTextColor={c.ink3} returnKeyType="search" maxFontSizeMultiplier={1.5}
       style={[type.body, { flex: 1, minHeight: 48, color: c.ink }, Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)]} />
-    {!!value && <Tap label="Clear search" onPress={() => onChange('')} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Glyph name="close" size={16} tone={c.ink2} /></Tap>}
+    {!!value && <Tap label={t("Clear search")} onPress={() => onChange('')} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Glyph name="close" size={16} tone={c.ink2} /></Tap>}
   </View>;
 }
 
@@ -264,42 +265,42 @@ function Plants({ navigation }: TabProps<'Plants'>) {
     garden.plants.forEach(p => { if (known(p.room)) count.set(p.room, (count.get(p.room) ?? 0) + 1); });
     return [...count.entries()].sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' }));
   }, [garden.plants]);
-  const t = searchText(q);
+  const needle = searchText(q);
   const list = useMemo(() => byUrgency(garden)
     .filter(p => !plus || room === 'All' || p.room === room)
-    .filter(p => !t || searchText(`${p.name} ${p.species} ${p.room}`).includes(t)), [garden, plus, room, t]);
+    .filter(p => !needle || searchText(`${p.name} ${p.species} ${p.room}`).includes(needle)), [garden, plus, room, needle]);
   const full = atCapacity(garden);
   const add = () => navigation.navigate(full ? 'Plans' : 'AddPlant', full ? { reason: 'limit' } : undefined as any);
   const openPlant = useCallback((p: Plant, from?: Rect) => navigation.navigate('Plant', { id: p.id, from }), [navigation]);
-  const cells: PlantCell[] = garden.plants.length ? [...list.map(p => ({ k: 'plant' as const, plant: p })), ...(t ? [] : [{ k: 'add' as const }])] : [];
+  const cells: PlantCell[] = garden.plants.length ? [...list.map(p => ({ k: 'plant' as const, plant: p })), ...(needle ? [] : [{ k: 'add' as const }])] : [];
 
-  return <Page tab scrollRef={ref} title="Plants" gap={space[4]} onRefresh={refresh} actions={[{ icon: 'plus', label: 'Add a plant', onPress: add }]}
+  return <Page tab scrollRef={ref} title={t("Plants")} gap={space[4]} onRefresh={refresh} actions={[{ icon: 'plus', label: t('Add a plant'), onPress: add }]}
     list={{
       data: cells, numColumns: 2, columnGap: space[3],
       keyExtractor: (i: PlantCell) => i.k === 'plant' ? i.plant.id : 'add',
       renderItem: (i: PlantCell, n: number) => i.k === 'plant'
         ? <Tile plant={i.plant} width={col} onPress={openPlant} needs={garden.twins[i.plant.id]?.guidance.action !== 'wait'} animate={n < 8 ? n * 55 : null}
-            where={plus && known(i.plant.room) ? i.plant.room : known(i.plant.environment?.location) ? i.plant.environment!.location : null} />
-        : <Tap label={full ? 'Plant limit reached. See Rootera+' : 'Add a plant'} onPress={add} ring={radius.card} style={{ width: col, paddingTop: col * .36, marginBottom: space[4] }}>
+            where={plus && known(i.plant.room) ? i.plant.room : known(i.plant.environment?.location) ? t(i.plant.environment!.location) : null} />
+        : <Tap label={full ? t('Plant limit reached. See Rootera+') : t('Add a plant')} onPress={add} ring={radius.card} style={{ width: col, paddingTop: col * .36, marginBottom: space[4] }}>
             <View style={{ height: col * .9, borderRadius: radius.card, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.ink3, alignItems: 'center', justifyContent: 'center', gap: space[1], padding: space[3] }}>
               <Glyph name={full ? 'lock' : 'plus'} size={24} tone={c.ink2} />
-              <T v="subhead" center style={{ fontFamily: fonts.medium }}>{full ? 'Shelf full' : 'Add a plant'}</T>
-              {garden.plan_capacity !== null && <T v="footnote" tone="ink2" center>{garden.plants.length} of {garden.plan_capacity} on the free plan</T>}
+              <T v="subhead" center style={{ fontFamily: fonts.medium }}>{full ? t('Shelf full') : t('Add a plant')}</T>
+              {garden.plan_capacity !== null && <T v="footnote" tone="ink2" center>{t('{n} of {max} on the free plan', { n: garden.plants.length, max: garden.plan_capacity })}</T>}
             </View>
           </Tap>,
-      footer: !!t && !list.length ? <T v="callout" tone="ink2">No plant matches “{q}”.</T> : undefined,
+      footer: !!needle && !list.length ? <T v="callout" tone="ink2">{t('No plant matches “{q}”.', { q })}</T> : undefined,
     }}>
     <Offline />
     {!garden.plants.length && <EmptyShelf onAdd={() => navigation.navigate('AddPlant', { first: true })} />}
-    {garden.plants.length > 6 && <SearchField value={q} onChange={setQ} label="Search your plants" />}
+    {garden.plants.length > 6 && <SearchField value={q} onChange={setQ} label={t("Search your plants")} />}
     {plus
       ? rooms.length > 0 && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-          <Chip label="All" count={garden.plants.length} selected={room === 'All'} onPress={() => setRoom('All')} />
+          <Chip label={t("All")} count={garden.plants.length} selected={room === 'All'} onPress={() => setRoom('All')} />
           {rooms.map(([r, n]) => <Chip key={r} label={r} count={n} selected={room === r} onPress={() => setRoom(r)} />)}
         </View>
-      : garden.plants.length > 0 && <Tap label="Group plants by room with Rootera+" onPress={() => navigation.navigate('Plans', { reason: 'rooms' })} ring={radius.input}
+      : garden.plants.length > 0 && <Tap label={t("Group plants by room with Rootera+")} onPress={() => navigation.navigate('Plans', { reason: 'rooms' })} ring={radius.input}
           style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: space[2], minHeight: 40, paddingHorizontal: 12, borderRadius: radius.input, borderWidth: 1, borderColor: c.hairline }}>
-          <Glyph name="rooms" size={16} tone={c.ink2} /><T v="subhead" tone="ink2">Group by room</T><Glyph name="lock" size={14} tone={c.ink3} />
+          <Glyph name="rooms" size={16} tone={c.ink2} /><T v="subhead" tone="ink2">{t("Group by room")}</T><Glyph name="lock" size={14} tone={c.ink3} />
         </Tap>}
   </Page>;
 }
@@ -315,18 +316,18 @@ const EventRow = memo(function EventRow({ event, plant, onPress, onLongPress }: 
     </View>
     <View style={{ flex: 1, gap: 1 }}>
       <T v="body">{describeEvent(event)}</T>
-      <T v="footnote" tone="ink2">{plant?.name ?? 'Removed plant'}</T>
+      <T v="footnote" tone="ink2">{plant?.name ?? t('Removed plant')}</T>
       {!!event.note && <T v="subhead" style={{ marginTop: 2 }}>“{event.note}”</T>}
     </View>
-    <T v="footnote" tone="ink2">{new Date(event.at).toLocaleTimeString(LOCALE, { hour: 'numeric', minute: '2-digit' })}</T>
+    <T v="footnote" tone="ink2">{new Date(event.at).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' })}</T>
   </View>;
-  return onPress && plant ? <Tap label={`${describeEvent(event)}, ${plant.name}`} onPress={onPress} onLongPress={onLongPress} longPressLabel="Delete this record" scaleTo={.99} ring={radius.inner}>{body}</Tap> : body;
+  return onPress && plant ? <Tap label={`${describeEvent(event)}, ${plant.name}`} onPress={onPress} onLongPress={onLongPress} longPressLabel={t("Delete this record")} scaleTo={.99} ring={radius.inner}>{body}</Tap> : body;
 });
 
 function dayLabel(iso: string) {
-  const d = new Date(iso), t = new Date();
-  const diff = Math.round((new Date(t.toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 86400000);
-  return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : d.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
+  const d = new Date(iso), now = new Date();
+  const diff = Math.round((new Date(now.toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 86400000);
+  return diff === 0 ? t('Today') : diff === 1 ? t('Yesterday') : d.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 type JournalItem = { k: 'day'; label: string } | { k: 'event'; event: CareEvent };
@@ -361,7 +362,7 @@ function Journal({ navigation }: TabProps<'Journal'>) {
     for (const e of events) { const d = dayLabel(e.at); if (d !== last) { out.push({ k: 'day', label: d }); last = d; } out.push({ k: 'event', event: e }); }
     return out;
   }, [events]);
-  const selectedName = plant === 'all' ? 'All plants' : index.get(plant)?.name ?? 'All plants';
+  const selectedName = plant === 'all' ? t('All plants') : index.get(plant)?.name ?? t('All plants');
   // Editing the timeline: a record can be deleted (and restored with Undo, same id and time).
   const { removeCare, logCare } = useStore();
   const [menuFor, setMenuFor] = useState<CareEvent | null>(null);
@@ -370,39 +371,39 @@ function Journal({ navigation }: TabProps<'Journal'>) {
   const removeRecord = async (e: CareEvent) => {
     setEditError('');
     try { await removeCare(e.plantId, e.id); setOlder(o => o.filter(x => x.id !== e.id)); setDeleted(e); }
-    catch (err) { setEditError(err instanceof Error ? err.message : 'Could not delete.'); }
+    catch (err) { setEditError(err instanceof Error ? err.message : t('Could not delete.')); }
   };
 
-  return <Page tab scrollRef={ref} title="Journal" gap={space[4]} onRefresh={refresh}
+  return <Page tab scrollRef={ref} title={t("Journal")} gap={space[4]} onRefresh={refresh}
     list={{
       data: items, onEndReached: () => void loadMore(),
       keyExtractor: (i: JournalItem) => i.k === 'day' ? `d-${i.label}` : i.event.id,
       renderItem: (i: JournalItem) => i.k === 'day'
         ? <T v="section" style={{ paddingTop: space[5], paddingBottom: space[2], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>{i.label}</T>
         : <EventRow event={i.event} plant={index.get(i.event.plantId)} onPress={() => navigation.navigate('Plant', { id: i.event.plantId })} onLongPress={() => setMenuFor(i.event)} />,
-      footer: loading ? <T v="subhead" tone="ink2">Loading older records…</T>
-        : !items.length ? <View style={{ gap: space[2] }}><T v="title2">Nothing recorded yet</T><T v="callout" tone="ink2">Soil checks, watering and notes about the leaves appear here, newest first.</T></View>
+      footer: loading ? <T v="subhead" tone="ink2">{t("Loading older records…")}</T>
+        : !items.length ? <View style={{ gap: space[2] }}><T v="title2">{t("Nothing recorded yet")}</T><T v="callout" tone="ink2">{t("Soil checks, watering and notes about the leaves appear here, newest first.")}</T></View>
         : undefined,
     }}>
-    <SourceLabel kind="observed" text="Everything here was recorded by you" />
+    <SourceLabel kind="observed" text={t("Everything here was recorded by you")} />
     <Offline />
-    {!!deleted && <Toast title="Record deleted" text={`${describeEvent(deleted)}, ${index.get(deleted.plantId)?.name ?? ''}`} onClose={() => setDeleted(null)}
-      action={{ title: 'Undo', onPress: () => { const e = deleted; setDeleted(null); void logCare(e).catch(() => undefined); } }} />}
-    {!!editError && <Toast tone="error" title="Not deleted" text={editError} onClose={() => setEditError('')} />}
+    {!!deleted && <Toast title={t("Record deleted")} text={`${describeEvent(deleted)}, ${index.get(deleted.plantId)?.name ?? ''}`} onClose={() => setDeleted(null)}
+      action={{ title: t('Undo'), onPress: () => { const e = deleted; setDeleted(null); void logCare(e).catch(() => undefined); } }} />}
+    {!!editError && <Toast tone="error" title={t("Not deleted")} text={editError} onClose={() => setEditError('')} />}
     <ActionSheet visible={!!menuFor} title={menuFor ? describeEvent(menuFor) : undefined} onClose={() => setMenuFor(null)} actions={menuFor ? [
-      { label: 'Delete this record', icon: 'trash', destructive: true, onPress: () => void removeRecord(menuFor) },
+      { label: t('Delete this record'), icon: 'trash', destructive: true, onPress: () => void removeRecord(menuFor) },
     ] : []} />
     {garden.plants.length > 1 && (garden.plants.length <= CHIP_LIMIT
       ? <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.gutter, flexGrow: 0 }} contentContainerStyle={{ gap: space[2], paddingHorizontal: space.gutter }}>
-          {[{ id: 'all', name: 'All plants' }, ...garden.plants].map(p => <Chip key={p.id} label={p.name} selected={plant === p.id} onPress={() => setPlant(p.id)} />)}
+          {[{ id: 'all', name: t('All plants') }, ...garden.plants].map(p => <Chip key={p.id} label={p.name} selected={plant === p.id} onPress={() => setPlant(p.id)} />)}
         </ScrollView>
       // Too many plants for chips: one control that opens a searchable list.
-      : <Tap label={`Showing ${selectedName}. Choose a plant`} onPress={() => setPicker(true)} ring={radius.input}
+      : <Tap label={t('Showing {name}. Choose a plant', { name: selectedName })} onPress={() => setPicker(true)} ring={radius.input}
           style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: space[2], minHeight: 44, paddingHorizontal: 12, borderRadius: radius.input, borderWidth: 1, borderColor: plant === 'all' ? c.hairline : c.ink }}>
           <Glyph name="search" size={16} tone={c.ink2} /><T v="subhead" lines={1}>{selectedName}</T><Glyph name="forward" size={13} tone={c.ink3} />
         </Tap>)}
-    <PickerSheet visible={picker} title="Plants" selected={plant} onSelect={setPlant} onClose={() => setPicker(false)}
-      items={[{ id: 'all', label: 'All plants' }, ...garden.plants.map(p => ({ id: p.id, label: p.name, detail: known(p.room) ? p.room : p.species }))]} />
+    <PickerSheet visible={picker} title={t("Plants")} selected={plant} onSelect={setPlant} onClose={() => setPicker(false)}
+      items={[{ id: 'all', label: t('All plants') }, ...garden.plants.map(p => ({ id: p.id, label: p.name, detail: known(p.room) ? p.room : p.species }))]} />
   </Page>;
 }
 
@@ -413,21 +414,29 @@ function You({ navigation }: TabProps<'You'>) {
   const ref = useRef<ScrollView>(null); useScrollToTop(ref);
   const detail = garden.caregiver?.detail ?? 'Guided';
   const nudges = garden.nudges;
-  const nudgeText = !garden.reminders || !nudges?.kinds.length ? 'Off' : `${nudges.kinds.map(k => nudgeNames[k]).join(', ').replace(/^./, s => s.toUpperCase())}, at ${nudges.time}`;
+  const nudgeText = !garden.reminders || !nudges?.kinds.length ? t('Off') : t('{kinds}, at {time}', { kinds: nudges.kinds.map(k => t(nudgeNames[k])).join(', ').replace(/^./, s => s.toUpperCase()), time: nudges.time ?? '' });
+  const [langSheet, setLangSheet] = useState(false);
+  const langNames: Record<LangChoice, string> = { system: t('Same as the phone'), en: 'English', pt: 'Português (Brasil)' };
 
-  return <Page tab scrollRef={ref} title={garden.name || 'You'}>
+  return <Page tab scrollRef={ref} title={garden.name || t('You')}>
     <Offline />
-    <Group header="Plant care">
-      <Row title="Name and experience" detail={garden.caregiver ? experienceLabel[garden.caregiver.experience] : 'Not set'} onPress={() => navigation.navigate('Experience')} />
+    <Group header={t("Plant care")}>
+      <Row title={t("Name and experience")} detail={garden.caregiver ? experienceLabel[garden.caregiver.experience] : t('Not set')} onPress={() => navigation.navigate('Experience')} />
       {/* How much Rootera explains lives with the nudges (one control, one place); here it is summarised. */}
-      <Row title="Nudges" detail={`${nudgeText}. ${detail === 'Guided' ? 'Walk me through it' : 'Just tell me'}`} onPress={() => navigation.navigate('Nudges')} />
+      <Row title={t("Nudges")} detail={`${nudgeText}. ${detail === 'Guided' ? t('Walk me through it') : t('Just tell me')}`} onPress={() => navigation.navigate('Nudges')} />
     </Group>
-    <Group header="Plan">
-      <Row title={garden.plan === 'Plus' ? 'Rootera+' : 'Rootera Free'} detail={garden.plan === 'Plus' ? `Unlimited plants and rooms${garden.plan_source === 'demo' ? ', preview activation' : ''}` : `${garden.plants.length} of ${garden.plan_capacity} plants used`} onPress={() => navigation.navigate('Plans')} />
+    <Group header={t("Plan")}>
+      <Row title={garden.plan === 'Plus' ? 'Rootera+' : t('Rootera Free')} detail={garden.plan === 'Plus' ? `${t('Unlimited plants and rooms')}${garden.plan_source === 'demo' ? t(', preview activation') : ''}` : t('{n} of {max} plants used', { n: garden.plants.length, max: garden.plan_capacity ?? '' })} onPress={() => navigation.navigate('Plans')} />
     </Group>
-    <Group header="About" footer="In this preview your garden is kept on the Rootera preview server. Photos stay on this device.">
-      <Row title="How Rootera learns" onPress={() => navigation.navigate('About')} />
-      <Row title="Preview onboarding" detail="Plays it again. Nothing is saved." onPress={() => navigation.navigate('Welcome', { preview: true })} />
+    <Group header={t('Language')}>
+      <Row title={t('App language')} detail={langNames[langChoice()]} onPress={() => setLangSheet(true)} />
     </Group>
+    <Group header={t("About")} footer={t("In this preview your garden is kept on the Rootera preview server. Photos stay on this device.")}>
+      <Row title={t("How Rootera learns")} onPress={() => navigation.navigate('About')} />
+      <Row title={t("Preview onboarding")} detail={t("Plays it again. Nothing is saved.")} onPress={() => navigation.navigate('Welcome', { preview: true })} />
+    </Group>
+    {/* Changing the language remounts the app (App.tsx), so every screen re-reads its text. */}
+    <ActionSheet visible={langSheet} title={t('App language')} onClose={() => setLangSheet(false)}
+      actions={(['system', 'en', 'pt'] as LangChoice[]).map(k => ({ label: `${langNames[k]}${langChoice() === k ? ' ✓' : ''}`, icon: langChoice() === k ? 'check' as const : 'book' as const, onPress: () => { setLangSheet(false); void setLang(k); } }))} />
   </Page>;
 }

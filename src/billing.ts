@@ -7,6 +7,7 @@
  * Without a key the paywall runs in clearly labelled preview mode.
  */
 import { Platform } from 'react-native';
+import { t } from './i18n';
 import Purchases, { PurchasesPackage } from 'react-native-purchases';
 
 const KEY = Platform.select({
@@ -42,7 +43,7 @@ export async function purchase(offer: Offer): Promise<boolean> {
     return true;
   } catch (error: any) {
     if (error?.userCancelled) return false;
-    throw new Error(error?.message || 'The purchase could not be completed.');
+    throw new Error(error?.message || t('The purchase could not be completed.'));
   }
 }
 

@@ -6,6 +6,7 @@ import { useCompact, useTheme } from './theme';
 import { elevation, fonts, glass, radius, space, springs, type, TypeName } from './tokens';
 import { announce, haptic } from './feedback';
 import { Glyph, GlyphName } from './icons';
+import { t } from '../i18n';
 
 type Tone = 'ink' | 'ink2' | 'ink3' | 'leafText' | 'clayText' | 'danger' | 'onAction' | 'water';
 const noOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null;
@@ -56,7 +57,7 @@ export function Tap({ onPress, onLongPress, longPressLabel, label, hint, role = 
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
   const flat = (StyleSheet.flatten(style) ?? {}) as ViewStyle;
   return <Pressable onPress={onPress} onLongPress={onLongPress ? () => { haptic.tap(); onLongPress(); } : undefined} disabled={disabled} accessibilityRole={role} accessibilityLabel={label} accessibilityHint={hint}
-    accessibilityActions={onLongPress ? [{ name: 'longpress', label: longPressLabel ?? 'More options' }] : undefined}
+    accessibilityActions={onLongPress ? [{ name: 'longpress', label: longPressLabel ?? t('More options') }] : undefined}
     onAccessibilityAction={e => { if (e.nativeEvent.actionName === 'longpress') onLongPress?.(); }}
     accessibilityState={{ disabled: !!disabled, selected: role === 'tab' ? selected : undefined, checked: role === 'radio' || role === 'switch' ? !!selected : undefined }}
     onPressIn={() => { if (!reduceMotion) s.value = withSpring(scaleTo, springs.snappy); }}
@@ -184,9 +185,9 @@ export function SourceMark({ kind, size = 8 }: { kind: Source; size?: number }) 
   return <View style={{ width: size + 2, height: 1.5, backgroundColor: tone }} />;
 }
 export function SourceLabel({ kind, text }: { kind: Source; text?: string }) {
-  return <View accessible accessibilityLabel={`Source: ${text ?? sourceText[kind]}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+  return <View accessible accessibilityLabel={t('Source: {v}', { v: text ?? t(sourceText[kind]) })} style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
     <View style={{ width: 10, alignItems: 'center' }}><SourceMark kind={kind} /></View>
-    <T v="footnote" tone={kind === 'off' ? 'ink3' : 'ink2'}>{text ?? sourceText[kind]}</T>
+    <T v="footnote" tone={kind === 'off' ? 'ink3' : 'ink2'}>{text ?? t(sourceText[kind])}</T>
   </View>;
 }
 
@@ -239,7 +240,7 @@ export function Toast({ title, text, tone = 'success', onClose, action }: { titl
         {action && <Tap label={action.title} onPress={action.onPress} style={{ alignSelf: 'flex-start', minHeight: 36, justifyContent: 'center' }}><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{action.title}</T></Tap>}
       </View>
     </View>
-    {onClose && <Tap label="Dismiss" onPress={onClose} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginTop: -12, marginRight: -12 }}><Glyph name="close" size={16} tone={c.ink2} /></Tap>}
+    {onClose && <Tap label={t("Dismiss")} onPress={onClose} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginTop: -12, marginRight: -12 }}><Glyph name="close" size={16} tone={c.ink2} /></Tap>}
   </Glass></Animated.View>;
 }
 

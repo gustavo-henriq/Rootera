@@ -20,7 +20,7 @@ import { api, ApiError, Candidate } from '../api';
 import { track } from '../analytics';
 import { scheduleNudges } from '../nudges';
 import { photoData } from './Camera';
-import { Experience, newId, NudgeKind, Plant } from '../model';
+import { Experience, experienceHint, experienceLabel, newId, NudgeKind, Plant } from '../model';
 import { useTheme } from '../ds/theme';
 import { radius, space } from '../ds/tokens';
 import { Btn, T, Tap, Toast } from '../ds/components';
@@ -34,6 +34,7 @@ import { NudgePicker, requestNudgePermission } from './onboarding/Nudges';
 import { Answers, Choice, currentSlot, FirstPlant, IdState, LIGHT, POTS, Slot, SOILS, STAGES, WATERED } from './onboarding/FirstPlant';
 import { KnownRow, PlanReveal } from './onboarding/PlanReveal';
 import { Atmosphere, experiences, GlassChoice, SeedProgress } from './onboarding/shared';
+import { t } from '../i18n';
 
 
 const TOTAL = 4;
@@ -66,7 +67,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   const [error, setError] = useState('');
   const leftCelebration = useRef(false);
   const ids = useRef({ plant: newId('plant'), soil: newId('care'), water: newId('water'), soilAt: '' });
-  const t = (name: string, props: Record<string, string | number | boolean> = {}) => { if (!preview) track(name, props); };
+  const tr = (name: string, props: Record<string, string | number | boolean> = {}) => { if (!preview) track(name, props); };
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => { if (phase === 'steps' && step > 1 && step < 4 && !busy) { setStep(step - 1); return true; } return false; });
@@ -74,8 +75,8 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   }, [step, busy, phase]);
 
   // Funnel: one "viewed" per step, so drop-off can be read per step.
-  useEffect(() => { if (phase === 'steps') t('onboarding_step_viewed', { step: STEP_NAMES[step] }); }, [step, phase]);
-  useEffect(() => { if (phase === 'plan') t('onboarding_step_viewed', { step: 'plan' }); }, [phase]);
+  useEffect(() => { if (phase === 'steps') tr('onboarding_step_viewed', { step: STEP_NAMES[step] }); }, [step, phase]);
+  useEffect(() => { if (phase === 'plan') tr('onboarding_step_viewed', { step: 'plan' }); }, [phase]);
 
   // A photo from the camera: identify it (free), and keep it as the plant's picture.
   useEffect(() => {
@@ -96,12 +97,12 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   const soilValue = answers.soil !== undefined ? SOILS[answers.soil].value : 'not_sure';
 
   const next = () => {
-    t('onboarding_step_completed', { step: STEP_NAMES[step] });
+    tr('onboarding_step_completed', { step: STEP_NAMES[step] });
     setDived(false);
     setStep(step + 1);
   };
   const skip = () => {
-    t('onboarding_step_skipped', { step: STEP_NAMES[step] });
+    tr('onboarding_step_skipped', { step: STEP_NAMES[step] });
     setDived(false);
     setStep(step + 1);
   };
@@ -109,8 +110,8 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   /** Plants the first plant. The profile is marked onboarded here, so the plant is never planted twice. */
   const plant = async () => {
     if (busy || !choice) return;
-    t('onboarding_step_completed', { step: 'plant' });
-    t('first_plant_added', { kind: choice.kind, via: choice.via, photo: !!photo, soil_checked: soilValue !== 'not_sure' });
+    tr('onboarding_step_completed', { step: 'plant' });
+    tr('first_plant_added', { kind: choice.kind, via: choice.via, photo: !!photo, soil_checked: soilValue !== 'not_sure' });
     if (preview) { setPhase('celebrate'); return; }
     setBusy(true); setError('');
     try {
@@ -123,7 +124,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
       const days = answers.watered !== undefined ? WATERED[answers.watered].days : null;
       if (days !== null) {
         const at = new Date(Date.now() - (days ? days * 86400000 : 60000)).toISOString();
-        await logCare({ id: ids.current.water, plantId: p.id, type: 'Watered', note: 'Approximate date, from setup', at, source: 'USER' });
+        await logCare({ id: ids.current.water, plantId: p.id, type: 'Watered', note: t('Approximate date, from setup'), at, source: 'USER' });
       }
       // "Not sure" is not an observation: the plant starts without a soil check instead.
       if (soilValue !== 'not_sure') {
@@ -132,64 +133,64 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
       }
       setPhase('celebrate');
     } catch (e) {
-      setError(e instanceof ApiError && e.offline ? e.message : e instanceof Error ? e.message : 'Could not save. Please try again.');
+      setError(e instanceof ApiError && e.offline ? e.message : e instanceof Error ? e.message : t('Could not save. Please try again.'));
     } finally { setBusy(false); }
   };
 
   /** Last step: nudges, then the phone's own permission prompt, in context (Apple HIG). */
   const finish = async (on: boolean) => {
     if (busy) return;
-    t('onboarding_step_completed', { step: 'nudges', nudges_on: on, kinds: on ? nudges.length : 0, detail });
-    t('onboarding_finished', {});
+    tr('onboarding_step_completed', { step: 'nudges', nudges_on: on, kinds: on ? nudges.length : 0, detail });
+    tr('onboarding_finished', {});
     if (preview) { navigation.goBack(); return; }
     setBusy(true); setError('');
     try {
       await saveProfile({ reminders: on && nudges.length > 0, caregiver: { experience: experience || 'first', detail }, nudges: { kinds: on ? nudges : [], time } });
       if (on && nudges.length) {
         const granted = await requestNudgePermission();
-        t('notification_permission', { granted });
+        tr('notification_permission', { granted });
         // Schedule right away; the garden refresh that follows keeps them current.
         if (granted) void scheduleNudges({ ...garden, onboarded: true, reminders: true, nudges: { kinds: nudges, time }, caregiver: { experience: experience || 'first', detail } });
       }
       navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save. Please try again.');
+      setError(e instanceof Error ? e.message : t('Could not save. Please try again.'));
       setBusy(false);
     }
   };
 
-  if (step === 0) return <Opening onContinue={() => { t('onboarding_step_completed', { step: 'opening' }); setDived(true); setStep(1); }} />;
+  if (step === 0) return <Opening onContinue={() => { tr('onboarding_step_completed', { step: 'opening' }); setDived(true); setStep(1); }} />;
 
   // The celebration can be skipped with a tap; the guard stops a late timer from reopening the plan.
   const toPlan = () => { if (leftCelebration.current) return; leftCelebration.current = true; setPhase('plan'); };
   if (phase === 'celebrate') {
-    return <Pressable accessibilityRole="button" accessibilityLabel="Continue to your plan" onPress={toPlan}
+    return <Pressable accessibilityRole="button" accessibilityLabel={t("Continue to your plan")} onPress={toPlan}
       style={{ flex: 1, backgroundColor: c.canvas, alignItems: 'center', justifyContent: 'center', padding: space.gutter, gap: space[6] }}>
       <SeedDrop size={290} run={1} kind={kind!} onDone={() => setTimeout(toPlan, reduceMotion ? 700 : 1200)} />
       <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(900)} style={{ alignItems: 'center', gap: space[1] }}>
-        <T v="hero" center>{choice?.name} is in your garden.</T>
-        <T v="callout" tone="ink2" center>{soilValue !== 'not_sure' ? 'Your first check is saved.' : 'Its first soil check is waiting for you.'}</T>
+        <T v="hero" center>{t('{name} is in your garden.', { name: choice?.name ?? '' })}</T>
+        <T v="callout" tone="ink2" center>{soilValue !== 'not_sure' ? t('Your first check is saved.') : t('Its first soil check is waiting for you.')}</T>
       </Animated.View>
     </Pressable>;
   }
 
   if (phase === 'plan' && choice) {
-    const val = (s: Slot, list: { label: string }[]) => answers[s] === undefined || /^(Not sure|Don’t remember)$/.test(list[answers[s]!].label) ? 'Not sure yet' : list[answers[s]!].label;
+    const val = (s: Slot, list: { label: string }[]) => answers[s] === undefined || /^(Not sure|Don’t remember)$/.test(list[answers[s]!].label) ? t('Not sure yet') : t(list[answers[s]!].label);
     const rows: KnownRow[] = [
-      { label: 'Light', value: val('light', LIGHT), source: 'told' },
-      { label: 'Pot', value: val('pot', POTS), source: 'told' },
-      { label: 'Stage', value: val('stage', STAGES), source: 'told' },
-      { label: 'Last watered', value: val('watered', WATERED), source: 'observed' },
-      { label: 'Soil today', value: val('soil', SOILS), source: 'observed' },
+      { label: t('Light'), value: val('light', LIGHT), source: 'told' },
+      { label: t('Pot'), value: val('pot', POTS), source: 'told' },
+      { label: t('Stage'), value: val('stage', STAGES), source: 'told' },
+      { label: t('Last watered'), value: val('watered', WATERED), source: 'observed' },
+      { label: t('Soil today'), value: val('soil', SOILS), source: 'observed' },
     ];
-    return <PlanReveal kind={choice.kind} name={choice.name} photo={photo} rows={rows} twin={garden.twins[ids.current.plant]} onContinue={() => { t('onboarding_step_completed', { step: 'plan' }); setPhase('steps'); setStep(4); }} />;
+    return <PlanReveal kind={choice.kind} name={choice.name} photo={photo} rows={rows} twin={garden.twins[ids.current.plant]} onContinue={() => { tr('onboarding_step_completed', { step: 'plan' }); setPhase('steps'); setStep(4); }} />;
   }
 
   const titles: Record<number, [string, string]> = {
-    1: ['Rootera learns this plant, not plants in general.', 'Tap each source as it appears.'],
-    2: ['How’s your plant life right now?', 'This sets how much Rootera explains. You can change it any time.'],
-    3: ['Which plant is yours?', 'Start with the one you see most often.'],
-    4: [`Want a nudge when your ${choice?.name ?? 'plant'} needs you?`, 'Each one comes from what you record. Change them any time in You.'],
+    1: [t('Rootera learns this plant, not plants in general.'), t('Tap each source as it appears.')],
+    2: [t('How’s your plant life right now?'), t('This sets how much Rootera explains. You can change it any time.')],
+    3: [t('Which plant is yours?'), t('Start with the one you see most often.')],
+    4: [choice ? t('Want a nudge when your {name} needs you?', { name: choice.name }) : t('Want a nudge when your plant needs you?'), t('Each one comes from what you record. Change them any time in You.')],
   };
   const hideTitle = (step === 1 && storyDone) || (step === 3 && !!kind);
   const titleDelay = step === 1 && dived ? SOIL_LIFT : 0;
@@ -204,11 +205,11 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
     {glassy && <Atmosphere />}
     <View style={{ paddingTop: insets.top + space[2], paddingHorizontal: space.gutter, height: insets.top + 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
       {canBack || step === 1
-        ? <Tap label="Back" onPress={() => { if (!busy) { setDived(false); setStep(step - 1); } }} ring={22} style={{ width: 44, height: 44, alignItems: 'flex-start', justifyContent: 'center' }}><Glyph name="back" size={22} /></Tap>
+        ? <Tap label={t("Back")} onPress={() => { if (!busy) { setDived(false); setStep(step - 1); } }} ring={22} style={{ width: 44, height: 44, alignItems: 'flex-start', justifyContent: 'center' }}><Glyph name="back" size={22} /></Tap>
         : <View style={{ width: 44 }} />}
       <SeedProgress step={step} total={TOTAL} />
       {step === 1
-        ? <Tap label="Skip this step" onPress={skip} ring={radius.inner} style={{ minWidth: 44, height: 44, alignItems: 'flex-end', justifyContent: 'center' }}><T v="subhead" tone="ink2">Skip</T></Tap>
+        ? <Tap label={t("Skip this step")} onPress={skip} ring={radius.inner} style={{ minWidth: 44, height: 44, alignItems: 'flex-end', justifyContent: 'center' }}><T v="subhead" tone="ink2">{t("Skip")}</T></Tap>
         : <View style={{ width: 44 }} />}
     </View>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: space.gutter, paddingBottom: space[6], gap: space[5], flexGrow: 1 }}>
@@ -226,9 +227,9 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
         {!!width && step === 1 && <Story width={width} start={titleTime} onComplete={() => setStoryDone(true)} />}
         {step === 2 && <View style={{ gap: space[3] }}>
           <View style={{ flexDirection: 'row', gap: space[3] }}>
-            {experiences.slice(0, 2).map(o => <GlassChoice key={o.value} on={experience === o.value} onPress={() => chooseExperience(o.value)} label={o.label} hint={o.hint} art={o.art} scene={o.scene} />)}
+            {experiences.slice(0, 2).map(o => <GlassChoice key={o.value} on={experience === o.value} onPress={() => chooseExperience(o.value)} label={experienceLabel[o.value]} hint={experienceHint[o.value]} art={o.art} scene={o.scene} />)}
           </View>
-          <GlassChoice wide on={experience === 'many'} onPress={() => chooseExperience('many')} label={experiences[2].label} hint={experiences[2].hint} art={experiences[2].art} scene={experiences[2].scene} />
+          <GlassChoice wide on={experience === 'many'} onPress={() => chooseExperience('many')} label={experienceLabel.many} hint={experienceHint.many} art={experiences[2].art} scene={experiences[2].scene} />
         </View>}
         {!!width && step === 3 && <FirstPlant width={width} choice={choice} onChoose={setChoice} answers={answers} onAnswer={answer} editing={editing} setEditing={setEditing}
           photo={photo} idState={idState} matches={matches} onCamera={() => navigation.navigate('Camera', { returnTo: 'Welcome' })} />}
@@ -238,13 +239,13 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
     {/* The action appears only once it can be taken: no disabled "Plant it" waiting at the bottom. */}
     {showCta && <Animated.View key={step} entering={reduceMotion || step === 2 || step === 4 ? undefined : FadeInDown.duration(380)}
       style={{ paddingHorizontal: space.gutter, paddingBottom: insets.bottom + space[4], paddingTop: space[3], gap: space[2] }}>
-      {!!error && <Toast tone="error" title="Not saved" text={error} onClose={() => setError('')} />}
+      {!!error && <Toast tone="error" title={t("Not saved")} text={error} onClose={() => setError('')} />}
       {step === 4
         ? <>
-            <Btn title={nudges.length ? 'Turn on nudges' : 'Finish'} busy={busy} onPress={() => void finish(nudges.length > 0)} />
-            {!!nudges.length && <Btn kind="plain" title="Not now" onPress={() => void finish(false)} style={{ alignSelf: 'center' }} />}
+            <Btn title={nudges.length ? t('Turn on nudges') : t('Finish')} busy={busy} onPress={() => void finish(nudges.length > 0)} />
+            {!!nudges.length && <Btn kind="plain" title={t("Not now")} onPress={() => void finish(false)} style={{ alignSelf: 'center' }} />}
           </>
-        : <Btn title={step === 3 ? 'Plant it' : 'Continue'} busy={busy} disabled={!canNext} hint={step === 2 ? 'Choose the one closest to you to continue.' : undefined} onPress={() => step === 3 ? void plant() : next()} />}
+        : <Btn title={step === 3 ? t('Plant it') : t('Continue')} busy={busy} disabled={!canNext} hint={step === 2 ? t('Choose the one closest to you to continue.') : undefined} onPress={() => step === 3 ? void plant() : next()} />}
     </Animated.View>}
     {step === 1 && dived && <SoilReveal />}
   </View>;

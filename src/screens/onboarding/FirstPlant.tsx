@@ -17,6 +17,7 @@ import { fonts, radius, space, springs, type } from '../../ds/tokens';
 import { Glyph } from '../../ds/icons';
 import { Candidate } from '../../api';
 import { Chip, Glass, SourceMark, T, Tap } from '../../ds/components';
+import { t } from '../../i18n';
 
 export type Slot = 'light' | 'pot' | 'stage' | 'watered' | 'soil';
 // Soil comes last: it is the one thing you go and check, and it becomes the first observation.
@@ -30,7 +31,7 @@ export const SOILS: { label: string; value: Soil }[] = [{ label: 'Dry', value: '
 const QUESTION: Record<Slot, string> = { light: 'How much light does it get?', pot: 'What is it planted in?', stage: 'How grown is it?', watered: 'When did you last water it?', soil: 'Push a finger into the soil. How does it feel?' };
 const LABEL: Record<Slot, string> = { light: 'Light', pot: 'Pot', stage: 'Stage', watered: 'Watered', soil: 'Soil' };
 const LISTS: Record<Slot, { label: string }[]> = { light: LIGHT, pot: POTS, stage: STAGES, watered: WATERED, soil: SOILS };
-const options = (s: Slot) => LISTS[s].map(o => o.label);
+const options = (s: Slot) => LISTS[s].map(o => t(o.label));
 
 export type Answers = Partial<Record<Slot, number>>;
 /** The slot being asked: the one being edited, otherwise the first one without an answer. */
@@ -43,17 +44,17 @@ function Note({ slot, side, top, value, active, onPress, anchor, width }: { slot
   useEffect(() => { if (!reduceMotion) line.value = withDelay(140, withSpring(1, springs.smooth)); }, []);
   const len = side === 'left' ? anchor - boxW : width - boxW - anchor;
   const draw = useAnimatedStyle(() => ({ transform: [{ scaleX: line.value }] }));
-  const label = LABEL[slot];
+  const label = t(LABEL[slot]);
   return <>
     <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: top + 25, left: side === 'left' ? boxW : anchor, width: Math.max(0, len), height: 1.5, backgroundColor: c.ink2, transformOrigin: side === 'left' ? 'left' : 'right' }, draw]} />
     <View pointerEvents="none" style={{ position: 'absolute', top: top + 21, left: anchor - 4, width: 9, height: 9, borderRadius: 5, backgroundColor: c.ink }} />
     <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(320)} style={{ position: 'absolute', top, [side]: 0, width: boxW }}>
-      <Tap label={value ? `${label}: ${value}. Change` : `${label}. Choose below`} onPress={onPress} ring={radius.input}>
+      <Tap label={value ? `${label}: ${value}. ${t('Change')}` : `${label}. ${t('Choose below')}`} onPress={onPress} ring={radius.input}>
         <Glass level="callout" r={radius.input} shadow={active} style={{ minHeight: 52, paddingVertical: 8, paddingHorizontal: 10, borderWidth: 1.5, borderColor: active ? c.ink : 'transparent', alignItems: side === 'left' ? 'flex-start' : 'flex-end' }}>
           <View style={{ flexDirection: side === 'left' ? 'row' : 'row-reverse', alignItems: 'center', gap: 6 }}>
             <SourceMark kind={slot === 'soil' || slot === 'watered' ? 'observed' : 'told'} /><T v="caption" tone="ink2">{label}</T>
           </View>
-          <T v={value ? 'subhead' : 'footnote'} tone={value ? 'ink' : 'ink2'} lines={2} style={{ textAlign: side, fontFamily: value ? fonts.medium : fonts.regular }}>{value ?? 'Choose below'}</T>
+          <T v={value ? 'subhead' : 'footnote'} tone={value ? 'ink' : 'ink2'} lines={2} style={{ textAlign: side, fontFamily: value ? fonts.medium : fonts.regular }}>{value ?? t('Choose below')}</T>
         </Glass>
       </Tap>
     </Animated.View>
@@ -75,12 +76,14 @@ function Specimen({ kind, size }: { kind: PlantKind | null; size: SharedValue<nu
   const shadowStyle = useAnimatedStyle(() => ({ width: size.value * .56, height: size.value * .06, bottom: -size.value * .03 }));
   return <Animated.View style={[{ alignItems: 'center' }, box]}>
     <Animated.View style={[{ position: 'absolute', borderRadius: 400, backgroundColor: c.hairline }, shadowStyle]} />
-    <Image source={plantArt[kind ?? 'monstera']} resizeMode="contain" tintColor={c.sunken} accessibilityLabel={kind ? undefined : 'A plant silhouette, waiting for you to choose'} style={{ position: 'absolute', width: '100%', height: '100%', opacity: kind ? 0 : 1 }} />
+    <Image source={plantArt[kind ?? 'monstera']} resizeMode="contain" tintColor={c.sunken} accessibilityLabel={kind ? undefined : t('A plant silhouette, waiting for you to choose')} style={{ position: 'absolute', width: '100%', height: '100%', opacity: kind ? 0 : 1 }} />
     {kind && <Animated.View key={kind} style={[{ position: 'absolute', width: '100%', height: '100%', transformOrigin: 'bottom' }, plantStyle]}>
-      <Image source={plantArt[kind]} resizeMode="contain" accessibilityLabel={catalog.find(s => s.kind === kind)?.name ?? 'Your plant'} style={{ width: '100%', height: '100%' }} />
+      <Image source={plantArt[kind]} resizeMode="contain" accessibilityLabel={speciesLabel(kind)} style={{ width: '100%', height: '100%' }} />
     </Animated.View>}
   </Animated.View>;
 }
+
+const speciesLabel = (kind: PlantKind) => { const s = catalog.find(x => x.kind === kind); return s ? t(s.name) : t('Your plant'); };
 
 export interface Choice { kind: PlantKind; name: string; latin: string; via: 'featured' | 'search' | 'photo' | 'custom' }
 export type IdState = 'idle' | 'loading' | 'off' | 'error';
@@ -91,9 +94,9 @@ function Finder({ q, setQ, choice, onChoose, photo, idState, matches, onCamera }
   photo?: string; idState: IdState; matches: Candidate[] | null; onCamera: () => void;
 }) {
   const { c } = useTheme();
-  const t = q.trim().toLowerCase();
+  const needle = q.trim().toLowerCase();
   // The carousel shows the illustrated favourites; search reaches the whole catalog.
-  const list = t ? catalog.filter(s => matchesSpecies(q, s)) : catalog.filter(s => s.featured);
+  const list = needle ? catalog.filter(s => matchesSpecies(q, s)) : catalog.filter(s => s.featured);
   // 4.5 tiles fit the width: the half tile at the edge tells people the row scrolls.
   const screenW = Math.min(useWindowDimensions().width, 440);
   const tileW = Math.max(68, Math.floor((screenW - space.gutter - 4.5 * space[2]) / 4.5));
@@ -106,20 +109,20 @@ function Finder({ q, setQ, choice, onChoose, photo, idState, matches, onCamera }
   return <View style={{ gap: space[3] }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], borderBottomWidth: 1, borderColor: c.ink3 }}>
       <Glyph name="search" size={20} tone={c.ink2} />
-      <TextInput accessibilityLabel="Search plants" value={q} onChangeText={setQ} placeholder="Search: orchid, girassol, basil…" placeholderTextColor={c.ink3} returnKeyType="search" maxFontSizeMultiplier={1.5}
+      <TextInput accessibilityLabel={t("Search plants")} value={q} onChangeText={setQ} placeholder={t("Search: orchid, girassol, basil…")} placeholderTextColor={c.ink3} returnKeyType="search" maxFontSizeMultiplier={1.5}
         style={[type.body, { flex: 1, minHeight: 48, color: c.ink }, Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)]} />
       {/* Identification is free: it is how many people find out what their plant is. */}
-      <Tap label="Identify from a photo" onPress={onCamera} ring={radius.inner} style={{ height: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: space[2] }}>
-        <Glyph name="camera" size={20} tone={c.leafText} /><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>Photo</T>
+      <Tap label={t("Identify from a photo")} onPress={onCamera} ring={radius.inner} style={{ height: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: space[2] }}>
+        <Glyph name="camera" size={20} tone={c.leafText} /><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{t("Photo")}</T>
       </Tap>
     </View>
     {!!photo && <View style={{ flexDirection: 'row', gap: space[3], alignItems: 'center' }}>
-      <Image source={{ uri: photo }} accessibilityLabel="Your photo" style={{ width: 52, height: 64, borderRadius: radius.input }} />
+      <Image source={{ uri: photo }} accessibilityLabel={t("Your photo")} style={{ width: 52, height: 64, borderRadius: radius.input }} />
       <View style={{ flex: 1, gap: space[1] }}>
-        {idState === 'loading' && <T v="subhead" tone="ink2">Looking for matches…</T>}
-        {idState === 'off' && <T v="footnote" tone="ink2">Photo identification isn’t connected in this preview. Your photo will be its picture; choose the plant below.</T>}
-        {idState === 'error' && <T v="footnote" tone="danger">Identification didn’t work. Choose the plant below.</T>}
-        {matches && !matches.length && <T v="footnote" tone="ink2">No confident match. Choose the plant below.</T>}
+        {idState === 'loading' && <T v="subhead" tone="ink2">{t("Looking for matches…")}</T>}
+        {idState === 'off' && <T v="footnote" tone="ink2">{t('Photo identification isn’t connected in this preview. Your photo will be its picture; choose the plant below.')}</T>}
+        {idState === 'error' && <T v="footnote" tone="danger">{t("Identification didn’t work. Choose the plant below.")}</T>}
+        {matches && !matches.length && <T v="footnote" tone="ink2">{t("No confident match. Choose the plant below.")}</T>}
         {!!matches?.length && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
           {matches.slice(0, 3).map(m => <Chip key={m.scientific_name} label={m.common_name || m.scientific_name} selected={choice?.latin === m.scientific_name}
             onPress={() => onChoose({ kind: m.kind, name: m.common_name || m.scientific_name, latin: m.scientific_name, via: 'photo' })} />)}
@@ -127,13 +130,13 @@ function Finder({ q, setQ, choice, onChoose, photo, idState, matches, onCamera }
       </View>
     </View>}
     <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: space[2], paddingRight: space[4] }} style={{ marginHorizontal: -space.gutter, paddingLeft: space.gutter, flexGrow: 0 }}>
-      {list.map(s => tile(s.kind, choice?.kind === s.kind && choice.via !== 'custom', s.name, () => onChoose({ kind: s.kind, name: s.name, latin: s.latin, via: t ? 'search' : 'featured' }),
-        <Image source={plantArt[s.kind]} style={{ width: 56, height: 56 }} resizeMode="contain" />, s.name))}
-      {!!t && tile('custom', choice?.via === 'custom', `Add “${q.trim()}”`, () => onChoose({ kind: 'other', name: q.trim(), latin: q.trim(), via: 'custom' }),
+      {list.map(s => tile(s.kind, choice?.kind === s.kind && choice.via !== 'custom', t(s.name), () => onChoose({ kind: s.kind, name: t(s.name), latin: s.latin, via: needle ? 'search' : 'featured' }),
+        <Image source={plantArt[s.kind]} style={{ width: 56, height: 56 }} resizeMode="contain" />, t(s.name)))}
+      {!!needle && tile('custom', choice?.via === 'custom', t('Add “{name}”', { name: q.trim() }), () => onChoose({ kind: 'other', name: q.trim(), latin: q.trim(), via: 'custom' }),
         <View style={{ width: 56, height: 56, borderRadius: radius.control, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.ink3, alignItems: 'center', justifyContent: 'center' }}><Glyph name="plus" size={22} tone={c.ink2} /></View>,
-        `Add ${q.trim()} as your plant. Guidance will rely on your own checks.`)}
+        t('Add {name} as your plant. Guidance will rely on your own checks.', { name: q.trim() }))}
     </ScrollView>
-    {!!t && !list.length && <T v="footnote" tone="ink2">Not in the list yet. Add it by name: Rootera will learn it from your own checks.</T>}
+    {!!needle && !list.length && <T v="footnote" tone="ink2">{t("Not in the list yet. Add it by name: Rootera will learn it from your own checks.")}</T>}
   </View>;
 }
 
@@ -177,25 +180,25 @@ export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing
 
     {/* Large text: the notes become a plain list under the plant instead of labels pinned to it. */}
     {plate && compact && <View style={{ borderTopWidth: 1, borderColor: c.hairline }}>
-      {ORDER.filter(visible).map(s => <Tap key={s} label={valueOf(s) ? `${LABEL[s]}: ${valueOf(s)}. Change` : `${LABEL[s]}. Choose below`} onPress={() => setEditing(s)} ring={radius.inner}
+      {ORDER.filter(visible).map(s => <Tap key={s} label={valueOf(s) ? `${t(LABEL[s])}: ${valueOf(s)}. ${t('Change')}` : `${t(LABEL[s])}. ${t('Choose below')}`} onPress={() => setEditing(s)} ring={radius.inner}
         style={{ paddingVertical: space[2], gap: 2, borderBottomWidth: 1, borderColor: c.hairline }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><SourceMark kind={s === 'soil' || s === 'watered' ? 'observed' : 'told'} /><T v="footnote" tone="ink2">{LABEL[s]}</T></View>
-        <T v="headline" tone={valueOf(s) ? 'ink' : 'ink2'}>{valueOf(s) ?? 'Choose below'}</T>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><SourceMark kind={s === 'soil' || s === 'watered' ? 'observed' : 'told'} /><T v="footnote" tone="ink2">{t(LABEL[s])}</T></View>
+        <T v="headline" tone={valueOf(s) ? 'ink' : 'ink2'}>{valueOf(s) ?? t('Choose below')}</T>
       </Tap>)}
     </View>}
 
     {slot && <Animated.View key={slot} layout={reduceMotion ? undefined : LinearTransition.duration(420)} entering={FadeIn.duration(240)} exiting={FadeOut.duration(140)} style={{ gap: space[3] }}>
-      <T v="headline">{QUESTION[slot]}</T>
+      <T v="headline">{t(QUESTION[slot])}</T>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
         {options(slot).map((o, i) => <Chip key={o} label={o} selected={answers[slot] === i} onPress={() => onAnswer(slot, i)} />)}
       </View>
     </Animated.View>}
 
     {complete && <Animated.View entering={FadeInDown.delay(180).duration(420)} style={{ gap: space[1] }}>
-      <T v="headline">{SOILS[answers.soil!].value === 'not_sure' ? 'Its first soil check can wait.' : 'This is your first observation.'}</T>
+      <T v="headline">{SOILS[answers.soil!].value === 'not_sure' ? t('Its first soil check can wait.') : t('This is your first observation.')}</T>
       <T v="subhead" tone="ink2">{SOILS[answers.soil!].value === 'not_sure'
-        ? 'Rootera will ask for one soon. Every later check is compared with it.'
-        : 'Rootera compares every later check with it. Tap any note to change it.'}</T>
+        ? t('Rootera will ask for one soon. Every later check is compared with it.')
+        : t('Rootera compares every later check with it. Tap any note to change it.')}</T>
     </Animated.View>}
   </View>;
 }

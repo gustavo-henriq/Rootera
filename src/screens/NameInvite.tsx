@@ -12,6 +12,7 @@ import { useTheme } from '../ds/theme';
 import { fonts, radius, space } from '../ds/tokens';
 import { Btn, Field, Glass, T, Tap } from '../ds/components';
 import { Glyph } from '../ds/icons';
+import { t } from '../i18n';
 
 const DISMISSED = 'rootera:name-invite:dismissed';
 /** Set by the check-in screen after its first successful save. */
@@ -37,31 +38,31 @@ export function NameInvite() {
     if (!name.trim()) return;
     setBusy(true); setError('');
     try { await saveProfile({ name: name.trim() }); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Could not save.'); }
+    catch (e) { setError(e instanceof Error ? e.message : t('Could not save.')); }
     finally { setBusy(false); }
   };
 
   if (!open) return <Animated.View entering={FadeIn.delay(300).duration(300)} exiting={FadeOut.duration(160)}
     style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
-    <Tap label="Add your name. It shows up here on Today." onPress={() => setOpen(true)} ring={radius.input} style={{ flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
+    <Tap label={t("Add your name. It shows up here on Today.")} onPress={() => setOpen(true)} ring={radius.input} style={{ flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
       <Glyph name="person" size={18} tone={c.ink2} />
-      <T v="subhead" tone="ink2">What should we call you?</T>
-      <T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>Add name</T>
+      <T v="subhead" tone="ink2">{t("What should we call you?")}</T>
+      <T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{t("Add name")}</T>
     </Tap>
-    <Tap label="Not now" onPress={dismiss} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Glyph name="close" size={16} tone={c.ink3} /></Tap>
+    <Tap label={t("Not now")} onPress={dismiss} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Glyph name="close" size={16} tone={c.ink3} /></Tap>
   </Animated.View>;
 
   return <Animated.View entering={FadeInDown.duration(280)} exiting={FadeOut.duration(200)}>
     <Glass level="control" r={radius.card} shadow={false} style={{ padding: space[4], gap: space[3] }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[2] }}>
         <View style={{ flex: 1, gap: 2 }}>
-          <T v="headline">What should we call you?</T>
-          <T v="subhead" tone={error ? 'ink' : 'ink2'}>{error || 'Optional. It shows up here on Today.'}</T>
+          <T v="headline">{t("What should we call you?")}</T>
+          <T v="subhead" tone={error ? 'ink' : 'ink2'}>{error || t('Optional. It shows up here on Today.')}</T>
         </View>
-        <Tap label="Not now" onPress={dismiss} ring={22} style={{ width: 44, height: 44, marginTop: -10, marginRight: -10, alignItems: 'center', justifyContent: 'center' }}><Glyph name="close" size={18} /></Tap>
+        <Tap label={t("Not now")} onPress={dismiss} ring={22} style={{ width: 44, height: 44, marginTop: -10, marginRight: -10, alignItems: 'center', justifyContent: 'center' }}><Glyph name="close" size={18} /></Tap>
       </View>
-      <Field label="Your name" value={name} onChangeText={setName} maxLength={40} autoFocus onSubmitEditing={() => void save()} />
-      <Btn size="regular" title="Save name" busy={busy} disabled={!name.trim()} hint="Type a name to save it." onPress={() => void save()} />
+      <Field label={t("Your name")} value={name} onChangeText={setName} maxLength={40} autoFocus onSubmitEditing={() => void save()} />
+      <Btn size="regular" title={t("Save name")} busy={busy} disabled={!name.trim()} hint={t("Type a name to save it.")} onPress={() => void save()} />
     </Glass>
   </Animated.View>;
 }

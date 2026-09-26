@@ -10,6 +10,7 @@ import { useTheme } from '../../ds/theme';
 import { radius, space } from '../../ds/tokens';
 import { Glass, T, Tap } from '../../ds/components';
 import { Glyph } from '../../ds/icons';
+import { t } from '../../i18n';
 
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
 const SEED = 'M12 3C19 8.5 20.5 21 12 29C3.5 21 5 8.5 12 3Z';
@@ -21,7 +22,7 @@ export function SeedProgress({ step, total }: { step: number; total: number }) {
   useEffect(() => { fill.value = reduceMotion ? step / total : withTiming(step / total, { duration: 600, easing: Easing.out(Easing.cubic) }); }, [step]);
   const props = useAnimatedProps(() => ({ y: 32 - 28 * fill.value, height: 28 * fill.value + 1 }));
   const done = step >= total;
-  return <View accessible accessibilityRole="progressbar" accessibilityLabel={`Step ${step} of ${total}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+  return <View accessible accessibilityRole="progressbar" accessibilityLabel={t('Step {i} of {n}', { i: step, n: total })} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
     <View style={{ width: 28, height: 36, alignItems: 'center', justifyContent: 'flex-end' }}>
     <Svg width={24} height={32} viewBox="0 0 24 32">
       <Defs><ClipPath id="seed"><Path d={SEED} /></ClipPath></Defs>
@@ -32,7 +33,7 @@ export function SeedProgress({ step, total }: { step: number; total: number }) {
     </Svg>
     </View>
     {/* The seed fills as a feeling of progress; the count says exactly where you are. */}
-    <T v="caption" tone="ink2" style={{ fontVariant: ['tabular-nums'] }}>{Math.min(step, total)} of {total}</T>
+    <T v="caption" tone="ink2" style={{ fontVariant: ['tabular-nums'] }}>{t('{i} of {n}', { i: Math.min(step, total), n: total })}</T>
   </View>;
 }
 

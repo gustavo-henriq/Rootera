@@ -1,3 +1,4 @@
+import { locale, t } from './i18n';
 export type PlantKind = 'aloe' | 'peace-lily' | 'monstera' | 'pothos' | 'snake-plant' | 'zz' | 'pilea' | 'cactus'
   | 'gerbera' | 'sunflower' | 'orchid' | 'fern' | 'echeveria' | 'rubber-plant' | 'calathea' | 'basil' | 'other';
 export type Plan = 'Free' | 'Plus';
@@ -66,13 +67,16 @@ export const catalog: Species[] = [
   { kind: 'basil', name: 'Basil', latin: 'Ocimum basilicum', aliases: 'manjericao herb erva' },
 ];
 
-export const soilLabel: Record<Soil, string> = { dry: 'Dry', slightly_moist: 'Slightly moist', moist: 'Moist', wet: 'Very wet', not_sure: 'Not sure' };
-export const visualLabel: Record<Visual, string> = { great: 'Looks good', different: 'Something changed', unwell: 'Not doing well', not_sure: 'Not sure' };
-export const experienceLabel: Record<Experience, string> = { first: 'My first plant', some: 'A few plants', many: 'Lots of plants, or a whole garden' };
-export const experienceHint: Record<Experience, string> = { first: 'Explains how to check and what to look for.', some: 'Short tips for each plant.', many: 'Straight to the point.' };
-
-/** The interface is in English, so dates follow it rather than the device language. */
-export const LOCALE = 'en-US';
+/** Label tables read through t(), so every `soilLabel[x]` is already in the current language. */
+function translated<K extends string>(table: Record<K, string>): Record<K, string> {
+  return new Proxy(table, { get: (o, k) => (typeof k === 'string' && k in o ? t((o as Record<string, string>)[k]) : (o as any)[k]) });
+}
+export const soilLabel = translated<Soil>({ dry: 'Dry', slightly_moist: 'Slightly moist', moist: 'Moist', wet: 'Very wet', not_sure: 'Not sure' });
+export const visualLabel = translated<Visual>({ great: 'Looks good', different: 'Something changed', unwell: 'Not doing well', not_sure: 'Not sure' });
+export const experienceLabel = translated<Experience>({ first: 'My first plant', some: 'A few plants', many: 'Lots of plants, or a whole garden' });
+export const experienceHint = translated<Experience>({ first: 'Explains how to check and what to look for.', some: 'Short tips for each plant.', many: 'Straight to the point.' });
+/** A species' common name in the current language (catalog names are English keys). */
+export const speciesName = (s: Pick<Species, 'name'>) => t(s.name);
 
 export const known = (value?: string | null) => !!value && !['Not sure', "I don't know", ''].includes(value);
 
@@ -83,21 +87,21 @@ export function newId(prefix: string) {
 export function ago(iso: string | null | undefined, now = Date.now()): string {
   if (!iso) return '';
   const minutes = Math.round((now - new Date(iso).getTime()) / 60000);
-  if (minutes < 2) return 'just now';
-  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 2) return t('just now');
+  if (minutes < 60) return t('{n} min ago', { n: minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
+  if (hours < 24) return t('{n} h ago', { n: hours });
   const days = Math.round(hours / 24);
-  if (days === 1) return 'yesterday';
-  if (days < 30) return `${days} days ago`;
-  return new Date(iso).toLocaleDateString(LOCALE, { month: 'short', day: 'numeric' });
+  if (days === 1) return t('yesterday');
+  if (days < 30) return t('{n} days ago', { n: days });
+  return new Date(iso).toLocaleDateString(locale(), { month: 'short', day: 'numeric' });
 }
 
 export function describeEvent(e: CareEvent): string {
-  if (e.type === 'Soil check') return e.soil ? `Soil: ${soilLabel[e.soil].toLowerCase()}` : 'Soil check';
-  if (e.type === 'Observation') return e.visual ? `Leaves: ${visualLabel[e.visual].toLowerCase()}` : 'Leaf note';
-  if (e.type === 'Watered') return e.amount_ml ? `Watered, ${e.amount_ml} ml` : 'Watered';
-  return e.type;
+  if (e.type === 'Soil check') return e.soil ? t('Soil: {v}', { v: soilLabel[e.soil].toLowerCase() }) : t('Soil check');
+  if (e.type === 'Observation') return e.visual ? t('Leaves: {v}', { v: visualLabel[e.visual].toLowerCase() }) : t('Leaf note');
+  if (e.type === 'Watered') return e.amount_ml ? t('Watered, {n} ml', { n: e.amount_ml }) : t('Watered');
+  return t(e.type);
 }
 
 /** Plants that need the caregiver first: a check or a watering decision beats waiting. */

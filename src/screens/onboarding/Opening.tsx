@@ -13,6 +13,7 @@ import { SEED_AT, SeedDrop } from '../../ds/SeedDrop';
 import { LogoSprout } from '../../ds/LogoSprout';
 import { revealDuration, TextReveal } from '../../ds/TextReveal';
 import { SOIL_DIVE, SoilLayer } from './Soil';
+import { t } from '../../i18n';
 
 const LINE = 'Stop guessing what your plant needs.';
 const SUB = 'Rootera learns one plant at a time: its spot, its pot and the care you give it.';
@@ -58,8 +59,8 @@ export function Opening({ onContinue }: { onContinue: () => void }) {
       <Animated.View style={[{ alignItems: 'center', minHeight: 170 }, logoStyle]}>
         <LogoSprout width={250} run={logoRun} variant="full" onDone={whenLogoDone} />
         {ready && <View style={{ alignItems: 'center', gap: space[2], marginTop: space[5], maxWidth: 330 }}>
-          <TextReveal text={LINE} v="hero" center delay={250} />
-          <TextReveal text={SUB} v="callout" tone="ink2" center delay={revealDuration(LINE)} perWord={35} />
+          <TextReveal text={t(LINE)} v="hero" center delay={250} />
+          <TextReveal text={t(SUB)} v="callout" tone="ink2" center delay={revealDuration(t(LINE))} perWord={35} />
         </View>}
       </Animated.View>
       <Animated.View style={[{ marginTop: -space[4], transformOrigin: `${SEED_AT.x * 100}% ${SEED_AT.y * 100}%` }, potStyle]}>
@@ -67,7 +68,7 @@ export function Opening({ onContinue }: { onContinue: () => void }) {
       </Animated.View>
     </View>
     {ready && <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(1900).duration(400)} style={fadeStyle}>
-      <Btn title="Get started" onPress={dive} />
+      <Btn title={t("Get started")} onPress={dive} />
     </Animated.View>}
     {under && <SoilLayer grow opacity={soil} />}
   </View>;

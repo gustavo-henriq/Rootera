@@ -31,8 +31,9 @@ def digest(token: str) -> str:
 class GardenService:
     """Use cases for one owner's garden. Routes stay thin; rules live here and in the Twin."""
 
-    def __init__(self, db: Session, owner: str, integrations: dict | None = None):
-        self.db, self.owner = db, owner
+    def __init__(self, db: Session, owner: str, integrations: dict | None = None, lang: str = 'en'):
+        # `lang` words the garden snapshot's guidance; stored twins and change reports stay in English.
+        self.db, self.owner, self.lang = db, owner, lang
         self.engine = PlantTwinEngine()
         self.integrations = integrations or {}
 
@@ -117,7 +118,7 @@ class GardenService:
                [Evidence(o.id, 'SENSOR', 'SoilMoistureMeasured', {'moisture': o.normalized}, o.observed_at, o.quality, o.demo) for o in sensor]
 
     def project(self, plant_id: str, plant: Plant | None = None, evidence: list | None = None,
-                caregiver: dict | None = None, real_devices: list | None = None) -> dict:
+                caregiver: dict | None = None, real_devices: list | None = None, lang: str = 'en') -> dict:
         """Compute the Twin without writing. Used for reads. The snapshot passes preloaded
         evidence, caregiver and devices so a garden costs a few queries, not a few per plant."""
         plant = plant or self.plant(plant_id)
@@ -125,7 +126,7 @@ class GardenService:
         state = self.engine.project(plant_id, evidence)
         if caregiver is None:
             caregiver = self.db.get(Profile, self.owner).data.get('caregiver') or {}
-        state['guidance'] = SensorlessGuidance().project(plant.data, caregiver, evidence)
+        state['guidance'] = SensorlessGuidance().project(plant.data, caregiver, evidence, lang=lang)
         if real_devices is None:
             real_devices = self.db.scalars(select(Device).where(Device.plant_id == plant_id, Device.active == True, Device.demo == False)).all()
         state['sources'] = {
@@ -276,7 +277,7 @@ class GardenService:
             cal = self.db.scalar(select(Calibration).where(Calibration.device_id == d.id).order_by(Calibration.version.desc()))
             last = self.db.scalar(select(SensorObservation).where(SensorObservation.device_id == d.id).order_by(SensorObservation.observed_at.desc(), SensorObservation.id.desc()))
             sensors.append({'id': d.id, 'plantId': d.plant_id, 'name': d.name, 'dry': cal.dry if cal else 3295, 'wet': cal.wet if cal else 1422, 'moisture': last.normalized if last else None, 'source': 'SENSOR', 'observedAt': last.observed_at if last else None, 'demo': d.demo, 'calibrationVersion': cal.version if cal else None})
-        twins = {p.id: lean_twin(self.project(p.id, p, evidence[p.id], caregiver, real[p.id])) for p in plants}
+        twins = {p.id: lean_twin(self.project(p.id, p, evidence[p.id], caregiver, real[p.id], lang=self.lang)) for p in plants}
         mine = [o for o in observations if o.plant_id in ids]
         view = self.profile_view(profile.data)
         capacity = PLAN_CAPACITY[view['plan']]
