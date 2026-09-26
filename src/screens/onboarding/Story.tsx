@@ -11,6 +11,7 @@ import Animated, { cancelAnimation, Easing, FadeIn, FadeInDown, useAnimatedStyle
 import { useTheme } from '../../ds/theme';
 import { fonts, radius, space } from '../../ds/tokens';
 import { SourceMark, T, Tap } from '../../ds/components';
+import { Ground } from '../../ds/plant';
 
 /** One image per stage (seed, sprout, young plant, bud, bloom), all on the same canvas. */
 export const flowerStages: number[] = [
@@ -43,6 +44,8 @@ function Flower({ stage, size }: { stage: number; size: number }) {
   const w = size * RATIO;
   const label = ['A seed in a pot', 'A sprout', 'A young plant', 'A plant with a bud', 'The plant in flower'][Math.min(stage, 4)];
   return <View accessible accessibilityRole="image" accessibilityLabel={label} style={{ width: w, height: size }}>
+    {/* The contact shadow is drawn in code (it follows the theme); the art has none baked in. */}
+    <Ground width={w * .72} style={{ position: 'absolute', bottom: -size * .07 }} />
     {flowerStages.map((src, i) => <StageImage key={i} src={src} on={i === Math.min(stage, flowerStages.length - 1)} w={w} h={size} />)}
   </View>;
 }
@@ -83,7 +86,7 @@ function Node({ source, waiting, focused, onPress }: { source: typeof SOURCES[nu
     <Tap label={waiting ? `${source.title}. Tap to see what it adds.` : `${source.title}. Show what it adds.`} selected={focused} onPress={onPress} ring={radius.control}
       style={{ minHeight: 44, paddingHorizontal: 10, paddingVertical: 10, borderRadius: radius.control, borderWidth: focused || waiting ? 1.5 : 1, borderColor: focused || waiting ? c.ink : c.ink3, backgroundColor: c.raised, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
       <SourceMark kind={source.key} />
-      <T v="subhead" style={{ fontFamily: fonts.medium, flex: 1 }}>{source.title}</T>
+      <T v="subhead" lines={1} style={{ fontFamily: fonts.medium, flexShrink: 1 }}>{source.title}</T>
     </Tap>
   </Animated.View>;
 }
@@ -118,7 +121,7 @@ export function Story({ width, start, onComplete }: { width: number; start: numb
   };
 
   // Two sources above the plant, species notes below it, lines meeting at the plant.
-  const nodeW = 116, H = 320, size = 180;
+  const nodeW = 132, H = 320, size = 180;
   const plantTop = 40, plantBottom = plantTop + size;
   const pos = [{ x: 0, y: 30 }, { x: width - nodeW, y: 30 }, { x: (width - nodeW) / 2, y: H - 48 }];
   const lines = [

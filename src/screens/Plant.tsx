@@ -12,20 +12,26 @@ import { Page } from '../ds/Page';
 import { Ground, PlantArt } from '../ds/plant';
 import { Appear, DrawLine, LeafBurst, Pop, Settle, WaterDrops } from '../ds/motion';
 import { CareCalendar } from '../ds/CareCalendar';
+import { ActionSheet } from '../ds/ActionSheet';
 
 /**
- * Freshness of what we know, shown as one mark instead of a line of text:
- * filled green = current, amber = getting old, terracotta = long overdue,
- * hollow ring = nothing recorded yet. Colour is never the only cue: the ring differs
- * in shape, every mark has a spoken label, and tapping a note shows the detail.
+ * Freshness of what we know, shown as one mark instead of a line of text. Each state has
+ * its own shape as well as its colour (WCAG 1.4.1), so it reads in greyscale and for
+ * colour-blind people: full circle = current, half circle = getting old,
+ * diamond = long overdue, hollow ring = nothing recorded yet. Every mark also has a
+ * spoken label, and tapping a note shows the detail.
  */
 type Status = 'none' | 'fresh' | 'aging' | 'overdue';
 const statusSpeech: Record<Status, string> = { none: 'nothing recorded yet', fresh: 'up to date', aging: 'getting old', overdue: 'not recorded in a long time' };
 
-function StatusMark({ status }: { status: Status }) {
+export function StatusMark({ status, size = 10 }: { status: Status; size?: number }) {
   const { c } = useTheme();
-  if (status === 'none') return <View style={{ width: 9, height: 9, borderRadius: 5, borderWidth: 1.5, borderColor: c.ink3 }} />;
-  return <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: status === 'fresh' ? c.leafMark : status === 'aging' ? c.amber : c.clay }} />;
+  if (status === 'none') return <View style={{ width: size, height: size, borderRadius: size, borderWidth: 1.5, borderColor: c.ink3 }} />;
+  if (status === 'fresh') return <View style={{ width: size, height: size, borderRadius: size, backgroundColor: c.leafMark }} />;
+  if (status === 'aging') return <View style={{ width: size, height: size, borderRadius: size, borderWidth: 1.5, borderColor: c.amber, overflow: 'hidden', flexDirection: 'row' }}>
+    <View style={{ flex: 1, backgroundColor: c.amber }} /><View style={{ flex: 1 }} />
+  </View>;
+  return <View style={{ width: size * .8, height: size * .8, margin: size * .1, backgroundColor: c.clay, transform: [{ rotate: '45deg' }] }} />;
 }
 
 const DAY = 86400000;
@@ -55,12 +61,15 @@ function Specimen({ plant, twin, width, drops, events }: { plant: PlantT; twin?:
   const soilStatus: Status = g?.soil ? 'fresh' : lastSoil ? (ageStatus(lastSoil.at, 0, 7) === 'overdue' ? 'overdue' : 'aging') : 'none';
   const leafStatus = ageStatus(lastLeaves?.at, 3, 14);
   const soilBeforeWatering = !!(lastSoil && g?.last_watered_at && new Date(g.last_watered_at) > new Date(lastSoil.at));
+  const wateredSince = soilBeforeWatering && g?.last_watered_at ? g.last_watered_at : null;
+  const soilValue = wateredSince ? (Date.now() - new Date(wateredSince).getTime() < DAY ? 'Just watered' : `Watered ${ago(wateredSince)}`) : lastSoil?.soil ? soilLabel[lastSoil.soil] : null;
+  const soilNow: Status = wateredSince ? ageStatus(wateredSince, 1, 7) : soilStatus;
   const callouts: Callout[] = [
     { side: 'left', y: 0, anchor: at(.47, .1), label: 'Light', value: light, current: true, detail: light ? 'You told us' : 'Add it in Edit details', status: light ? 'fresh' : 'none' },
     { side: 'right', y: S * .12, anchor: at(.76, .3), label: 'Leaves', value: lastLeaves?.visual ? visualLabel[lastLeaves.visual] : null, current: leafStatus === 'fresh',
       detail: lastLeaves ? `You looked ${ago(lastLeaves.at)}` : 'No note yet', status: leafStatus },
-    { side: 'right', y: S * (narrow ? .72 : .64), anchor: at(.6, .64), label: 'Soil', value: lastSoil?.soil ? soilLabel[lastSoil.soil] : null, current: soilStatus === 'fresh',
-      detail: !lastSoil ? 'Not checked yet' : soilBeforeWatering ? `Checked ${ago(lastSoil.at)}, before the last watering` : `Checked ${ago(lastSoil.at)}`, status: soilStatus },
+    { side: 'right', y: S * (narrow ? .72 : .64), anchor: at(.6, .64), label: 'Soil', value: soilValue, current: soilNow === 'fresh',
+      detail: !lastSoil ? 'Not checked yet' : wateredSince ? `Not checked since the watering. Before it, the soil was ${soilLabel[lastSoil.soil!].toLowerCase()}.` : `Checked ${ago(lastSoil.at)}`, status: soilNow },
     { side: 'left', y: S * (narrow ? .74 : .66), anchor: at(.34, .84), label: 'Pot', value: drainage, current: true, detail: drainage ? 'You told us' : 'Add it in Edit details', status: drainage ? 'fresh' : 'none' },
   ];
   const labelW = Math.max(90, x0 - 4);
@@ -137,7 +146,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
     if (!saved || k === lastSaved.current) return;
     lastSaved.current = k;
     scroll.current?.scrollTo({ y: 0, animated: true });
-    if (saved.title === 'Watering recorded') setDrops(d => d + 1);
+    if (/watering/i.test(saved.title)) setDrops(d => d + 1);
     if (saved.to === 'Probably not dry yet' || saved.to === 'Around when it usually dries') setBurst(b => b + 1);
   }, [saved]);
 
@@ -152,7 +161,11 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
   const events = garden.events.filter(e => e.plantId === plant.id).slice().reverse();
   const water = g?.last_watered_at ? Math.max(0, Math.floor((Date.now() - new Date(g.last_watered_at).getTime()) / 86400000)) : null;
   const soil = g?.last_soil_check_at ? since(g.last_soil_check_at) : null;
-  const where = [known(plant.environment?.location) ? plant.environment!.location : null, garden.plan === 'Plus' && known(plant.room) ? plant.room.toLowerCase() : null].filter(Boolean).join(', ');
+  const where = [known(plant.stage) ? `${plant.stage} plant` : null, known(plant.environment?.location) ? plant.environment!.location : null, garden.plan === 'Plus' && known(plant.room) ? plant.room : null].filter(Boolean).join(', ');
+  const lastWater = events.find(e => e.type === 'Watered');
+  const approx = !!lastWater?.note?.startsWith('Approximate');
+  // Long names step down in size and stop at three lines instead of pushing the page down.
+  const titleStyle = plant.name.length > 40 ? { fontSize: 26, lineHeight: 31 } : plant.name.length > 22 ? { fontSize: 32, lineHeight: 36 } : undefined;
 
   const remove = async () => {
     setBusy(true);
@@ -162,7 +175,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
 
   return <View style={{ flex: 1 }}>
     <Page back={navigation.goBack} scrollRef={scroll} titleInBar={plant.name} gap={space[6]}
-      actions={[{ icon: 'more', label: 'Plant options', onPress: () => { setMenu(!menu); setConfirm(false); } }]}>
+      actions={[{ icon: 'more', label: 'Plant options', onPress: () => { setMenu(true); setConfirm(false); } }]}>
       {confirm && <Toast tone="error" title={`Remove ${plant.name}?`} text="It leaves your garden and frees a plan spot. Its care history is kept." action={{ title: busy ? 'Removing…' : 'Remove', onPress: () => void remove() }} onClose={() => setConfirm(false)} />}
       {!!saved && <Animated.View key={saved.title + (saved.to ?? '')} entering={FadeIn.duration(240)}>
         <Toast title={saved.title} onClose={() => navigation.setParams({ saved: undefined })}
@@ -173,14 +186,14 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
         <LeafBurst run={burst} />
         {!!width && <Specimen plant={plant} twin={twin} width={width} drops={drops} events={events} />}
         <View style={{ alignItems: 'center', gap: 2 }}>
-          <T v="display" center>{plant.name}</T>
+          <T v="display" center lines={3} style={titleStyle}>{plant.name}</T>
           <T v="latin" tone="ink2" center>{plant.species}</T>
           {!!where && <T v="footnote" tone="ink2" style={{ marginTop: space[1] }}>{where}</T>}
         </View>
       </View>
 
       <View style={{ flexDirection: 'row', gap: space[4], paddingVertical: space[4], borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>
-        <Figure {...(water === null ? { value: '', caption: 'No watering yet' } : water === 0 ? { value: 'Today', caption: 'Last watered' } : { value: String(water), unit: water === 1 ? 'day' : 'days', caption: 'Since watering' })} />
+        <Figure {...(water === null ? { value: '', caption: 'No watering yet' } : water === 0 ? { value: 'Today', caption: 'Last watered' } : { value: `${approx ? '~' : ''}${water}`, unit: water === 1 ? 'day' : 'days', caption: approx ? 'Since watering (approx.)' : 'Since watering' })} />
         <Figure {...(soil ? { ...soil, caption: soil.value === 'Now' ? 'Soil checked' : 'Since soil check' } : { value: '', caption: 'No soil check yet' })} />
         <Figure {...(g?.baseline_days != null ? { value: `~${Math.round(g.baseline_days)}`, unit: 'days', caption: 'Usually dry after' } : { value: `${Math.min(g?.completed_cycles ?? 0, 3)}/3`, caption: 'Cycles to a pattern' })} />
       </View>
@@ -235,19 +248,9 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
       </View>
     </Page>
 
-    {menu && <>
-      <Tap label="Close menu" onPress={() => setMenu(false)} scaleTo={1} style={StyleSheet.absoluteFill}><View style={StyleSheet.absoluteFill} /></Tap>
-      <Animated.View entering={FadeIn.duration(160)} style={{ position: 'absolute', top: 104, right: space.gutter, width: 230 }}>
-        <Glass level="control" r={radius.card}>
-          <Tap label="Edit details" onPress={() => { setMenu(false); navigation.navigate('PlantForm', { editId: plant.id }); }} ring={radius.card} style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingHorizontal: space[4], minHeight: 50 }}>
-            <Glyph name="edit" size={18} /><T v="body">Edit details</T>
-          </Tap>
-          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: c.hairline }} />
-          <Tap label="Remove from garden" onPress={() => { setMenu(false); setConfirm(true); }} ring={radius.card} style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingHorizontal: space[4], minHeight: 50 }}>
-            <Glyph name="trash" size={18} tone={c.danger} /><T v="body" tone="danger">Remove from garden</T>
-          </Tap>
-        </Glass>
-      </Animated.View>
-    </>}
+    <ActionSheet visible={menu} title={plant.name} onClose={() => setMenu(false)} actions={[
+      { label: 'Edit details', icon: 'edit', onPress: () => navigation.navigate('PlantForm', { editId: plant.id }) },
+      { label: 'Remove from garden', icon: 'trash', destructive: true, onPress: () => setConfirm(true) },
+    ]} />
   </View>;
 }

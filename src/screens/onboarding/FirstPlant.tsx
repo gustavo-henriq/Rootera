@@ -8,7 +8,7 @@
  * the plate is ready to plant. Tapping a note reopens its question.
  */
 import React, { useEffect, useState } from 'react';
-import { Image, Platform, ScrollView, TextInput, View } from 'react-native';
+import { Image, Platform, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, FadeOut, FadeOutUp, LinearTransition, SharedValue, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { catalog, PlantKind, Soil } from '../../model';
 import { plantArt } from '../../ds/plant';
@@ -94,9 +94,12 @@ function Finder({ q, setQ, choice, onChoose, photo, idState, matches, onCamera }
   const t = q.trim().toLowerCase();
   // The carousel shows the illustrated favourites; search reaches the whole catalog.
   const list = t ? catalog.filter(s => `${s.name} ${s.latin} ${s.aliases}`.toLowerCase().includes(t)) : catalog.filter(s => s.featured);
+  // 4.5 tiles fit the width: the half tile at the edge tells people the row scrolls.
+  const screenW = Math.min(useWindowDimensions().width, 440);
+  const tileW = Math.max(68, Math.floor((screenW - space.gutter - 4.5 * space[2]) / 4.5));
   const tile = (key: string, on: boolean, label: string, onPress: () => void, art: React.ReactNode, a11y: string) =>
     <Tap key={key} role="radio" selected={on} label={a11y} onPress={onPress} ring={radius.control}
-      style={{ width: 84, alignItems: 'center', gap: 4, paddingVertical: 6, borderRadius: radius.control, backgroundColor: on ? c.raised : 'transparent', borderWidth: 1.5, borderColor: on ? c.ink : 'transparent' }}>
+      style={{ width: tileW, alignItems: 'center', gap: 4, paddingVertical: 6, borderRadius: radius.control, backgroundColor: on ? c.raised : 'transparent', borderWidth: 1.5, borderColor: on ? c.ink : 'transparent' }}>
       {art}
       <T v="caption" tone={on ? 'ink' : 'ink2'} lines={2} center>{label}</T>
     </Tap>;

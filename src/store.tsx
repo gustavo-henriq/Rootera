@@ -9,6 +9,8 @@ const KEY = 'rootera:garden:v2';
 interface Store {
   garden: Garden;
   ready: boolean;
+  /** Where the garden on screen came from. 'none' means nothing is known yet (no cache, server unreachable). */
+  source: 'none' | 'cache' | 'server';
   /** True when the last refresh failed and the screen shows cached data. */
   offline: boolean;
   refresh: () => Promise<void>;
@@ -32,12 +34,14 @@ export function StoreProvider({ children }: React.PropsWithChildren) {
   const [garden, setGarden] = useState<Garden>(emptyGarden);
   const [ready, setReady] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [source, setSource] = useState<Store['source']>('none');
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const writes = useRef(0);
 
   const apply = useCallback(async (next: Garden) => {
     setGarden(next);
     setOffline(false);
+    setSource('server');
     try { await AsyncStorage.setItem(KEY, JSON.stringify(next)); } catch { /* cache is optional */ }
   }, []);
 
@@ -52,7 +56,8 @@ export function StoreProvider({ children }: React.PropsWithChildren) {
         const raw = await AsyncStorage.getItem(KEY);
         if (raw) {
           const cached = JSON.parse(raw);
-          if (Array.isArray(cached?.plants) && cached?.twins) setGarden(cached);
+          // A cached garden opens the app at once; the server refresh follows in the background.
+          if (Array.isArray(cached?.plants) && cached?.twins) { setGarden(cached); setSource('cache'); setReady(true); }
         }
       } catch { /* ignore a corrupt cache */ }
       await refresh();
@@ -80,7 +85,7 @@ export function StoreProvider({ children }: React.PropsWithChildren) {
   }, [apply]);
 
   const value = useMemo<Store>(() => ({
-    garden, ready, offline, refresh,
+    garden, ready, source, offline, refresh,
     saveProfile: changes => write(() => api.profile(changes)).then(() => undefined),
     addPlant: plant => write(() => api.addPlant(plant)).then(() => undefined),
     updatePlant: (id, changes) => write(() => api.updatePlant(id, changes)).then(() => undefined),
@@ -88,7 +93,7 @@ export function StoreProvider({ children }: React.PropsWithChildren) {
     logCare: event => write(() => api.logCare(event)),
     setDemoPlan: (plan, annual) => write(() => api.demoPlan(plan, annual)).then(() => undefined),
     syncBilling: () => write(() => api.syncBilling()).then(() => undefined),
-  }), [garden, ready, offline, refresh, write]);
+  }), [garden, ready, source, offline, refresh, write]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

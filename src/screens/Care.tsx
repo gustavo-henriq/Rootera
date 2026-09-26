@@ -10,6 +10,9 @@ import { Btn, Chip, Field, T, Tap, Toast } from '../ds/components';
 import { Glyph, GlyphName } from '../ds/icons';
 import { Page } from '../ds/Page';
 import { PlantArt } from '../ds/plant';
+import { haptic } from '../ds/feedback';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CHECKED_IN } from './NameInvite';
 
 const soilHints: Record<Soil, string> = {
   dry: 'Crumbly, no coolness on your finger',
@@ -30,7 +33,7 @@ function Options<V extends string>({ values, value, onChange, label, hint, lead 
   return <View accessibilityRole="radiogroup" style={{ borderTopWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>
     {values.map(v => {
       const on = v === value;
-      return <Tap key={v} role="radio" selected={on} label={`${label(v)}. ${hint(v)}`} onPress={() => onChange(v)} scaleTo={.99} ring={radius.inner}
+      return <Tap key={v} role="radio" selected={on} label={`${label(v)}. ${hint(v)}`} onPress={() => { haptic.select(); onChange(v); }} scaleTo={.99} ring={radius.inner}
         style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], minHeight: 64, paddingVertical: space[2], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
         {lead(v, on)}
         <View style={{ flex: 1, gap: 2 }}>
@@ -84,6 +87,7 @@ function CheckIn({ navigation, route }: Props<'Care'>) {
       if (watered === 'yes') track(await logCare({ ...base, id: ids.current.water, type: 'Watered', amount_ml: ml, at: new Date(t + 1000).toISOString() }));
       if (visual) track(await logCare({ ...base, id: ids.current.look, type: 'Observation', visual, note: note.trim(), at: new Date(t + 2000).toISOString() }));
       if (stage && stage !== plant.stage) await updatePlant(plant.id, { stage });
+      AsyncStorage.setItem(CHECKED_IN, '1').catch(() => undefined);
       navigation.popTo('Plant', { id: plant.id, saved: { title: watered === 'yes' ? 'Check-in and watering saved' : 'Check-in saved', from: to ? g?.title : undefined, to } });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save. Please try again.');
@@ -93,7 +97,7 @@ function CheckIn({ navigation, route }: Props<'Care'>) {
   return <Page close={() => !busy && navigation.goBack()} titleInBar={plant.name} gap={space[6]}
     footer={<>
       {!!error && <Toast tone="error" title="Not saved" text={error} onClose={() => setError('')} />}
-      <Btn title={error ? 'Try again' : 'Save check-in'} busy={busy} disabled={!soil || !watered} onPress={() => void save()} />
+      <Btn title={error ? 'Try again' : 'Save check-in'} busy={busy} disabled={!soil || !watered} hint={!soil ? 'Choose how the soil feels to save.' : 'Say whether you watered it to save.'} onPress={() => void save()} />
     </>}>
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space[4] }}>
       <View style={{ flex: 1, gap: space[2] }}>

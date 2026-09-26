@@ -27,18 +27,10 @@ export function Page({ title, back, close, actions, footer, tab, children, gap =
   const top = insets.top + (hasBar ? 60 : space[4]);
   const barTitle = titleInBar ?? title;
 
+  // The floating bar comes first in the tree so keyboard and screen-reader order start at
+  // the top of the screen (back, then actions), and zIndex keeps it painted above content.
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-      <Animated.ScrollView ref={scrollRef as any} onScroll={onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: top, paddingHorizontal: space.gutter, paddingBottom: (tab ? 110 : space[8]) + (footer ? 0 : insets.bottom), gap, flexGrow: 1 }}>
-        {header}
-        {!!title && <T v="largeTitle">{title}</T>}
-        {children}
-      </Animated.ScrollView>
-      {footer && <View style={{ paddingHorizontal: space.gutter, paddingTop: space[3], paddingBottom: insets.bottom + space[3], gap: space[2], backgroundColor: c.canvas, borderTopWidth: 1, borderColor: c.hairline }}>{footer}</View>}
-    </KeyboardAvoidingView>
-
-    {hasBar && <View pointerEvents="box-none" style={{ position: 'absolute', top: insets.top + 6, left: space.gutter - 4, right: space.gutter - 4, height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+    {hasBar && <View pointerEvents="box-none" style={{ position: 'absolute', zIndex: 10, top: insets.top + 6, left: space.gutter - 4, right: space.gutter - 4, height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
       <View style={{ minWidth: 44 }}>{back ? <GlassIcon name="back" label="Go back" onPress={back} /> : close ? <GlassIcon name="close" label="Close" onPress={close} /> : null}</View>
       {!!barTitle && <Animated.View pointerEvents="none" style={[{ flexShrink: 1, marginHorizontal: space[2] }, bar]}>
         <Glass level="chrome" r={radius.pill} style={{ paddingHorizontal: space[4], height: 40, justifyContent: 'center' }}>
@@ -49,5 +41,15 @@ export function Page({ title, back, close, actions, footer, tab, children, gap =
         {actions?.map(a => <GlassIcon key={a.label} name={a.icon} label={a.label} onPress={a.onPress} />)}
       </View>
     </View>}
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <Animated.ScrollView ref={scrollRef as any} onScroll={onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: top, paddingHorizontal: space.gutter, paddingBottom: (tab ? 110 : space[8]) + (footer ? 0 : insets.bottom), gap, flexGrow: 1 }}>
+        {header}
+        {!!title && <T v="largeTitle">{title}</T>}
+        {children}
+      </Animated.ScrollView>
+      {footer && <View style={{ paddingHorizontal: space.gutter, paddingTop: space[3], paddingBottom: insets.bottom + space[3], gap: space[2], backgroundColor: c.canvas, borderTopWidth: 1, borderColor: c.hairline }}>{footer}</View>}
+    </KeyboardAvoidingView>
+
   </View>;
 }

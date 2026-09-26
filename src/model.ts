@@ -66,7 +66,8 @@ export const catalog: Species[] = [
 
 export const soilLabel: Record<Soil, string> = { dry: 'Dry', slightly_moist: 'Slightly moist', moist: 'Moist', wet: 'Very wet', not_sure: 'Not sure' };
 export const visualLabel: Record<Visual, string> = { great: 'Looks good', different: 'Something changed', unwell: 'Not doing well', not_sure: 'Not sure' };
-export const experienceLabel: Record<Experience, string> = { first: 'First plant', some: 'A few plants', many: 'Many plants or a garden' };
+export const experienceLabel: Record<Experience, string> = { first: 'My first plant', some: 'A few plants', many: 'Lots of plants, or a whole garden' };
+export const experienceHint: Record<Experience, string> = { first: 'Explains how to check and what to look for.', some: 'Short tips for each plant.', many: 'Straight to the point.' };
 
 /** The interface is in English, so dates follow it rather than the device language. */
 export const LOCALE = 'en-US';

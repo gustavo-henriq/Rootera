@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Linking, Platform, StyleSheet, View } from 'react-native';
 import { Props } from '../navigation';
 import { useStore } from '../store';
-import { Experience as ExperienceT, experienceLabel, NudgeKind } from '../model';
+import { Experience as ExperienceT, experienceHint, experienceLabel, NudgeKind } from '../model';
 import { useTheme } from '../ds/theme';
 import { fonts, radius, space } from '../ds/tokens';
 import { Btn, Field, SourceLabel, Source, T, Tap, Toast } from '../ds/components';
 import { Page } from '../ds/Page';
-import { NudgePicker } from './onboarding/Nudges';
+import { NudgePicker, requestNudgePermission } from './onboarding/Nudges';
+import { Glyph } from '../ds/icons';
 
-const hints: Record<ExperienceT, string> = { first: 'Explains how to check and what to look for.', some: 'Short tips for each plant.', many: 'Straight to the point.' };
+const hints = experienceHint;
 
 export function Experience({ navigation }: Props<'Experience'>) {
   const { garden, saveProfile } = useStore();
@@ -45,6 +46,26 @@ export function Experience({ navigation }: Props<'Experience'>) {
   </Page>;
 }
 
+/** What the phone allows, stated plainly, with the one action that changes it. */
+function PhonePermission() {
+  const { c } = useTheme();
+  const [state, setState] = useState<'granted' | 'denied' | 'undetermined' | 'web'>('undetermined');
+  const read = async () => {
+    if (Platform.OS === 'web') { setState('web'); return; }
+    try { const N = await import('expo-notifications'); const p = await N.getPermissionsAsync(); setState(p.granted ? 'granted' : p.canAskAgain ? 'undetermined' : 'denied'); } catch { setState('web'); }
+  };
+  useEffect(() => { void read(); }, []);
+  const text = { granted: 'Notifications are on. Nudges arrive on this phone at the time below.', denied: 'Notifications are off for Rootera in your phone’s settings, so nudges only show inside the app.', undetermined: 'Rootera hasn’t asked to send notifications yet. Until you allow them, nudges only show inside the app.', web: 'This preview runs in a browser, so nudges only show inside the app.' }[state];
+  return <View style={{ flexDirection: 'row', gap: space[3], padding: space[4], borderRadius: radius.control, backgroundColor: c.sunken, alignItems: 'flex-start' }}>
+    <Glyph name={state === 'granted' ? 'check' : 'info'} size={18} tone={state === 'granted' ? c.leafText : c.ink2} />
+    <View style={{ flex: 1, gap: space[2] }}>
+      <T v="subhead">{text}</T>
+      {state === 'undetermined' && <Btn size="regular" kind="outline" title="Allow notifications" onPress={() => void requestNudgePermission().then(read)} style={{ alignSelf: 'flex-start' }} />}
+      {state === 'denied' && <Btn size="regular" kind="outline" title="Open Settings" onPress={() => void Linking.openSettings()} style={{ alignSelf: 'flex-start' }} />}
+    </View>
+  </View>;
+}
+
 export function Nudges({ navigation }: Props<'Nudges'>) {
   const { garden, saveProfile } = useStore();
   const [kinds, setKinds] = useState<NudgeKind[]>(garden.nudges?.kinds ?? ['soil_check']);
@@ -64,7 +85,7 @@ export function Nudges({ navigation }: Props<'Nudges'>) {
     {!!error && <Toast tone="error" title="Not saved" text={error} onClose={() => setError('')} />}
     <Btn title="Save" busy={busy} onPress={() => void save()} />
   </>}>
-    <T v="callout" tone="ink2">Nudges show up in Rootera for now. Phone notifications are the next step for this preview.</T>
+    <PhonePermission />
     <NudgePicker selected={kinds} onToggle={k => setKinds(n => n.includes(k) ? n.filter(x => x !== k) : [...n, k])} detail={detail} onDetail={setDetail} time={time} onTime={setTime} />
   </Page>;
 }

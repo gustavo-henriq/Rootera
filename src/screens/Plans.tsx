@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Image, View } from 'react-native';
 import { Props } from '../navigation';
+import { LOCALE } from '../model';
 import { useStore } from '../store';
 import { ApiError } from '../api';
 import { billingEnabled, loadOffers, Offer, purchase, restore } from '../billing';
@@ -21,10 +22,12 @@ const heads = {
 const benefits: { icon: GlyphName; title: string; text: string }[] = [
   { icon: 'infinite', title: 'Unlimited plants', text: 'Free keeps 3 at a time.' },
   { icon: 'rooms', title: 'Rooms', text: 'Group plants by where they live and filter your shelf.' },
-  { icon: 'spark', title: 'The same honest guidance', text: 'Every plan learns from your records the same way.' },
+  { icon: 'camera', title: 'Growth diary', text: 'A photo timeline for every plant, kept on your phone.' },
 ];
 // Only when no store is connected, so the preview can still be walked through.
-const previewPrices = { monthly: 'R$ 12,90 a month', annual: 'R$ 89,90 a year' };
+const previewAmounts = { monthly: 12.9, annual: 89.9 };
+const money = (n: number) => new Intl.NumberFormat(LOCALE, { style: 'currency', currency: 'BRL' }).format(n);
+const previewPrices = { monthly: `${money(previewAmounts.monthly)} a month`, annual: `${money(previewAmounts.annual)} a year` };
 
 function Shelf() {
   return <View style={{ alignItems: 'center' }}>
@@ -54,6 +57,10 @@ export function Plans({ navigation, route }: Props<'Plans'>) {
   }, [garden.user_id]);
 
   const offer = offers?.find(o => o.period === period);
+  // The yearly saving, from real store amounts when connected; shown only when it is a real saving.
+  const monthly = billingEnabled ? offers?.find(o => o.period === 'monthly')?.amount : previewAmounts.monthly;
+  const annual = billingEnabled ? offers?.find(o => o.period === 'annual')?.amount : previewAmounts.annual;
+  const saving = monthly && annual ? Math.round((1 - annual / (monthly * 12)) * 100) : 0;
   const price = billingEnabled ? offer?.price : previewPrices[period];
 
   const buy = async () => {
@@ -117,13 +124,17 @@ export function Plans({ navigation, route }: Props<'Plans'>) {
       {(['annual', 'monthly'] as const).map(p => {
         const on = p === period;
         const label = billingEnabled ? offers?.find(o => o.period === p)?.price ?? (loading ? '…' : 'Unavailable') : previewPrices[p];
-        return <Tap key={p} role="radio" selected={on} label={`${p === 'annual' ? 'Yearly' : 'Monthly'}, ${label}`} onPress={() => setPeriod(p)} ring={radius.control}
+        return <Tap key={p} role="radio" selected={on} label={`${p === 'annual' ? 'Yearly' : 'Monthly'}, ${label}${p === 'annual' && saving > 0 ? `, save ${saving}%` : ''}`} onPress={() => setPeriod(p)} ring={radius.control}
           style={{ flex: 1, padding: space[4], borderRadius: radius.control, borderWidth: on ? 1.5 : 1, borderColor: on ? c.ink : c.hairline, backgroundColor: on ? c.raised : 'transparent', gap: 4 }}>
-          <T v="footnote" tone="ink2" style={{ fontFamily: fonts.medium }}>{p === 'annual' ? 'Yearly' : 'Monthly'}</T>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2] }}>
+            <T v="footnote" tone="ink2" style={{ fontFamily: fonts.medium }}>{p === 'annual' ? 'Yearly' : 'Monthly'}</T>
+            {p === 'annual' && saving > 0 && <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.inner, backgroundColor: c.successSoft }}><T v="caption" tone="leafText">Save {saving}%</T></View>}
+          </View>
           <T v="headline">{label}</T>
         </Tap>;
       })}
     </View>
+    <T v="footnote" tone="ink2">Guidance, photo identification and nudges are the same on every plan.</T>
     <T v="footnote" tone="ink2">{billingEnabled ? 'Billed through your App Store or Google Play account. Cancel any time in your store settings.' : 'Store payments aren’t connected in this preview. Prices are examples; the App Store or Google Play sets the real ones.'}</T>
   </Page>;
 }

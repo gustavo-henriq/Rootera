@@ -4,7 +4,7 @@ import { Image, StyleSheet, View } from 'react-native';
 import Animated, { cancelAnimation, Easing, useAnimatedProps, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { ClipPath, Defs, Path, Rect } from 'react-native-svg';
 import { BlurView } from 'expo-blur';
-import { Experience, PlantKind } from '../../model';
+import { Experience, experienceHint, experienceLabel, PlantKind } from '../../model';
 import { plantArt } from '../../ds/plant';
 import { useTheme } from '../../ds/theme';
 import { radius, space } from '../../ds/tokens';
@@ -21,7 +21,8 @@ export function SeedProgress({ step, total }: { step: number; total: number }) {
   useEffect(() => { fill.value = reduceMotion ? step / total : withTiming(step / total, { duration: 600, easing: Easing.out(Easing.cubic) }); }, [step]);
   const props = useAnimatedProps(() => ({ y: 32 - 28 * fill.value, height: 28 * fill.value + 1 }));
   const done = step >= total;
-  return <View accessible accessibilityRole="progressbar" accessibilityLabel={`Step ${step} of ${total}`} style={{ width: 28, height: 36, alignItems: 'center', justifyContent: 'flex-end' }}>
+  return <View accessible accessibilityRole="progressbar" accessibilityLabel={`Step ${step} of ${total}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+    <View style={{ width: 28, height: 36, alignItems: 'center', justifyContent: 'flex-end' }}>
     <Svg width={24} height={32} viewBox="0 0 24 32">
       <Defs><ClipPath id="seed"><Path d={SEED} /></ClipPath></Defs>
       <Path d={SEED} fill={c.sunken} />
@@ -29,6 +30,9 @@ export function SeedProgress({ step, total }: { step: number; total: number }) {
       <Path d={SEED} fill="none" stroke={c.ink2} strokeWidth={1.4} />
       {done && <Path d="M12 3V-1M12 1C12 -1 10 -3 8 -3M12 1C12 -1 14 -3 16 -3" stroke={c.leafMark} strokeWidth={1.6} strokeLinecap="round" fill="none" />}
     </Svg>
+    </View>
+    {/* The seed fills as a feeling of progress; the count says exactly where you are. */}
+    <T v="caption" tone="ink2" style={{ fontVariant: ['tabular-nums'] }}>{Math.min(step, total)} of {total}</T>
   </View>;
 }
 
@@ -60,9 +64,9 @@ const FEW = require('../../../assets/scenes/few.png');
 const GARDEN = require('../../../assets/scenes/garden-group.png');
 
 export const experiences: { value: Experience; label: string; hint: string; art: PlantKind[]; scene?: number }[] = [
-  { value: 'first', label: 'My first plant', hint: 'Explain how to check and what to look for.', art: ['pilea'] },
-  { value: 'some', label: 'A few plants', hint: 'Short tips for each plant.', art: [], scene: FEW },
-  { value: 'many', label: 'Lots of plants, or a whole garden', hint: 'Straight to the point.', art: [], scene: GARDEN },
+  { value: 'first', label: experienceLabel.first, hint: experienceHint.first, art: ['pilea'] },
+  { value: 'some', label: experienceLabel.some, hint: experienceHint.some, art: [], scene: FEW },
+  { value: 'many', label: experienceLabel.many, hint: experienceHint.many, art: [], scene: GARDEN },
 ];
 
 export function GlassChoice({ on, onPress, label, hint, art, scene, wide }: { on: boolean; onPress: () => void; label: string; hint: string; art: PlantKind[]; scene?: number; wide?: boolean }) {

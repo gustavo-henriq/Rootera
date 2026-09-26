@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleProp, StyleSheet, Text, TextInput, TextStyle, View, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { useTheme } from './theme';
 import { elevation, fonts, glass, radius, space, springs, type, TypeName } from './tokens';
+import { announce, haptic } from './feedback';
 import { Glyph, GlyphName } from './icons';
 
 type Tone = 'ink' | 'ink2' | 'ink3' | 'leafText' | 'clayText' | 'danger' | 'onAction' | 'water';
@@ -71,7 +72,11 @@ export function Tap({ onPress, label, hint, role = 'button', selected, disabled,
  * `plain` a text action. Near-square corners and medium weight: tools, not candy.
  */
 type ButtonKind = 'filled' | 'outline' | 'plain' | 'glass' | 'destructive';
-export function Btn({ title, onPress, kind = 'filled', icon, busy, disabled, size = 'large', style }: { title: string; onPress: () => void; kind?: ButtonKind; icon?: GlyphName; busy?: boolean; disabled?: boolean; size?: 'large' | 'regular'; style?: StyleProp<ViewStyle> }) {
+/**
+ * `hint` explains what is missing while the button is disabled: it is shown above the
+ * button and read by screen readers, so a greyed-out action never leaves people guessing.
+ */
+export function Btn({ title, onPress, kind = 'filled', icon, busy, disabled, size = 'large', style, hint, label }: { title: string; onPress: () => void; kind?: ButtonKind; icon?: GlyphName; busy?: boolean; disabled?: boolean; size?: 'large' | 'regular'; style?: StyleProp<ViewStyle>; hint?: string; label?: string }) {
   const { c } = useTheme();
   const fg = { filled: c.onAction, outline: c.ink, plain: c.leafText, glass: c.ink, destructive: c.danger }[kind];
   const h = size === 'large' ? 52 : 44;
@@ -82,13 +87,18 @@ export function Btn({ title, onPress, kind = 'filled', icon, busy, disabled, siz
       <T v={size === 'large' ? 'headline' : 'callout'} style={{ color: fg, fontFamily: fonts.medium }}>{title}</T>
     </>}
   </View>;
-  return <Tap label={title} onPress={busy ? undefined : onPress} disabled={disabled} style={style} ring={r}>
+  const button = <Tap label={label ?? title} hint={disabled ? hint : undefined} onPress={busy ? undefined : onPress} disabled={disabled} style={hint ? undefined : style} ring={r}>
     {kind === 'glass'
       ? <Glass level="control" r={r}>{body}</Glass>
       : <View style={[{ borderRadius: r, borderCurve: 'continuous' },
           kind === 'filled' && { backgroundColor: c.action },
           (kind === 'outline' || kind === 'destructive') && { borderWidth: 1, borderColor: kind === 'destructive' ? c.danger : c.ink3 }]}>{body}</View>}
   </Tap>;
+  if (!hint) return button;
+  return <View style={[{ gap: space[2] }, style]}>
+    {disabled && <T v="footnote" tone="ink2" center importantForAccessibility="no" accessibilityElementsHidden>{hint}</T>}
+    {button}
+  </View>;
 }
 
 /** Round glass control for toolbars that float over content. */
@@ -103,7 +113,7 @@ export function GlassIcon({ name, label, onPress, size = 44 }: { name: GlyphName
 /** Option tag: hairline rectangle, filled with ink when chosen. */
 export function Chip({ label, selected, onPress }: { label: string; selected?: boolean; onPress: () => void }) {
   const { c } = useTheme();
-  return <Tap role="radio" selected={selected} label={label} onPress={onPress} ring={radius.input}
+  return <Tap role="radio" selected={selected} label={label} onPress={() => { haptic.select(); onPress(); }} ring={radius.input}
     style={{ minHeight: 40, paddingHorizontal: 13, borderRadius: radius.input, justifyContent: 'center', borderWidth: 1, borderColor: selected ? c.ink : c.hairline, backgroundColor: selected ? c.ink : 'transparent' }}>
     <T v="subhead" style={{ color: selected ? c.canvas : c.ink }}>{label}</T>
   </Tap>;
@@ -204,6 +214,11 @@ export function Toast({ title, text, tone = 'success', onClose, action }: { titl
   const { c } = useTheme();
   const icon: GlyphName = tone === 'success' ? 'check' : tone === 'error' ? 'alert' : 'info';
   const accent = tone === 'success' ? c.leafMark : tone === 'error' ? c.danger : c.ink2;
+  // Status messages are spoken on iOS too (liveRegion only covers Android), with a matching haptic.
+  useEffect(() => {
+    announce([title, text].filter(Boolean).join('. '));
+    if (tone === 'error') haptic.error(); else if (tone === 'success') haptic.success();
+  }, [title, text]);
   return <Glass level="control" r={radius.card} style={{ padding: space[4], flexDirection: 'row', gap: space[3], alignItems: 'flex-start' }}>
     <View accessibilityLiveRegion="polite" accessibilityRole={tone === 'error' ? 'alert' : undefined} style={{ flex: 1, flexDirection: 'row', gap: space[3] }}>
       <View style={{ marginTop: 1 }}><Glyph name={icon} size={20} tone={accent} /></View>

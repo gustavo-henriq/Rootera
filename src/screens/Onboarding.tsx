@@ -11,7 +11,7 @@
  * and identifying a plant from a photo is free.
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { BackHandler, ScrollView, View } from 'react-native';
+import { BackHandler, Pressable, ScrollView, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOutUp, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Props } from '../navigation';
@@ -63,6 +63,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   const [matches, setMatches] = useState<Candidate[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const leftCelebration = useRef(false);
   const ids = useRef({ plant: newId('plant'), soil: newId('care'), water: newId('water'), soilAt: '' });
   const t = (name: string, props: Record<string, string | number | boolean> = {}) => { if (!preview) track(name, props); };
 
@@ -153,14 +154,17 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
 
   if (step === 0) return <Opening onContinue={() => { t('onboarding_step_completed', { step: 'opening' }); setDived(true); setStep(1); }} />;
 
+  // The celebration can be skipped with a tap; the guard stops a late timer from reopening the plan.
+  const toPlan = () => { if (leftCelebration.current) return; leftCelebration.current = true; setPhase('plan'); };
   if (phase === 'celebrate') {
-    return <View style={{ flex: 1, backgroundColor: c.canvas, alignItems: 'center', justifyContent: 'center', padding: space.gutter, gap: space[6] }}>
-      <SeedDrop size={290} run={1} kind={kind!} onDone={() => setTimeout(() => setPhase('plan'), reduceMotion ? 700 : 1200)} />
+    return <Pressable accessibilityRole="button" accessibilityLabel="Continue to your plan" onPress={toPlan}
+      style={{ flex: 1, backgroundColor: c.canvas, alignItems: 'center', justifyContent: 'center', padding: space.gutter, gap: space[6] }}>
+      <SeedDrop size={290} run={1} kind={kind!} onDone={() => setTimeout(toPlan, reduceMotion ? 700 : 1200)} />
       <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(900)} style={{ alignItems: 'center', gap: space[1] }}>
         <T v="hero" center>{choice?.name} is in your garden.</T>
         <T v="callout" tone="ink2" center>{soilValue !== 'not_sure' ? 'Your first check is saved.' : 'Its first soil check is waiting for you.'}</T>
       </Animated.View>
-    </View>;
+    </Pressable>;
   }
 
   if (phase === 'plan' && choice) {
@@ -204,8 +208,13 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: space.gutter, paddingBottom: space[6], gap: space[5], flexGrow: 1 }}>
       {/* The title steps away once its job is done, so what follows can rise into its place. */}
       {!hideTitle && <Animated.View key={step} exiting={reduceMotion ? undefined : FadeOutUp.duration(280)} style={{ gap: space[2], paddingTop: space[4] }}>
-        <TextReveal text={titles[step][0]} v="hero" delay={titleDelay} />
-        <TextReveal text={titles[step][1]} v="callout" tone="ink2" delay={titleTime - 300} perWord={30} />
+        {step === 1
+          ? <><TextReveal text={titles[step][0]} v="hero" delay={titleDelay} />
+              <TextReveal text={titles[step][1]} v="callout" tone="ink2" delay={titleTime - 300} perWord={30} /></>
+          : <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(180)} style={{ gap: space[2] }}>
+              <T v="hero" accessibilityRole="header">{titles[step][0]}</T>
+              <T v="callout" tone="ink2">{titles[step][1]}</T>
+            </Animated.View>}
       </Animated.View>}
       <Animated.View layout={reduceMotion ? undefined : LinearTransition.duration(420)} onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ paddingTop: hideTitle ? space[3] : 0 }}>
         {!!width && step === 1 && <Story width={width} start={titleTime} onComplete={() => setStoryDone(true)} />}
@@ -229,7 +238,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
             <Btn title={nudges.length ? 'Turn on nudges' : 'Finish'} busy={busy} onPress={() => void finish(nudges.length > 0)} />
             {!!nudges.length && <Btn kind="plain" title="Not now" onPress={() => void finish(false)} style={{ alignSelf: 'center' }} />}
           </>
-        : <Btn title={step === 3 ? 'Plant it' : 'Continue'} busy={busy} disabled={!canNext} onPress={() => step === 3 ? void plant() : next()} />}
+        : <Btn title={step === 3 ? 'Plant it' : 'Continue'} busy={busy} disabled={!canNext} hint={step === 2 ? 'Choose the one closest to you to continue.' : undefined} onPress={() => step === 3 ? void plant() : next()} />}
     </Animated.View>}
     {step === 1 && dived && <SoilReveal />}
   </View>;

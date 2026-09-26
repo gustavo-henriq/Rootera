@@ -115,7 +115,7 @@ def test_visual_field_cannot_be_saved_as_watering(planted):
 
 def test_fresh_soil_resolves_visual_check_prompt():
     g = project([e('visual', 'Observation', {'visual': 'different'}, 1), e('soil', 'Soil check', {'soil': 'dry'})])
-    assert g['action'] == 'observe' and g['title'] == 'Keep an eye on the change'
+    assert g['action'] == 'observe' and g['title'] == 'Look at the leaves again tomorrow'
 
 
 def test_unknown_visual_clears_previous_claim():
@@ -135,7 +135,7 @@ def test_concise_guidance_keeps_context_but_drops_tips():
 
 def test_watering_after_visual_change_does_not_repeat_check():
     g = project([e('visual', 'Observation', {'visual': 'different'}, 1), e('water', 'Watered', {})])
-    assert g['action'] == 'observe' and g['title'] == 'Watch how it responds'
+    assert g['action'] == 'observe' and g['title'] == 'Look at the leaves in a day or two'
 
 
 def test_unsure_soil_after_visual_change_does_not_ask_again():

@@ -1,28 +1,38 @@
 /**
- * The name is asked here, on Today, after the first plant, never as an onboarding
- * gate. One field, dismissible; "Not now" is remembered on this device.
+ * The name is asked on Today, and only after the first check-in, so it never competes
+ * with the first useful thing the app does. It starts as one quiet line; tapping it opens
+ * the field. "Not now" is remembered on this device.
  */
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useStore } from '../store';
-import { radius, space } from '../ds/tokens';
+import { useTheme } from '../ds/theme';
+import { fonts, radius, space } from '../ds/tokens';
 import { Btn, Field, Glass, T, Tap } from '../ds/components';
 import { Glyph } from '../ds/icons';
 
-const KEY = 'rootera:name-invite:dismissed';
+const DISMISSED = 'rootera:name-invite:dismissed';
+/** Set by the check-in screen after its first successful save. */
+export const CHECKED_IN = 'rootera:checked-in';
 
 export function NameInvite() {
   const { garden, saveProfile } = useStore();
+  const { c } = useTheme();
   const [hidden, setHidden] = useState(true);
+  const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  useEffect(() => { AsyncStorage.getItem(KEY).then(v => setHidden(v === '1')).catch(() => setHidden(false)); }, []);
+  useEffect(() => {
+    Promise.all([AsyncStorage.getItem(DISMISSED), AsyncStorage.getItem(CHECKED_IN)])
+      .then(([dismissed, checked]) => setHidden(dismissed === '1' || checked !== '1'))
+      .catch(() => setHidden(true));
+  }, [garden.events.length]);
   if (hidden || garden.name || !garden.plants.length) return null;
 
-  const dismiss = () => { setHidden(true); AsyncStorage.setItem(KEY, '1').catch(() => undefined); };
+  const dismiss = () => { setHidden(true); AsyncStorage.setItem(DISMISSED, '1').catch(() => undefined); };
   const save = async () => {
     if (!name.trim()) return;
     setBusy(true); setError('');
@@ -31,17 +41,27 @@ export function NameInvite() {
     finally { setBusy(false); }
   };
 
-  return <Animated.View entering={FadeInDown.delay(600).duration(420)} exiting={FadeOut.duration(200)}>
+  if (!open) return <Animated.View entering={FadeIn.delay(300).duration(300)} exiting={FadeOut.duration(160)}
+    style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
+    <Tap label="Add your name. It shows up here on Today." onPress={() => setOpen(true)} ring={radius.input} style={{ flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
+      <Glyph name="person" size={18} tone={c.ink2} />
+      <T v="subhead" tone="ink2">What should we call you?</T>
+      <T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>Add name</T>
+    </Tap>
+    <Tap label="Not now" onPress={dismiss} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Glyph name="close" size={16} tone={c.ink3} /></Tap>
+  </Animated.View>;
+
+  return <Animated.View entering={FadeInDown.duration(280)} exiting={FadeOut.duration(200)}>
     <Glass level="control" r={radius.card} shadow={false} style={{ padding: space[4], gap: space[3] }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[2] }}>
         <View style={{ flex: 1, gap: 2 }}>
           <T v="headline">What should we call you?</T>
-          <T v="subhead" tone="ink2">{error || 'Optional. It shows up here on Today.'}</T>
+          <T v="subhead" tone={error ? 'ink' : 'ink2'}>{error || 'Optional. It shows up here on Today.'}</T>
         </View>
         <Tap label="Not now" onPress={dismiss} ring={22} style={{ width: 44, height: 44, marginTop: -10, marginRight: -10, alignItems: 'center', justifyContent: 'center' }}><Glyph name="close" size={18} /></Tap>
       </View>
-      <Field label="Your name" value={name} onChangeText={setName} maxLength={40} onSubmitEditing={() => void save()} />
-      <Btn size="regular" title="Save name" busy={busy} disabled={!name.trim()} onPress={() => void save()} />
+      <Field label="Your name" value={name} onChangeText={setName} maxLength={40} autoFocus onSubmitEditing={() => void save()} />
+      <Btn size="regular" title="Save name" busy={busy} disabled={!name.trim()} hint="Type a name to save it." onPress={() => void save()} />
     </Glass>
   </Animated.View>;
 }

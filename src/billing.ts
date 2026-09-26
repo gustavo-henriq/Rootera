@@ -18,7 +18,7 @@ const KEY = Platform.select({
 export const billingEnabled = !!KEY;
 let configuredFor: string | null = null;
 
-export interface Offer { id: string; period: 'monthly' | 'annual'; price: string; pkg: PurchasesPackage }
+export interface Offer { id: string; period: 'monthly' | 'annual'; price: string; amount: number; pkg: PurchasesPackage }
 
 export async function configure(appUserID: string) {
   if (!billingEnabled || !appUserID || configuredFor === appUserID) return;
@@ -32,7 +32,7 @@ export async function loadOffers(appUserID: string): Promise<Offer[]> {
   const pkgs = offerings.current?.availablePackages ?? [];
   return pkgs
     .filter(p => p.packageType === 'MONTHLY' || p.packageType === 'ANNUAL')
-    .map(p => ({ id: p.identifier, period: p.packageType === 'ANNUAL' ? 'annual' : 'monthly', price: p.product.priceString, pkg: p }));
+    .map(p => ({ id: p.identifier, period: p.packageType === 'ANNUAL' ? 'annual' : 'monthly', price: p.product.priceString, amount: p.product.price, pkg: p }));
 }
 
 /** Returns false when the person cancelled the store sheet. */

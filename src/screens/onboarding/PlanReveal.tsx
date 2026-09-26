@@ -8,6 +8,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { PlantKind, Twin } from '../../model';
 import { useTheme } from '../../ds/theme';
 import { radius, space } from '../../ds/tokens';
@@ -58,7 +59,8 @@ export function PlanReveal({ kind, name, photo, rows, twin, onContinue }: { kind
         <T v="subhead" tone="ink2">Every check you add makes this more about your plant and less about the species in general.</T>
       </Animated.View>
     </ScrollView>
-    <Animated.View entering={enter(5)} style={{ paddingHorizontal: space.gutter, paddingBottom: insets.bottom + space[4], paddingTop: space[3] }}>
+    <Animated.View entering={enter(5)} style={{ paddingHorizontal: space.gutter, paddingBottom: insets.bottom + space[4], paddingTop: space[3], backgroundColor: c.canvas }}>
+      <LinearGradient pointerEvents="none" colors={['transparent', c.canvas]} style={{ position: 'absolute', left: 0, right: 0, top: -28, height: 28 }} />
       <Btn title="Continue" onPress={onContinue} />
     </Animated.View>
   </View>;

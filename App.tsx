@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Platform, Text, View } from 'react-native';
+import { Platform, Text, useWindowDimensions, View } from 'react-native';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -24,6 +24,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider } from './src/ds/theme';
 import { Gallery } from './src/ds/Gallery';
 import { preloadImages } from './src/ds/preload';
+import { TodaySkeleton, Unreachable } from './src/ds/states';
 import * as SplashScreen from 'expo-splash-screen';
 
 // Keep the native splash up until fonts and artwork are ready.
@@ -43,13 +44,16 @@ function Launch({ onDone }: { onDone: () => void }) {
 }
 
 function Navigator() {
-  const { ready, garden } = useStore();
+  const { ready, garden, source, refresh } = useStore();
   const { c, scheme, reduceMotion: reduce } = useTheme();
   // Decided once, when the garden first loads: the short sprout plays only if the app
   // opened on an existing garden, never in the middle of onboarding.
   const [launch, setLaunch] = React.useState<'pending' | 'play' | 'done'>('pending');
-  React.useEffect(() => { if (ready && launch === 'pending') setLaunch(garden.onboarded ? 'play' : 'done'); }, [ready]);
-  if (!ready || launch === 'pending') return <View style={{ flex: 1, justifyContent: 'center', backgroundColor: c.canvas }}><ActivityIndicator color={c.ink2} /></View>;
+  // Never decide "new user" without knowing: with no cache and no server there is no garden to judge.
+  React.useEffect(() => { if (ready && source !== 'none' && launch === 'pending') setLaunch(garden.onboarded ? 'play' : 'done'); }, [ready, source]);
+  if (!ready) return <TodaySkeleton />;
+  if (source === 'none') return <Unreachable onRetry={refresh} />;
+  if (launch === 'pending') return <TodaySkeleton />;
   if (launch === 'play') return <Launch onDone={() => setLaunch('done')} />;
   const modal = { presentation: 'modal' as const, animation: reduce ? 'none' as const : 'slide_from_bottom' as const };
   return <NavigationContainer theme={{ ...(scheme === 'dark' ? DarkTheme : DefaultTheme), colors: { ...(scheme === 'dark' ? DarkTheme : DefaultTheme).colors, background: c.canvas, card: c.canvas, text: c.ink, primary: c.action, border: c.hairline } }}>
@@ -69,11 +73,18 @@ function Navigator() {
   </NavigationContainer>;
 }
 
-/** On the web preview, a phone-width column so layouts match the device; native fills the screen. */
+/**
+ * On the web preview, a phone-width column so layouts match the device; on wide screens it
+ * is framed like a phone, so it reads as a preview rather than a broken desktop site.
+ * Native fills the screen.
+ */
 function Shell({ children }: React.PropsWithChildren) {
   const { c } = useTheme();
-  return <View style={{ flex: 1, backgroundColor: c.sunken, alignItems: 'center' }}>
-    <View style={{ flex: 1, width: '100%', maxWidth: Platform.OS === 'web' ? 440 : undefined, backgroundColor: c.canvas }}>{children}</View>
+  const { width, height } = useWindowDimensions();
+  const framed = Platform.OS === 'web' && width >= 720 && height >= 700;
+  return <View style={{ flex: 1, backgroundColor: c.sunken, alignItems: 'center', justifyContent: framed ? 'center' : undefined }}>
+    <View style={[{ flex: framed ? undefined : 1, width: '100%', maxWidth: Platform.OS === 'web' ? 440 : undefined, backgroundColor: c.canvas },
+      framed && { height: Math.min(900, height - 48), width: 420, borderRadius: 44, overflow: 'hidden', borderWidth: 1, borderColor: c.hairline, shadowColor: c.shadow, shadowOpacity: 1, shadowRadius: 40, shadowOffset: { width: 0, height: 20 } }]}>{children}</View>
   </View>;
 }
 

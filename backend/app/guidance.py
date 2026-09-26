@@ -89,11 +89,11 @@ class SensorlessGuidance:
             basis = ['Your appearance check']
             tip = notes['check_tip']
         elif visual in ('different', 'unwell') and not fresh and last_water and parse_time(last_water.at) >= parse_time(recent_visual.at):
-            title, action = 'Watch how it responds', 'observe'
+            title, action = 'Look at the leaves in a day or two', 'observe'
             reason = 'You watered after noticing a change. Give it a day or two and look at the leaves again before adding more water.'
             basis = ['Your appearance check', 'Your watering record']
         elif fresh and visual in ('different', 'unwell'):
-            title, action = 'Keep an eye on the change', 'observe'
+            title, action = 'Look at the leaves again tomorrow', 'observe'
             reason = f"You found the soil {SOIL_WORDS[condition]} and noticed a change in the leaves. See whether the change continues before adjusting care."
             if condition == 'dry' and notes['thirst_sign']:
                 reason += f" {notes['thirst_sign']}"
@@ -136,7 +136,7 @@ class SensorlessGuidance:
                 tip = notes['check_tip']
             basis = ['Your watering records', 'Your soil checks']
         else:
-            title, action = 'Time for a fresh check', 'check_soil'
+            title, action = 'Check the soil today', 'check_soil'
             if last_soil:
                 reason = f"Your last soil check was {_ago(age(last_soil))}. Soil changes day to day, so a new check keeps the picture current."
             else:

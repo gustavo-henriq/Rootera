@@ -40,6 +40,7 @@ One accent family (greens). Terracotta and water are semantic, not decorative.
 |---|---|---|---|---|
 | chrome | 28 | 86% light / 84% dark | yes | tab bar, headers, sheets |
 | control | 18 | same | yes | floating buttons, segmented, toasts |
+| callout | 20 | 80% / 80% | short labels | notes pinned over plant art (plant shows through) |
 | clear | 14 | 55% / 50% | **no** | decorative only |
 
 Tint density keeps ink3 ≥ 4.5:1 over the worst backdrop (dark foliage / bright leaf).
@@ -48,14 +49,17 @@ Specular edge: 1 px light line along the top + hairline rim. Shadows are tinted
 
 ## Type
 
-One family, two voices: **Instrument Sans** for the interface and **Instrument Serif** for plant
-names, section headings (italic) and editorial moments. Chosen over Inter in a side-by-side test
-(`review/font-A-instrument-vs-B-inter.jpg`): narrower, more character, same family as the serif.
-Custom fonts select weight by family name; `fontWeight` is never used.
+Two families: **Bricolage Grotesque** (500/600) for titles, plant names and figures, and
+**Instrument Sans** for everything you read or tap. Latin names use Instrument Sans italic, the
+botanical-label convention. Instrument Sans won a side-by-side test against Inter
+(`review/font-A-instrument-vs-B-inter.jpg`); Bricolage replaced Instrument Serif, which read as a
+generic AI display serif. Custom fonts select weight by family name; `fontWeight` is never used.
 
-display 46 serif · hero 36 serif · section 22 serif italic · latin 18 serif italic ·
-largeTitle 32/600 · title 26/600 · title2 21/500 · headline 17/500 · body 17/400 · callout 16 ·
-subhead 15 · footnote 13 · caption 12/500 · figure 34/500 tabular.
+display 40 · hero 30 · largeTitle 32 · title 26 · section 20 (all Bricolage) ·
+title2 21/500 · headline 17/500 · body 17/400 · callout 16 · subhead 15 · footnote 13 ·
+caption 12/500 · latin 16 italic · figure 34 tabular (Bricolage).
+Long plant names step down (40 → 32 → 26) and stop at three lines. Text scales with the
+system setting up to 1.7×.
 Weights: 400 to read, 500 to emphasise, 600 only for titles. Labels are sentence case,
 **no letter-spaced all-caps**.
 
@@ -95,13 +99,24 @@ more than two animated focal points per view · motion without a reduced-motion 
 
 ## Documented deviations from skill defaults
 
-- **Instrument Serif** (flagged as an over-used display serif): kept on purpose. Latin names set in
-  italic serif are the convention of botanical labels, and the specimen-catalogue identity depends on
-  it. Used only for plant names, section headings and editorial moments; the interface is Instrument Sans.
+- **No display serif any more**: Instrument Serif was retired for Bricolage Grotesque (see Type).
 - **Own SVG glyphs** (the anti-slop skill prefers icon libraries): the brief asked for an identity of
   its own instead of generic icons. One 24-pt grid, one stroke, domain metaphors.
 - **Empty values** are drawn as a short rule, never typed as an em dash. No em or en dashes and no
   middle-dot metadata strings anywhere in visible copy.
+
+## Status marks
+
+Freshness of what Rootera knows uses shape and colour, never colour alone (WCAG 1.4.1):
+full circle = current (leafMark), half circle = getting old (amber), diamond = long overdue (clay),
+hollow ring = nothing recorded. Each mark has a spoken label.
+
+## States
+
+Loading is a skeleton in the shape of the screen (never a lone spinner). A first start with no cache
+and no server shows "Can't reach Rootera" with Try again; it never guesses that the person is new.
+Disabled primary buttons always say what is missing (`Btn hint`). Status messages are announced to
+VoiceOver and paired with a haptic (`src/ds/feedback.ts`).
 
 ## Motion moments (each with a reason)
 

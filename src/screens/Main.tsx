@@ -59,6 +59,17 @@ function Thumb({ plant, size = 64 }: { plant: Plant; size?: number }) {
   </View>;
 }
 
+/** The empty shelf, shared by Today and Plants: what happens next and one way to start. */
+function EmptyShelf({ onAdd }: { onAdd: () => void }) {
+  return <View style={{ alignItems: 'center', gap: space[4], paddingTop: space[6] }}>
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>{(['snake-plant', 'monstera', 'pilea'] as const).map((k, i) => <Image key={k} source={plantArt[k]} resizeMode="contain" style={{ width: i === 1 ? 130 : 96, height: i === 1 ? 130 : 96, marginHorizontal: -10 }} />)}</View>
+    <Ground width={240} style={{ marginTop: -18 }} />
+    <T v="title2" center>Your shelf is empty</T>
+    <T v="callout" tone="ink2" center>Add a plant and do a first soil check. Rootera starts learning from there.</T>
+    <Btn title="Add a plant" icon="plus" onPress={onAdd} style={{ alignSelf: 'stretch' }} />
+  </View>;
+}
+
 function Today({ navigation }: TabProps<'Today'>) {
   const { garden } = useStore();
   const { c } = useTheme();
@@ -79,13 +90,7 @@ function Today({ navigation }: TabProps<'Today'>) {
     </View>}>
     <Offline />
     <NameInvite />
-    {!garden.plants.length ? <View style={{ alignItems: 'center', gap: space[4], paddingTop: space[6] }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>{(['snake-plant', 'monstera', 'pilea'] as const).map((k, i) => <Image key={k} source={plantArt[k]} resizeMode="contain" style={{ width: i === 1 ? 130 : 96, height: i === 1 ? 130 : 96, marginHorizontal: -10 }} />)}</View>
-      <Ground width={240} style={{ marginTop: -18 }} />
-      <T v="title2" center>Your shelf is empty</T>
-      <T v="callout" tone="ink2" center>Add a plant and do a first soil check. Rootera starts learning from there.</T>
-      <Btn title="Add a plant" icon="plus" onPress={() => navigation.navigate('AddPlant', { first: true })} style={{ alignSelf: 'stretch' }} />
-    </View> : <>
+    {!garden.plants.length ? <EmptyShelf onAdd={() => navigation.navigate('AddPlant', { first: true })} /> : <>
       <View>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space[2], marginBottom: space[2] }}>
           <T v="section">Needs you</T>
@@ -103,9 +108,8 @@ function Today({ navigation }: TabProps<'Today'>) {
                   <T v="subhead" tone="ink2" lines={2}>{g?.title ?? 'Start with a soil check'}</T>
                 </View>
               </Tap>
-              {q && (narrow
-                ? <Tap label={`${q.title}, ${p.name}`} onPress={() => navigation.navigate('Care', { id: p.id, mode: q.mode })} ring={radius.control} style={{ width: 44, height: 44, borderRadius: radius.control, borderWidth: 1, borderColor: c.ink3, alignItems: 'center', justifyContent: 'center' }}><Glyph name={q.icon} size={20} /></Tap>
-                : <Btn size="regular" kind="outline" icon={q.icon} title={q.title} onPress={() => navigation.navigate('Care', { id: p.id, mode: q.mode })} />)}
+              {/* The accessible name carries the plant, so a list is never "Check in, Check in, Check in". */}
+              {q && <Btn size="regular" kind="outline" icon={narrow ? undefined : q.icon} title={narrow ? 'Check' : q.title} label={`${q.title}, ${p.name}`} onPress={() => navigation.navigate('Care', { id: p.id, mode: q.mode })} />}
             </Stagger>;
           }) : <View style={{ flexDirection: 'row', gap: space[3], alignItems: 'center', paddingVertical: space[4], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
             <Glyph name="leaf" tone={c.leafMark} />
@@ -163,7 +167,12 @@ function Plants({ navigation }: TabProps<'Plants'>) {
   const [w, setW] = useState(0);
   const [room, setRoom] = useState('All');
   const plus = garden.plan === 'Plus';
-  const rooms = useMemo(() => Array.from(new Set(garden.plants.map(p => p.room).filter(known))), [garden.plants]);
+  // Rooms in natural order ("Room 2" before "Room 10"), each with how many plants it holds.
+  const rooms = useMemo(() => {
+    const count = new Map<string, number>();
+    garden.plants.forEach(p => { if (known(p.room)) count.set(p.room, (count.get(p.room) ?? 0) + 1); });
+    return [...count.entries()].sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' }));
+  }, [garden.plants]);
   const list = byUrgency(garden).filter(p => !plus || room === 'All' || p.room === room);
   const col = w ? (w - space[3]) / 2 : 0;
   const full = atCapacity(garden);
@@ -171,11 +180,15 @@ function Plants({ navigation }: TabProps<'Plants'>) {
   return <Page tab scrollRef={ref} title="Plants" actions={[{ icon: 'plus', label: 'Add a plant', onPress: () => navigation.navigate(full ? 'Plans' : 'AddPlant', full ? { reason: 'limit' } : undefined as any) }]} gap={space[5]}>
     <Offline />
     {plus
-      ? rooms.length > 0 && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>{['All', ...rooms].map(r => <Chip key={r} label={r} selected={room === r} onPress={() => setRoom(r)} />)}</View>
+      ? rooms.length > 0 && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+          <Chip label={`All ${garden.plants.length}`} selected={room === 'All'} onPress={() => setRoom('All')} />
+          {rooms.map(([r, n]) => <Chip key={r} label={`${r} ${n}`} selected={room === r} onPress={() => setRoom(r)} />)}
+        </View>
       : garden.plants.length > 0 && <Tap label="Group plants by room with Rootera+" onPress={() => navigation.navigate('Plans', { reason: 'rooms' })} ring={radius.input}
           style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: space[2], minHeight: 40, paddingHorizontal: 12, borderRadius: radius.input, borderWidth: 1, borderColor: c.hairline }}>
           <Glyph name="rooms" size={16} tone={c.ink2} /><T v="subhead" tone="ink2">Group by room</T><Glyph name="lock" size={14} tone={c.ink3} />
         </Tap>}
+    {!garden.plants.length ? <EmptyShelf onAdd={() => navigation.navigate('AddPlant', { first: true })} /> :
     <View onLayout={e => setW(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space[3], rowGap: space[4] }}>
       {!!col && list.map((p, i) => <Stagger key={p.id} index={i}><Tile plant={p} width={col} delay={Math.min(i, 8) * 55} needs={garden.twins[p.id]?.guidance.action !== 'wait'} onPress={() => navigation.navigate('Plant', { id: p.id })} /></Stagger>)}
       {!!col && <Tap label={full ? 'Plant limit reached. See Rootera+' : 'Add a plant'} onPress={() => navigation.navigate(full ? 'Plans' : 'AddPlant', full ? { reason: 'limit' } : undefined as any)} ring={radius.card} style={{ width: col, paddingTop: col * .36 }}>
@@ -185,7 +198,7 @@ function Plants({ navigation }: TabProps<'Plants'>) {
           {garden.plan_capacity !== null && <T v="footnote" tone="ink2" center>{garden.plants.length} of {garden.plan_capacity} on the free plan</T>}
         </View>
       </Tap>}
-    </View>
+    </View>}
   </Page>;
 }
 
@@ -254,23 +267,19 @@ function You({ navigation }: TabProps<'You'>) {
   };
   const nudges = garden.nudges;
   const nudgeText = !garden.reminders || !nudges?.kinds.length ? 'Off' : `${nudges.kinds.map(k => nudgeNames[k]).join(', ').replace(/^./, s => s.toUpperCase())}, at ${nudges.time}`;
-  const host = API_URL.replace(/^https?:\/\//, '');
 
   return <Page tab scrollRef={ref} title={garden.name || 'You'}>
     <Offline />
     {!!error && <Toast tone="error" title="Not saved" text={error} onClose={() => setError('')} />}
     <Group header="Plant care">
       <Row title="Name and experience" detail={garden.caregiver ? experienceLabel[garden.caregiver.experience] : 'Not set'} onPress={() => navigation.navigate('Experience')} />
-      <Row title="Nudges" detail={nudgeText} onPress={() => navigation.navigate('Nudges')} />
-      <View style={{ paddingVertical: space[3], gap: space[2] }}>
-        <T v="body">How much Rootera explains</T>
-        <Segmented values={['Guided', 'Concise'] as const} value={detail} onChange={v => void save({ caregiver: { experience: garden.caregiver?.experience ?? 'first', detail: v } })} labels={{ Guided: 'Walk me through it', Concise: 'Just tell me' }} />
-      </View>
+      {/* How much Rootera explains lives with the nudges (one control, one place); here it is summarised. */}
+      <Row title="Nudges" detail={`${nudgeText}. ${detail === 'Guided' ? 'Walk me through it' : 'Just tell me'}`} onPress={() => navigation.navigate('Nudges')} />
     </Group>
     <Group header="Plan">
       <Row title={garden.plan === 'Plus' ? 'Rootera+' : 'Rootera Free'} detail={garden.plan === 'Plus' ? `Unlimited plants and rooms${garden.plan_source === 'demo' ? ', preview activation' : ''}` : `${garden.plants.length} of ${garden.plan_capacity} plants used`} onPress={() => navigation.navigate('Plans')} />
     </Group>
-    <Group header="About" footer={`Preview data is saved on ${host}. Photos stay on this device.`}>
+    <Group header="About" footer="In this preview your garden is kept on the Rootera preview server. Photos stay on this device.">
       <Row title="How Rootera learns" onPress={() => navigation.navigate('About')} />
       <Row title="Preview onboarding" detail="Plays it again. Nothing is saved." onPress={() => navigation.navigate('Welcome', { preview: true })} />
     </Group>

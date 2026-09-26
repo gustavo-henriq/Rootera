@@ -34,7 +34,7 @@ const light = {
   soil: ['#D8C39E', '#B08A5E', '#86603D', '#5A3E27'],
   glassTint: 'rgba(250,251,245,0.86)',
   glassClear: 'rgba(250,251,245,0.55)',
-  glassCallout: 'rgba(250,251,245,0.72)', // callouts over art: the plant shows through, ink stays AA
+  glassCallout: 'rgba(250,251,245,0.8)', // callouts over art: the plant shows through, ink stays AA
   glassEdge: 'rgba(255,255,255,0.95)', // specular top highlight
   glassRim: 'rgba(28,35,20,0.10)', // outer hairline
   shadow: 'rgba(40,52,20,0.14)', // tinted, one light source from above
@@ -65,7 +65,7 @@ const dark: typeof light = {
   soil: ['#CDB690', '#A98459', '#7F5A38', '#5A3E27'],
   glassTint: 'rgba(26,32,19,0.84)',
   glassClear: 'rgba(26,32,19,0.5)',
-  glassCallout: 'rgba(26,32,19,0.7)',
+  glassCallout: 'rgba(26,32,19,0.8)',
   glassEdge: 'rgba(255,255,255,0.14)',
   glassRim: 'rgba(0,0,0,0.5)',
   shadow: 'rgba(0,0,0,0.45)',
