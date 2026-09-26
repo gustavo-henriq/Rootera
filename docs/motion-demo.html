@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rootera Motion Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Tokens copied from src/ds/tokens.ts ("Greenhouse Glass"). */
+:root {
+  --canvas: #F3F5EC; --raised: #FBFCF7; --sunken: #E8ECDD; --ink: #1C2314; --ink2: #4A533C; --ink3: #5C654E;
+  --hairline: rgba(28,35,20,.12); --action: #34431D; --on-action: #FFFFFF; --leaf: #6DBF2E; --leaf-text: #386F16;
+  --leaf-mark: #4F9A1C; --clay: #C0582E; --amber: #A86F12; --water: #2C6474; --success-soft: #E1ECCF;
+  --glass: rgba(250,251,245,.72); --glass-edge: rgba(255,255,255,.95); --glass-rim: rgba(28,35,20,.10); --shadow: rgba(40,52,20,.14);
+  --soil1: #D8C39E; --soil2: #B08A5E; --soil3: #86603D; --soil4: #5A3E27;
+  --r-control: 10px; --r-card: 16px; --r-chrome: 26px;
+  /* Motion tokens proposed in docs/auditoria-ux.md */
+  --dur-instant: 90ms; --dur-fast: 160ms; --dur-base: 240ms; --dur-slow: 380ms;
+  --ease-out: cubic-bezier(.2,.8,.2,1); --ease-in: cubic-bezier(.4,0,1,1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #0F130B; --raised: #171D12; --sunken: #1E2518; --ink: #EEF2E6; --ink2: #BFC7B1; --ink3: #A2AB93;
+    --hairline: rgba(238,242,230,.12); --action: #B5DE7C; --on-action: #0F130B; --leaf-text: #A6D96A; --leaf-mark: #8FCB4E;
+    --success-soft: #223018; --glass: rgba(26,32,19,.72); --glass-edge: rgba(255,255,255,.14); --glass-rim: rgba(0,0,0,.5); --shadow: rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"] {
+  --canvas: #0F130B; --raised: #171D12; --sunken: #1E2518; --ink: #EEF2E6; --ink2: #BFC7B1; --ink3: #A2AB93;
+  --hairline: rgba(238,242,230,.12); --action: #B5DE7C; --on-action: #0F130B; --leaf-text: #A6D96A; --leaf-mark: #8FCB4E;
+  --success-soft: #223018; --glass: rgba(26,32,19,.72); --glass-edge: rgba(255,255,255,.14); --glass-rim: rgba(0,0,0,.5); --shadow: rgba(0,0,0,.45);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--canvas); color: var(--ink); font: 400 16px/1.5 "Instrument Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+h1, h2 { font-family: "Bricolage Grotesque", "Instrument Sans", sans-serif; font-weight: 600; letter-spacing: -.02em; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.05; }
+h2 { font-size: 22px; line-height: 1.2; }
+p { margin: 0; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 40px 16px 80px; }
+header.top { display: flex; flex-wrap: wrap; gap: 20px; align-items: end; justify-content: space-between; margin-bottom: 36px; }
+header.top p { color: var(--ink2); max-width: 60ch; margin-top: 10px; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.btn { min-height: 44px; padding: 0 16px; border-radius: var(--r-control); border: 1px solid var(--ink3); background: transparent; font-weight: 500; }
+.btn.filled { background: var(--action); color: var(--on-action); border-color: transparent; }
+.btn:focus-visible, .tile:focus-visible, .tab:focus-visible, .opt:focus-visible { outline: 2px solid var(--leaf-mark); outline-offset: 3px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 28px; }
+section.demo { border-top: 1px solid var(--ink3); padding-top: 16px; display: grid; gap: 14px; align-content: start; }
+.meta { display: grid; gap: 6px; color: var(--ink2); font-size: 14px; }
+.meta b { color: var(--ink); font-weight: 500; }
+.stage { position: relative; height: 560px; border-radius: 28px; background: var(--canvas); outline: 1px solid var(--hairline); overflow: hidden; }
+.phone-pad { position: absolute; inset: 0; padding: 22px 18px; }
+.replay { justify-self: start; }
+.muted { color: var(--ink2); }
+.small { font-size: 13px; color: var(--ink3); }
+
+/* ---------- 1. Shared element: tile -> detail ---------- */
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.tile { position: relative; border: 0; padding: 0; background: none; text-align: left; height: 186px; }
+.tile .card { position: absolute; left: 0; right: 0; bottom: 0; height: 132px; border-radius: var(--r-card); background: var(--sunken); }
+.tile img { position: absolute; left: 50%; top: 0; width: 120px; height: 120px; transform: translateX(-50%); object-fit: contain; }
+.tile .name { position: absolute; left: 12px; bottom: 30px; font-weight: 500; }
+.tile .state { position: absolute; left: 12px; bottom: 12px; font-size: 13px; color: var(--clay); }
+.detail { position: absolute; inset: 0; background: var(--canvas); padding: 22px 18px; display: none; }
+.detail.open { display: block; }
+.detail .hero-img { position: absolute; left: 50%; top: 56px; width: 220px; height: 220px; margin-left: -110px; object-fit: contain; }
+.detail .title { position: absolute; left: 0; right: 0; top: 290px; text-align: center; font: 600 34px/1.05 "Bricolage Grotesque", sans-serif; letter-spacing: -.02em; }
+.detail .latin { position: absolute; left: 0; right: 0; top: 332px; text-align: center; font-style: italic; color: var(--ink2); }
+.detail .body { position: absolute; left: 18px; right: 18px; top: 380px; display: grid; gap: 8px; }
+.glass-icon { position: absolute; top: 16px; left: 16px; width: 44px; height: 44px; border-radius: 22px; border: 0; background: var(--glass); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 6px 18px var(--shadow), inset 0 1px 0 var(--glass-edge); display: grid; place-items: center; }
+
+/* ---------- 2. Check-in feedback ---------- */
+.row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--hairline); background: var(--canvas); position: relative; }
+.row img { width: 52px; height: 52px; object-fit: contain; }
+.row .t { flex: 1; }
+.row .t b { font-weight: 500; display: block; }
+.row .t span { font-size: 14px; color: var(--ink2); }
+.sec { font: 600 20px/1.2 "Bricolage Grotesque", sans-serif; margin: 10px 0 6px; padding-bottom: 6px; border-bottom: 1px solid var(--ink3); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--raised); border-radius: var(--r-chrome) var(--r-chrome) 0 0; box-shadow: 0 -10px 30px var(--shadow); padding: 18px; transform: translateY(100%); }
+.opts { display: grid; gap: 8px; margin: 10px 0 14px; }
+.opt { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; border-radius: var(--r-control); border: 1px solid var(--hairline); background: transparent; text-align: left; }
+.opt .sw { width: 26px; height: 26px; border-radius: 4px; }
+.opt[aria-checked="true"] { border-color: var(--ink); background: var(--sunken); }
+.drops { position: absolute; inset: 0; pointer-events: none; }
+.drop { position: absolute; width: 8px; height: 11px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: var(--water); opacity: 0; }
+.toast { position: absolute; left: 14px; right: 14px; top: 14px; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--r-card); background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 10px 24px var(--shadow), inset 0 1px 0 var(--glass-edge); transform: translateY(-140%); }
+.toast .bar { position: absolute; left: 14px; right: 14px; bottom: 6px; height: 2px; border-radius: 2px; background: var(--leaf-mark); transform-origin: left; }
+.toast button { margin-left: auto; border: 0; background: none; color: var(--leaf-text); font-weight: 600; min-height: 44px; }
+
+/* ---------- 3. Organic skeleton ---------- */
+.sk-row { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--hairline); }
+.sk { background: var(--sunken); border-radius: 8px; position: relative; overflow: hidden; }
+.sk.leaf { width: 52px; height: 52px; border-radius: 26px 4px 26px 4px; }
+.sk::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--raised) 75%, transparent) 50%, transparent 80%); transform: translateX(-100%); animation: sweep 1.6s var(--ease-out) infinite; }
+@keyframes sweep { to { transform: translateX(100%); } }
+.real { display: none; }
+
+/* ---------- 4. Liquid glass tab bar ---------- */
+.feed { position: absolute; inset: 0; overflow-y: auto; padding: 22px 18px 120px; scrollbar-width: none; }
+.feed::-webkit-scrollbar { display: none; }
+.feed .pic { height: 140px; border-radius: var(--r-card); margin: 12px 0; background-size: contain; background-repeat: no-repeat; background-position: center; background-color: var(--sunken); }
+.tabbar { position: absolute; left: 50%; bottom: 18px; width: 300px; margin-left: -150px; height: 64px; border-radius: 32px; display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px; isolation: isolate;
+  background: var(--glass); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: 0 14px 36px var(--shadow), inset 0 1px 0 var(--glass-edge), 0 0 0 .5px var(--glass-rim); }
+.tabbar::before { content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -1; pointer-events: none;
+  background: radial-gradient(120px 60px at var(--mx, 50%) 0%, color-mix(in srgb, white 55%, transparent), transparent 70%); opacity: .55; }
+.plate { position: absolute; top: 6px; left: 6px; height: 52px; width: calc((300px - 12px) / 4); border-radius: 26px; background: color-mix(in srgb, var(--ink) 9%, transparent); z-index: -1; }
+.tab { border: 0; background: none; border-radius: 26px; display: grid; place-items: center; font-size: 12px; font-weight: 500; color: var(--ink2); min-height: 52px; }
+.tab[aria-selected="true"] { color: var(--ink); }
+.tab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+@supports (animation-timeline: scroll()) {
+  .tabbar { animation: deepen linear both; animation-timeline: scroll(nearest); animation-range: 0 240px; }
+  @keyframes deepen { from { backdrop-filter: blur(10px) saturate(130%); } to { backdrop-filter: blur(28px) saturate(170%); } }
+}
+
+/* ---------- 5. Pattern forming ---------- */
+.ring-wrap { display: grid; place-items: center; margin-top: 10px; position: relative; }
+.ring-wrap svg { width: 220px; height: 220px; transform: rotate(-90deg); }
+.ring-bg { stroke: var(--sunken); }
+.ring-seg { stroke: var(--leaf-mark); stroke-linecap: round; }
+.ring-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.ring-center .num { font: 600 44px/1 "Bricolage Grotesque", sans-serif; font-variant-numeric: tabular-nums; }
+.ring-center img { width: 96px; height: 96px; object-fit: contain; margin: 0 auto -6px; }
+.insight { margin-top: 14px; padding: 14px; border-radius: var(--r-card); background: var(--success-soft); opacity: 0; }
+.leafbit { position: absolute; width: 10px; height: 16px; border-radius: 10px 0 10px 0; background: var(--leaf); opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) { .sk::after { animation: none; } }
+.reduce .sk::after { animation: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Rootera, motion proposal</h1>
+      <p>The 5 animations with the most impact from the audit (<code>docs/auditoria-ux.md</code>, section 8). Each one has a purpose, uses only <code>transform</code>/<code>opacity</code> (and <code>backdrop-filter</code> on the glass), can be interrupted, and has a reduced version.</p>
+    </div>
+    <div class="controls">
+      <button class="btn" id="rm" aria-pressed="false">Reduce motion: off</button>
+      <button class="btn" id="theme">Toggle theme</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- 1 -->
+    <section class="demo" aria-labelledby="d1">
+      <h2 id="d1">1. The tile becomes the plant</h2>
+      <div class="meta"><span><b>Where:</b> Plants → Plant detail</span><span><b>Purpose:</b> spatial continuity; the user sees that the page <i>is</i> the plant they tapped (shared element)</span><span><b>Physics:</b> smooth spring (stiffness 190, damping 26), ~380 ms; return 300 ms</span></div>
+      <div class="stage" id="s1">
+        <div class="phone-pad">
+          <h2>Plants</h2>
+          <div class="tiles">
+            <button class="tile" data-img="../assets/plants/monstera.png" data-name="Monstera" data-latin="Monstera deliciosa"><div class="card"></div><img src="../assets/plants/monstera.png" alt=""><span class="name">Monstera</span><span class="state">Needs you</span></button>
+            <button class="tile" data-img="../assets/plants/aloe.png" data-name="Aloe" data-latin="Aloe barbadensis"><div class="card"></div><img src="../assets/plants/aloe.png" alt=""><span class="name">Aloe</span><span class="state">Needs you</span></button>
+            <button class="tile" data-img="../assets/plants/peace-lily.png" data-name="Peace Lily" data-latin="Spathiphyllum wallisii"><div class="card"></div><img src="../assets/plants/peace-lily.png" alt=""><span class="name">Peace Lily</span><span class="state" style="color:var(--leaf-text)">Resting</span></button>
+            <button class="tile" data-img="../assets/plants/pothos.png" data-name="Pothos" data-latin="Epipremnum aureum"><div class="card"></div><img src="../assets/plants/pothos.png" alt=""><span class="name">Pothos</span><span class="state" style="color:var(--leaf-text)">Resting</span></button>
+          </div>
+        </div>
+        <div class="detail" id="detail" role="dialog" aria-label="Plant detail">
+          <button class="glass-icon" id="back" aria-label="Go back">&#8249;</button>
+          <img class="hero-img" alt="">
+          <div class="title"></div><div class="latin"></div>
+          <div class="body"><span class="small">Rootera suggests</span><b style="font:600 20px/1.2 'Bricolage Grotesque'">You found the soil dry</b><span class="muted">Usually does well when the top third of the soil has dried.</span></div>
+        </div>
+      </div>
+      <p class="small">Tap a plant. Reduced: 120 ms crossfade, no movement.</p>
+    </section>
+
+    <!-- 2 -->
+    <section class="demo" aria-labelledby="d2">
+      <h2 id="d2">2. Check in: water falls, the plant responds</h2>
+      <div class="meta"><span><b>Where:</b> Today → Check in → save</span><span><b>Purpose:</b> immediate feedback + showing <i>where</i> the plant went (Needs you → Resting) + undo (control and freedom)</span><span><b>Timing:</b> sheet 280 ms spring · drops 520 ms · row moves 360 ms · toast 5 s with undo</span></div>
+      <div class="stage" id="s2">
+        <div class="phone-pad">
+          <div class="sec">Needs you</div>
+          <div id="needs"><div class="row" id="mon"><img src="../assets/plants/monstera.png" alt=""><div class="t"><b>Monstera</b><span>You found the soil dry</span></div><button class="btn" id="checkin">Check in</button></div>
+          <div class="row"><img src="../assets/plants/aloe.png" alt=""><div class="t"><b>Aloe</b><span>Time for a fresh check</span></div><button class="btn" disabled style="opacity:.5">Check in</button></div></div>
+          <div class="sec" style="margin-top:18px">Resting</div>
+          <div id="resting"><div class="row"><img src="../assets/plants/pothos.png" alt=""><div class="t"><b>Pothos</b><span>Nearly dry</span></div></div></div>
+        </div>
+        <div class="drops" id="drops"></div>
+        <div class="sheet" id="sheet" role="dialog" aria-label="Check in Monstera">
+          <b>How does the soil feel?</b>
+          <div class="opts" role="radiogroup">
+            <button class="opt" role="radio" aria-checked="false" data-v="dry"><span class="sw" style="background:var(--soil1)"></span>Dry</button>
+            <button class="opt" role="radio" aria-checked="false" data-v="moist"><span class="sw" style="background:var(--soil3)"></span>Moist</button>
+          </div>
+          <button class="btn filled" id="save" style="width:100%">Watered and saved</button>
+        </div>
+        <div class="toast" id="toast" role="status"><span>Monstera watered. Next: check in about 5 days.</span><button id="undo">Undo</button><span class="bar" id="bar"></span></div>
+      </div>
+      <p class="small">Reduced: no drops or movement; the row fades between sections (120 ms) and the toast appears without sliding.</p>
+    </section>
+
+    <!-- 3 -->
+    <section class="demo" aria-labelledby="d3">
+      <h2 id="d3">3. Skeleton with the shape of the content</h2>
+      <div class="meta"><span><b>Where:</b> first opening, garden refresh, Journal</span><span><b>Purpose:</b> shortens the perceived wait (replaces today's centered spinner) and keeps the layout stable (CLS 0)</span><span><b>Timing:</b> 1.6 s sweep; content enters in 240 ms, stagger 40 ms, maximum 3 items</span></div>
+      <div class="stage" id="s3">
+        <div class="phone-pad">
+          <span class="small">Friday, September 25</span>
+          <h1 style="font-size:36px;margin:2px 0 14px">Good morning</h1>
+          <div class="sec">Needs you</div>
+          <div id="sks"></div>
+          <div id="real"></div>
+        </div>
+      </div>
+      <button class="btn replay" id="r3">Load again</button>
+    </section>
+
+    <!-- 4 -->
+    <section class="demo" aria-labelledby="d4">
+      <h2 id="d4">4. Live glass on the tab bar</h2>
+      <div class="meta"><span><b>Where:</b> FloatingTabBar (and headers)</span><span><b>Purpose:</b> material depth (Liquid Glass): the plate slides to the chosen tab, the glass "gives" slightly under the finger, and the blur deepens as content passes underneath</span><span><b>Physics:</b> plate with snappy spring (340/22) · press squash 90 ms · scroll-driven blur (CSS <code>animation-timeline</code>)</span></div>
+      <div class="stage" id="s4">
+        <div class="feed" id="feed">
+          <h2>Today</h2>
+          <p class="muted" style="margin-top:6px">Scroll: the glass responds to what passes underneath.</p>
+          <div class="pic" style="background-image:url(../assets/plants/monstera.png)"></div>
+          <div class="pic" style="background-image:url(../assets/plants/pothos.png)"></div>
+          <div class="pic" style="background-image:url(../assets/plants/peace-lily.png)"></div>
+          <div class="pic" style="background-image:url(../assets/plants/snake-plant.png)"></div>
+          <div class="pic" style="background-image:url(../assets/plants/zz.png)"></div>
+        </div>
+        <nav class="tabbar" id="tabbar" role="tablist" aria-label="Sections">
+          <span class="plate" id="plate"></span>
+          <button class="tab" role="tab" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 18h16M7 14a5 5 0 0 1 10 0M12 4v3M5 8l2 2M19 8l-2 2"/></svg>Today</button>
+          <button class="tab" role="tab" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M5 20h14M8 20v-5M16 20v-5M8 15c-2-3 0-6 0-9M16 15c2-3 0-6 0-9"/></svg>Plants</button>
+          <button class="tab" role="tab" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M7 3h10v18H7zM10 8h4M10 12h4"/></svg>Journal</button>
+          <button class="tab" role="tab" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>You</button>
+        </nav>
+      </div>
+      <p class="small">Reduced motion: the plate jumps with no spring and there's no squash. Reduced transparency (iOS): solid glass, no blur.</p>
+    </section>
+
+    <!-- 5 -->
+    <section class="demo" aria-labelledby="d5">
+      <h2 id="d5">5. A pattern forming (0/3 → 3/3)</h2>
+      <div class="meta"><span><b>Where:</b> Plant detail, "Cycles to a pattern" figure</span><span><b>Purpose:</b> visible goal gradient + Zeigarnik: each cycle closes an arc; the 3rd triggers the peak moment (the plant's first learned fact)</span><span><b>Timing:</b> arc 520 ms ease-out · number counts in 400 ms · burst of 6 leaves 700 ms (bouncy spring) · insight 240 ms</span></div>
+      <div class="stage" id="s5">
+        <div class="phone-pad">
+          <span class="small">Pothos</span>
+          <h2>Cycles to a pattern</h2>
+          <div class="ring-wrap">
+            <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-bg" cx="60" cy="60" r="50" fill="none" stroke-width="8"/><g id="segs"></g></svg>
+            <div class="ring-center"><img src="../assets/plants/pothos.png" alt=""><span class="num" id="num" aria-live="polite">0/3</span></div>
+            <div id="bits"></div>
+          </div>
+          <div class="insight" id="insight" role="status"><span class="small">Learned from your records</span><br><b>Usually dry about 6 days after watering.</b><br><span class="muted" style="font-size:14px">It depends on how often you check. It's not a schedule.</span></div>
+        </div>
+      </div>
+      <div class="controls"><button class="btn filled" id="cycle">Complete a cycle</button><button class="btn" id="r5">Start over</button></div>
+    </section>
+  </div>
+</div>
+
+<script>
+// ---------- motion helpers ----------
+const mq = matchMedia('(prefers-reduced-motion: reduce)');
+let forced = false;
+const reduce = () => forced || mq.matches;
+const rmBtn = document.getElementById('rm');
+const syncRm = () => { rmBtn.textContent = 'Reduce motion: ' + (reduce() ? 'on' : 'off'); rmBtn.setAttribute('aria-pressed', String(reduce())); document.body.classList.toggle('reduce', reduce()); };
+rmBtn.onclick = () => { forced = !forced; syncRm(); }; mq.addEventListener('change', syncRm); syncRm();
+document.getElementById('theme').onclick = () => { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; };
+
+/** A damped spring sampled into a CSS linear() easing, so WAAPI runs the same physics as Reanimated's withSpring. */
+function spring({ stiffness = 190, damping = 26, mass = 1 } = {}) {
+  const w0 = Math.sqrt(stiffness / mass), zeta = damping / (2 * Math.sqrt(stiffness * mass));
+  const x = t => zeta < 1
+    ? 1 - Math.exp(-zeta * w0 * t) * (Math.cos(w0 * Math.sqrt(1 - zeta * zeta) * t) + zeta / Math.sqrt(1 - zeta * zeta) * Math.sin(w0 * Math.sqrt(1 - zeta * zeta) * t))
+    : 1 - Math.exp(-w0 * t) * (1 + w0 * t);
+  let T = 0; while (T < 3 && !(Math.abs(1 - x(T)) < .001 && Math.abs(1 - x(T + .05)) < .001)) T += .01;
+  const n = 48, pts = Array.from({ length: n + 1 }, (_, i) => +x(T * i / n).toFixed(4));
+  const ok = CSS.supports('animation-timing-function', 'linear(0, 1)');
+  return { easing: ok ? `linear(${pts.join(',')})` : 'cubic-bezier(.2,.9,.25,1)', duration: Math.round(T * 1000) };
+}
+const SNAPPY = { stiffness: 340, damping: 22 }, SMOOTH = { stiffness: 190, damping: 26 }, BOUNCY = { stiffness: 170, damping: 11 };
+function anim(el, frames, opts) {
+  if (reduce()) { const last = frames[frames.length - 1]; return el.animate([last, last], { duration: 1, fill: 'forwards' }); }
+  return el.animate(frames, { fill: 'forwards', ...opts });
+}
+const fade = (el, to, d = 120) => el.animate([{ opacity: to ? 0 : 1 }, { opacity: to }], { duration: d, fill: 'forwards' });
+
+// ---------- 1. shared element ----------
+(() => {
+  const stage = document.getElementById('s1'), detail = document.getElementById('detail');
+  const hero = detail.querySelector('.hero-img'), title = detail.querySelector('.title'), latin = detail.querySelector('.latin'), body = detail.querySelector('.body');
+  let from = null;
+  const rect = el => { const s = stage.getBoundingClientRect(), r = el.getBoundingClientRect(); return { x: r.left - s.left, y: r.top - s.top, w: r.width, h: r.height }; };
+  // FLIP: measure first (tile image), last (detail image), invert with transform, play.
+  function invert(a, b) { return `translate(${a.x - b.x}px, ${a.y - b.y}px) scale(${a.w / b.w}, ${a.h / b.h})`; }
+  stage.querySelectorAll('.tile').forEach(t => t.onclick = () => {
+    from = t; const img = t.querySelector('img'), first = rect(img), card = rect(t.querySelector('.card'));
+    hero.src = t.dataset.img; title.textContent = t.dataset.name; latin.textContent = t.dataset.latin;
+    detail.classList.add('open'); const last = rect(hero);
+    if (reduce()) { fade(detail, 1); return; }
+    const s = spring(SMOOTH);
+    anim(hero, [{ transform: invert(first, last) }, { transform: 'none' }], s);
+    anim(detail, [{ clipPath: `inset(${card.y}px ${stage.clientWidth - card.x - card.w}px ${stage.clientHeight - card.y - card.h}px ${card.x}px round 16px)`, backgroundColor: 'var(--sunken)' }, { clipPath: 'inset(0 0 0 0 round 28px)', backgroundColor: 'var(--canvas)' }], s);
+    [title, latin, body].forEach((el, i) => anim(el, [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 240, delay: 120 + i * 40, easing: 'cubic-bezier(.2,.8,.2,1)' }));
+    img.style.opacity = 0;
+  });
+  document.getElementById('back').onclick = () => {
+    const img = from.querySelector('img'); img.style.opacity = 0;
+    const first = rect(hero), last = rect(img);
+    const done = () => { detail.classList.remove('open'); img.style.opacity = 1; detail.getAnimations().forEach(a => a.cancel()); hero.getAnimations().forEach(a => a.cancel()); };
+    if (reduce()) { fade(detail, 0).onfinish = done; return; }
+    const a = anim(hero, [{ transform: 'none' }, { transform: invert(last, first) }], { duration: 300, easing: 'cubic-bezier(.4,0,.2,1)' });
+    anim(detail, [{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: 'cubic-bezier(.4,0,1,1)' });
+    a.onfinish = done;
+  };
+})();
+
+// ---------- 2. check-in ----------
+(() => {
+  const stage = document.getElementById('s2'), sheet = document.getElementById('sheet'), toast = document.getElementById('toast');
+  const mon = document.getElementById('mon'), needs = document.getElementById('needs'), resting = document.getElementById('resting');
+  const drops = document.getElementById('drops'), bar = document.getElementById('bar');
+  let timer = null;
+  document.getElementById('checkin').onclick = () => anim(sheet, [{ transform: 'translateY(100%)' }, { transform: 'none' }], spring(SMOOTH));
+  sheet.querySelectorAll('.opt').forEach(o => o.onclick = () => {
+    sheet.querySelectorAll('.opt').forEach(x => x.setAttribute('aria-checked', String(x === o)));
+    anim(o, [{ transform: 'scale(.97)' }, { transform: 'scale(1)' }], spring(SNAPPY));
+  });
+  function moveRow(to) {
+    // FLIP across sections: the row travels to its new list instead of vanishing.
+    const s = stage.getBoundingClientRect(), a = mon.getBoundingClientRect();
+    to.prepend(mon); const b = mon.getBoundingClientRect();
+    if (reduce()) { fade(mon, 1); return; }
+    anim(mon, [{ transform: `translateY(${a.top - b.top}px)` }, { transform: 'none' }], spring(SMOOTH));
+  }
+  document.getElementById('save').onclick = () => {
+    anim(sheet, [{ transform: 'none' }, { transform: 'translateY(100%)' }], { duration: 200, easing: 'cubic-bezier(.4,0,1,1)' });
+    const img = mon.querySelector('img'), r = img.getBoundingClientRect(), s = stage.getBoundingClientRect();
+    if (!reduce()) {
+      drops.innerHTML = '';
+      for (let i = 0; i < 7; i++) {
+        const d = document.createElement('span'); d.className = 'drop';
+        d.style.left = (r.left - s.left + 8 + Math.random() * 34) + 'px'; d.style.top = (r.top - s.top - 16) + 'px'; drops.append(d);
+        d.animate([{ opacity: 0, transform: 'translateY(-10px)' }, { opacity: 1, offset: .2 }, { opacity: 0, transform: 'translateY(46px)' }], { duration: 520, delay: 60 + i * 45, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' });
+      }
+      // the plant "drinks": small squash, then it straightens with a bounce
+      img.animate([{ transform: 'none' }, { transform: 'scaleY(.93)', offset: .35 }, { transform: 'scaleY(1.04) rotate(-2deg)', offset: .7 }, { transform: 'none' }], { duration: 700, delay: 380, transformOrigin: 'bottom' });
+      img.style.transformOrigin = 'bottom';
+    }
+    setTimeout(() => { mon.querySelector('span').textContent = 'Watered just now'; mon.querySelector('button').style.display = 'none'; moveRow(resting); showToast(); }, reduce() ? 0 : 760);
+  };
+  function showToast() {
+    clearTimeout(timer);
+    anim(toast, [{ transform: 'translateY(-140%)' }, { transform: 'none' }], spring(SMOOTH));
+    bar.getAnimations().forEach(a => a.cancel());
+    bar.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: 5000, easing: 'linear', fill: 'forwards' });
+    timer = setTimeout(hideToast, 5000);
+  }
+  function hideToast() { anim(toast, [{ transform: 'none' }, { transform: 'translateY(-140%)' }], { duration: 160, easing: 'cubic-bezier(.4,0,1,1)' }); }
+  document.getElementById('undo').onclick = () => {
+    clearTimeout(timer); hideToast();
+    mon.querySelector('span').textContent = 'You found the soil dry'; mon.querySelector('button').style.display = '';
+    sheet.querySelectorAll('.opt').forEach(x => x.setAttribute('aria-checked', 'false'));
+    moveRow(needs);
+  };
+})();
+
+// ---------- 3. skeleton ----------
+(() => {
+  const sks = document.getElementById('sks'), real = document.getElementById('real');
+  const data = [['monstera', 'Monstera', 'You found the soil dry'], ['aloe', 'Aloe', 'Time for a fresh check'], ['peace-lily', 'Peace Lily', 'Keep an eye on the new leaf']];
+  function run() {
+    real.innerHTML = ''; real.style.display = 'none'; sks.style.display = '';
+    sks.innerHTML = data.map(() => `<div class="sk-row" aria-hidden="true"><span class="sk leaf"></span><span style="flex:1;display:grid;gap:8px"><span class="sk" style="height:14px;width:55%"></span><span class="sk" style="height:12px;width:80%"></span></span><span class="sk" style="width:92px;height:40px;border-radius:10px"></span></div>`).join('');
+    sks.setAttribute('aria-busy', 'true');
+    setTimeout(() => {
+      sks.style.display = 'none'; real.style.display = '';
+      real.innerHTML = data.map(([k, n, s]) => `<div class="row"><img src="../assets/plants/${k}.png" alt=""><div class="t"><b>${n}</b><span>${s}</span></div><button class="btn">Check in</button></div>`).join('');
+      [...real.children].forEach((row, i) => anim(row, [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, delay: i * 40, easing: 'cubic-bezier(.2,.8,.2,1)' }));
+    }, 1900);
+  }
+  document.getElementById('r3').onclick = run; run();
+})();
+
+// ---------- 4. glass tab bar ----------
+(() => {
+  const bar = document.getElementById('tabbar'), plate = document.getElementById('plate'), tabs = [...bar.querySelectorAll('.tab')];
+  let x = 0;
+  tabs.forEach((t, i) => {
+    t.onpointerdown = () => anim(bar, [{ transform: 'scale(1)' }, { transform: 'scale(1.03, .95)' }], { duration: 90, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    t.onpointerup = t.onpointerleave = () => anim(bar, [{ transform: 'scale(1.03, .95)' }, { transform: 'scale(1)' }], spring(BOUNCY));
+    t.onclick = () => {
+      tabs.forEach(o => o.setAttribute('aria-selected', String(o === t)));
+      const nx = i * (300 - 12) / 4;
+      anim(plate, [{ transform: `translateX(${x}px)` }, { transform: `translateX(${nx}px)` }], spring(SNAPPY)); x = nx;
+    };
+  });
+  // specular highlight follows the pointer (desktop) or the finger
+  bar.onpointermove = e => { const r = bar.getBoundingClientRect(); bar.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%'); };
+})();
+
+// ---------- 5. pattern forming ----------
+(() => {
+  const segs = document.getElementById('segs'), num = document.getElementById('num'), insight = document.getElementById('insight'), bits = document.getElementById('bits');
+  const C = 2 * Math.PI * 50, gap = 6, len = C / 3 - gap;
+  let n = 0;
+  function reset() { n = 0; segs.innerHTML = ''; num.textContent = '0/3'; insight.style.opacity = 0; bits.innerHTML = ''; }
+  function count(from, to) {
+    if (reduce()) { num.textContent = to + '/3'; return; }
+    const t0 = performance.now();
+    const step = t => { const k = Math.min(1, (t - t0) / 400); num.textContent = Math.round(from + (to - from) * k) + '/3'; if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
+  document.getElementById('cycle').onclick = () => {
+    if (n >= 3) return;
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    Object.entries({ class: 'ring-seg', cx: 60, cy: 60, r: 50, fill: 'none', 'stroke-width': 8, 'stroke-dasharray': `${len} ${C - len}`, 'stroke-dashoffset': -(n * C / 3) }).forEach(([k, v]) => c.setAttribute(k, v));
+    segs.append(c);
+    if (!reduce()) c.animate([{ strokeDasharray: `0 ${C}` }, { strokeDasharray: `${len} ${C - len}` }], { duration: 520, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    count(n, n + 1); n++;
+    if (n === 3) {
+      setTimeout(() => {
+        if (!reduce()) for (let i = 0; i < 6; i++) {
+          const b = document.createElement('span'); b.className = 'leafbit'; b.style.left = '50%'; b.style.top = '45%'; bits.append(b);
+          const a = i / 6 * Math.PI * 2, d = 90 + (i % 2) * 20;
+          b.animate([{ opacity: 1, transform: 'translate(-50%,-50%) rotate(0) scale(.6)' }, { opacity: 0, transform: `translate(${Math.cos(a) * d - 5}px, ${Math.sin(a) * d - 8}px) rotate(${i * 60}deg) scale(1)` }], { duration: 700, easing: spring(BOUNCY).easing, fill: 'forwards' });
+        }
+        anim(insight, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      }, reduce() ? 0 : 480);
+    }
+  };
+  document.getElementById('r5').onclick = reset;
+})();
+</script>
+</body>
+</html>

@@ -1,7 +1,21 @@
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 import { CareEvent, Caregiver, Garden, Nudges, Plan, Plant, PlantKind } from './model';
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://127.0.0.1:8000');
+/**
+ * Where the API lives. "metro" means: through the dev server that served this bundle
+ * (metro.config.js forwards /rootera-api), which also works over an Expo tunnel.
+ */
+function apiUrl() {
+  const configured = process.env.EXPO_PUBLIC_API_URL;
+  if (configured === 'metro') {
+    const bundle: string | undefined = Platform.OS === 'web' ? (typeof window !== 'undefined' ? window.location.href : undefined) : NativeModules.SourceCode?.scriptURL;
+    const origin = bundle?.match(/^(https?:\/\/[^/]+)/)?.[1];
+    if (origin) return `${origin}/rootera-api`;
+  }
+  if (configured && configured !== 'metro') return configured;
+  return Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://127.0.0.1:8000';
+}
+export const API_URL = apiUrl();
 // Preview access only. Real accounts replace this with a per-user session token.
 const token = process.env.EXPO_PUBLIC_DEMO_TOKEN || 'rootera-local-demo';
 
