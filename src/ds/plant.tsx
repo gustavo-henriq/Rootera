@@ -5,24 +5,24 @@ import { useTheme } from './theme';
 import { radius } from './tokens';
 
 export const plantArt: Record<PlantKind, number> = {
-  aloe: require('../../assets/plants/aloe.png'),
-  'peace-lily': require('../../assets/plants/peace-lily.png'),
-  monstera: require('../../assets/plants/monstera.png'),
-  pothos: require('../../assets/plants/pothos.png'),
-  'snake-plant': require('../../assets/plants/snake-plant.png'),
-  zz: require('../../assets/plants/zz.png'),
-  pilea: require('../../assets/plants/pilea.png'),
-  cactus: require('../../assets/plants/cactus.png'),
-  gerbera: require('../../assets/flower/5-bloom.png'),
+  aloe: require('../../assets/plants/aloe.webp'),
+  'peace-lily': require('../../assets/plants/peace-lily.webp'),
+  monstera: require('../../assets/plants/monstera.webp'),
+  pothos: require('../../assets/plants/pothos.webp'),
+  'snake-plant': require('../../assets/plants/snake-plant.webp'),
+  zz: require('../../assets/plants/zz.webp'),
+  pilea: require('../../assets/plants/pilea.webp'),
+  cactus: require('../../assets/plants/cactus.webp'),
+  gerbera: require('../../assets/flower/5-bloom.webp'),
   // Illustrations to come; the sprout stands in until then.
-  sunflower: require('../../assets/plants/other.png'),
-  orchid: require('../../assets/plants/other.png'),
-  fern: require('../../assets/plants/other.png'),
-  echeveria: require('../../assets/plants/other.png'),
-  'rubber-plant': require('../../assets/plants/other.png'),
-  calathea: require('../../assets/plants/other.png'),
-  basil: require('../../assets/plants/other.png'),
-  other: require('../../assets/plants/other.png'),
+  sunflower: require('../../assets/plants/other.webp'),
+  orchid: require('../../assets/plants/other.webp'),
+  fern: require('../../assets/plants/other.webp'),
+  echeveria: require('../../assets/plants/other.webp'),
+  'rubber-plant': require('../../assets/plants/other.webp'),
+  calathea: require('../../assets/plants/other.webp'),
+  basil: require('../../assets/plants/other.webp'),
+  other: require('../../assets/plants/other.webp'),
 };
 
 /** The owner's photo when there is one, otherwise the species illustration. */

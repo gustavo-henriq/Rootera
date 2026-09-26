@@ -10,19 +10,19 @@ import { plantArt } from './plant';
 
 const modules = [
   ...Object.values(plantArt),
-  require('../../assets/logo/letters.png'),
-  require('../../assets/logo/o.png'),
-  require('../../assets/logo/sprout.png'),
+  require('../../assets/logo/letters.webp'),
+  require('../../assets/logo/o.webp'),
+  require('../../assets/logo/sprout.webp'),
   require('../../assets/logo.png'),
-  require('../../assets/flower/0-empty.png'),
-  require('../../assets/flower/seed-sprite.png'),
-  require('../../assets/flower/1-seed.png'),
-  require('../../assets/flower/2-sprout.png'),
-  require('../../assets/flower/3-leaves.png'),
-  require('../../assets/flower/4-bud.png'),
-  require('../../assets/flower/5-bloom.png'),
-  require('../../assets/scenes/few.png'),
-  require('../../assets/scenes/garden-group.png'),
+  require('../../assets/flower/0-empty.webp'),
+  require('../../assets/flower/seed-sprite.webp'),
+  require('../../assets/flower/1-seed.webp'),
+  require('../../assets/flower/2-sprout.webp'),
+  require('../../assets/flower/3-leaves.webp'),
+  require('../../assets/flower/4-bud.webp'),
+  require('../../assets/flower/5-bloom.webp'),
+  require('../../assets/scenes/few.webp'),
+  require('../../assets/scenes/garden-group.webp'),
 ];
 
 export async function preloadImages() {

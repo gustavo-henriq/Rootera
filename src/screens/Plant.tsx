@@ -2,9 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Props } from '../navigation';
+import { api } from '../api';
 import { useStore } from '../store';
 import { ago, CareEvent, describeEvent, known, Plant as PlantT, soilLabel, Twin, visualLabel } from '../model';
-import { useTheme } from '../ds/theme';
+import { useCompact, useTheme } from '../ds/theme';
 import { fonts, radius, space } from '../ds/tokens';
 import { Btn, Glass, SourceLabel, SourceMark, T, Tap, Toast } from '../ds/components';
 import { Glyph, GlyphName } from '../ds/icons';
@@ -13,6 +14,9 @@ import { Ground, PlantArt } from '../ds/plant';
 import { Appear, DrawLine, LeafBurst, Pop, Settle, WaterDrops } from '../ds/motion';
 import { CareCalendar } from '../ds/CareCalendar';
 import { ActionSheet } from '../ds/ActionSheet';
+import { Flight, measure, Rect } from '../ds/Flight';
+import { useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import { springs } from '../ds/tokens';
 
 /**
  * Freshness of what we know, shown as one mark instead of a line of text. Each state has
@@ -44,8 +48,16 @@ function ageStatus(at: string | undefined, freshDays: number, overdueDays: numbe
 interface Callout { side: 'left' | 'right'; y: number; anchor: [number, number]; label: string; value: string | null; current: boolean; detail: string; status: Status }
 
 /** Specimen plate: the plant in the middle, what we know about each part pinned to it. */
-function Specimen({ plant, twin, width, drops, events }: { plant: PlantT; twin?: Twin; width: number; drops: number; events: CareEvent[] }) {
-  const { c } = useTheme();
+function Specimen({ plant, twin, width, drops, events, arriving, artRef }: { plant: PlantT; twin?: Twin; width: number; drops: number; events: CareEvent[]; arriving?: boolean; artRef?: React.RefObject<View | null> }) {
+  const { c, reduceMotion } = useTheme();
+  const compact = useCompact();
+  // The plant "drinks" when a watering is recorded: a small squash, then it straightens.
+  const drink = useSharedValue(1);
+  useEffect(() => {
+    if (!drops || reduceMotion) return;
+    drink.value = withDelay(380, withSequence(withTiming(.94, { duration: 180 }), withTiming(1.03, { duration: 200 }), withSpring(1, springs.bouncy)));
+  }, [drops]);
+  const drinkStyle = useAnimatedStyle(() => ({ transform: [{ scaleY: drink.value }] }));
   const [open, setOpen] = useState<string | null>(null);
   const g = twin?.guidance;
   const narrow = width < 330;
@@ -73,10 +85,27 @@ function Specimen({ plant, twin, width, drops, events }: { plant: PlantT; twin?:
     { side: 'left', y: S * (narrow ? .74 : .66), anchor: at(.34, .84), label: 'Pot', value: drainage, current: true, detail: drainage ? 'You told us' : 'Add it in Edit details', status: drainage ? 'fresh' : 'none' },
   ];
   const labelW = Math.max(90, x0 - 4);
+  if (compact) return <View style={{ width, alignItems: 'center', gap: space[3] }}>
+    <View style={{ width: Math.min(200, width * .6), height: Math.min(200, width * .6) }}>
+      <Settle><PlantArt kind={plant.kind} photo={plant.photo} size={Math.min(200, width * .6)} /></Settle>
+      <WaterDrops width={Math.min(200, width * .6)} height={Math.min(200, width * .6) * .62} run={drops} />
+    </View>
+    <View style={{ alignSelf: 'stretch', borderTopWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>
+      {callouts.map(k => <View key={k.label} accessible accessibilityLabel={`${k.label}: ${k.value ?? 'not set'}, ${statusSpeech[k.status]}. ${k.detail}`}
+        style={{ paddingVertical: space[3], gap: 2, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}><StatusMark status={k.status} /><T v="footnote" tone="ink2">{k.label}</T></View>
+        <T v="headline">{k.value ?? 'Not set'}</T>
+        <T v="footnote" tone="ink2">{k.detail}</T>
+      </View>)}
+    </View>
+  </View>;
   return <View style={{ width, height: S + (narrow ? 60 : 30) }}>
-    <View style={{ position: 'absolute', left: x0, top: 8, width: S, height: S }}>
+    <View ref={artRef} collapsable={false} style={{ position: 'absolute', left: x0, top: 8, width: S, height: S, opacity: arriving ? 0 : 1 }}>
       <Ground width={S * .8} style={{ position: 'absolute', bottom: -S * .06 }} />
-      <Settle><PlantArt kind={plant.kind} photo={plant.photo} size={S} /></Settle>
+      <Animated.View style={[{ transformOrigin: 'bottom' }, drinkStyle]}>
+        {/* Arriving from a tile, the plant has already moved; settling again would be double motion. */}
+        {artRef && arriving !== undefined ? <PlantArt kind={plant.kind} photo={plant.photo} size={S} /> : <Settle><PlantArt kind={plant.kind} photo={plant.photo} size={S} /></Settle>}
+      </Animated.View>
       <WaterDrops width={S} height={S * .62} run={drops} />
     </View>
     {callouts.map((k, i) => {
@@ -125,7 +154,7 @@ function since(iso: string) {
 
 
 export function Plant({ navigation, route }: Props<'Plant'>) {
-  const { garden, archivePlant } = useStore();
+  const { garden, archivePlant, removeCare, updatePlant } = useStore();
   const { c } = useTheme();
   const plant = garden.plants.find(p => p.id === route.params.id);
   const twin = garden.twins[route.params.id];
@@ -150,6 +179,28 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
     if (saved.to === 'Probably not dry yet' || saved.to === 'Around when it usually dries') setBurst(b => b + 1);
   }, [saved]);
 
+  // Shared-element flight from the tile that was tapped (see ds/Flight).
+  const { reduceMotion } = useTheme();
+  const flyFrom = !reduceMotion ? route.params.from : undefined;
+  const artRef = useRef<View>(null);
+  const [landing, setLanding] = useState<Rect | null>(null);
+  const [flight, setFlight] = useState<'waiting' | 'flying' | 'done'>(flyFrom ? 'waiting' : 'done');
+  useEffect(() => {
+    if (!flyFrom || !width || flight !== 'waiting') return;
+    const t = setTimeout(() => measure(artRef, r => { setLanding(r); setFlight('flying'); }), 30);
+    const safety = setTimeout(() => setFlight('done'), 1200);
+    return () => { clearTimeout(t); clearTimeout(safety); };
+  }, [width, flyFrom]);
+
+  // The garden snapshot carries only recent records; a plant's own page fetches its full history.
+  const [older, setOlder] = useState<CareEvent[]>([]);
+  useEffect(() => {
+    if (garden.events_complete !== false) { setOlder([]); return; }
+    let live = true;
+    api.journal({ plant: route.params.id, limit: 500 }).then(r => { if (live) setOlder(r.events); }).catch(() => undefined);
+    return () => { live = false; };
+  }, [route.params.id, garden.events_complete, garden.events.length]);
+
   if (!plant) {
     return <Page back={navigation.goBack}>
       <T v="title">This plant isn’t in your garden</T>
@@ -158,7 +209,9 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
     </Page>;
   }
 
-  const events = garden.events.filter(e => e.plantId === plant.id).slice().reverse();
+  const recentHere = garden.events.filter(e => e.plantId === plant.id).slice().reverse();
+  const seen = new Set(recentHere.map(e => e.id));
+  const events = [...recentHere, ...older.filter(e => !seen.has(e.id))].sort((a, b) => b.at.localeCompare(a.at));
   const water = g?.last_watered_at ? Math.max(0, Math.floor((Date.now() - new Date(g.last_watered_at).getTime()) / 86400000)) : null;
   const soil = g?.last_soil_check_at ? since(g.last_soil_check_at) : null;
   const where = [known(plant.stage) ? `${plant.stage} plant` : null, known(plant.environment?.location) ? plant.environment!.location : null, garden.plan === 'Plus' && known(plant.room) ? plant.room : null].filter(Boolean).join(', ');
@@ -167,6 +220,18 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
   // Long names step down in size and stop at three lines instead of pushing the page down.
   const titleStyle = plant.name.length > 40 ? { fontSize: 26, lineHeight: 31 } : plant.name.length > 22 ? { fontSize: 32, lineHeight: 36 } : undefined;
 
+  // Undo removes exactly the records this save created (newest first) and restores a changed stage.
+  const undo = async () => {
+    const u = saved?.undo;
+    if (!u || busy) return;
+    setBusy(true);
+    try {
+      for (const id of [...u.ids].reverse()) await removeCare(plant.id, id);
+      if (u.stage) await updatePlant(plant.id, { stage: u.stage });
+      navigation.setParams({ saved: { title: 'Check-in undone' } });
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not undo.'); }
+    finally { setBusy(false); }
+  };
   const remove = async () => {
     setBusy(true);
     try { await archivePlant(plant.id); navigation.navigate('Main', { tab: 'Plants' }); }
@@ -179,12 +244,13 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
       {confirm && <Toast tone="error" title={`Remove ${plant.name}?`} text="It leaves your garden and frees a plan spot. Its care history is kept." action={{ title: busy ? 'Removing…' : 'Remove', onPress: () => void remove() }} onClose={() => setConfirm(false)} />}
       {!!saved && <Animated.View key={saved.title + (saved.to ?? '')} entering={FadeIn.duration(240)}>
         <Toast title={saved.title} onClose={() => navigation.setParams({ saved: undefined })}
-          text={saved.to ? `Next step changed: ${saved.to.toLowerCase()}.` : saved.title !== 'Details updated' ? 'The next step stays the same. It’s in the plant’s history.' : undefined} />
+          text={saved.to ? `Next step changed: ${saved.to.toLowerCase()}.` : saved.title !== 'Details updated' && !saved.title.endsWith('undone') ? 'The next step stays the same. It’s in the plant’s history.' : undefined}
+          action={saved.undo?.ids.length ? { title: busy ? 'Undoing…' : 'Undo', onPress: () => void undo() } : undefined} />
       </Animated.View>}
 
       <View onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ alignItems: 'center', gap: space[4] }}>
         <LeafBurst run={burst} />
-        {!!width && <Specimen plant={plant} twin={twin} width={width} drops={drops} events={events} />}
+        {!!width && <Specimen plant={plant} twin={twin} width={width} drops={drops} events={events} artRef={flyFrom ? artRef : undefined} arriving={flyFrom ? flight !== 'done' : undefined} />}
         <View style={{ alignItems: 'center', gap: 2 }}>
           <T v="display" center lines={3} style={titleStyle}>{plant.name}</T>
           <T v="latin" tone="ink2" center>{plant.species}</T>
@@ -248,6 +314,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
       </View>
     </Page>
 
+    {flight === 'flying' && flyFrom && landing && <Flight kind={plant.kind} photo={plant.photo} from={flyFrom} to={landing} onDone={() => setFlight('done')} />}
     <ActionSheet visible={menu} title={plant.name} onClose={() => setMenu(false)} actions={[
       { label: 'Edit details', icon: 'edit', onPress: () => navigation.navigate('PlantForm', { editId: plant.id }) },
       { label: 'Remove from garden', icon: 'trash', destructive: true, onPress: () => setConfirm(true) },

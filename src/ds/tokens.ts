@@ -135,6 +135,18 @@ export const springs = {
 };
 export const timing = { exit: 160, fade: 220, stagger: 55 };
 
+/**
+ * Motion tokens (docs/auditoria-ux.md, section 8.3). Durations in ms; distances in points.
+ * Micro-interactions stay between instant and fast, screen changes around slow; `story`
+ * is only for brand moments and those are always skippable.
+ */
+export const motion = {
+  dur: { instant: 90, fast: 160, base: 240, slow: 380, story: 900 },
+  dist: { nudge: 2, step: 6, enter: 12 },
+  /** How many rows animate in a list; the rest simply appear. */
+  staggerMax: 3,
+};
+
 export const elevation = {
   float: { shadowOpacity: 1, shadowRadius: 24, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
   lift: { shadowOpacity: 1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },

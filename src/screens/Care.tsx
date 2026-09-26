@@ -88,7 +88,10 @@ function CheckIn({ navigation, route }: Props<'Care'>) {
       if (visual) track(await logCare({ ...base, id: ids.current.look, type: 'Observation', visual, note: note.trim(), at: new Date(t + 2000).toISOString() }));
       if (stage && stage !== plant.stage) await updatePlant(plant.id, { stage });
       AsyncStorage.setItem(CHECKED_IN, '1').catch(() => undefined);
-      navigation.popTo('Plant', { id: plant.id, saved: { title: watered === 'yes' ? 'Check-in and watering saved' : 'Check-in saved', from: to ? g?.title : undefined, to } });
+      // What this check-in created, so the confirmation can offer Undo.
+      const created = [ids.current.soil, ...(watered === 'yes' ? [ids.current.water] : []), ...(visual ? [ids.current.look] : [])];
+      navigation.popTo('Plant', { id: plant.id, saved: { title: watered === 'yes' ? 'Check-in and watering saved' : 'Check-in saved', from: to ? g?.title : undefined, to,
+        undo: { ids: created, stage: stage && stage !== plant.stage ? plant.stage ?? 'Not sure' : undefined } } });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save. Please try again.');
     } finally { setBusy(false); }
@@ -189,7 +192,7 @@ function SingleCare({ navigation, route }: Props<'Care'>) {
     try {
       const r = await logCare(pending.current!);
       const title = mode === 'soil' ? `Soil check saved: ${soilLabel[soil as Soil].toLowerCase()}` : mode === 'visual' ? 'Leaf note saved' : 'Watering recorded';
-      navigation.popTo('Plant', { id: plant.id, saved: { title, from: r.change?.from, to: r.change?.to } });
+      navigation.popTo('Plant', { id: plant.id, saved: { title, from: r.change?.from, to: r.change?.to, undo: { ids: [pending.current!.id] } } });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save. Please try again.');
     } finally { setBusy(false); }

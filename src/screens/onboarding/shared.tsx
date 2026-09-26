@@ -60,8 +60,8 @@ export function Atmosphere() {
   </View>;
 }
 
-const FEW = require('../../../assets/scenes/few.png');
-const GARDEN = require('../../../assets/scenes/garden-group.png');
+const FEW = require('../../../assets/scenes/few.webp');
+const GARDEN = require('../../../assets/scenes/garden-group.webp');
 
 export const experiences: { value: Experience; label: string; hint: string; art: PlantKind[]; scene?: number }[] = [
   { value: 'first', label: experienceLabel.first, hint: experienceHint.first, art: ['pilea'] },

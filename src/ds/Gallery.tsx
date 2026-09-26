@@ -53,7 +53,7 @@ export function Gallery() {
       <View style={{ gap: space[3] }}>
         <T v="title2">Glass, over content</T>
         <View style={{ height: 260, borderRadius: radius.card, backgroundColor: c.sunken, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
-          <Image source={require('../../assets/plants/monstera.png')} style={{ width: 230, height: 230 }} resizeMode="contain" />
+          <Image source={require('../../assets/plants/monstera.webp')} style={{ width: 230, height: 230 }} resizeMode="contain" />
           <View style={{ position: 'absolute', top: space[3], left: space[3], right: space[3], flexDirection: 'row', justifyContent: 'space-between' }}>
             <GlassIcon name="back" label="Back" onPress={() => undefined} />
             <GlassIcon name="more" label="More" onPress={() => undefined} />

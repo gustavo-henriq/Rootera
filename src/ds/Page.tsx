@@ -5,7 +5,7 @@
  */
 import React from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
-import Animated, { interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { interpolate, LinearTransition, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './theme';
 import { radius, space } from './tokens';
@@ -14,11 +14,21 @@ import { GlyphName } from './icons';
 
 export interface PageAction { icon: GlyphName; label: string; onPress: () => void }
 
-export function Page({ title, back, close, actions, footer, tab, children, gap = space[6], scrollRef, titleInBar, header }: React.PropsWithChildren<{
+/**
+ * Long content as a virtualized list: only the rows on screen are rendered, so a garden of
+ * hundreds of plants scrolls like one of five. Everything passed as children becomes the
+ * list header; `footer` sits after the last row.
+ */
+export interface PageList<T> {
+  data: T[]; renderItem: (item: T, index: number) => React.ReactElement | null; keyExtractor: (item: T) => string;
+  onEndReached?: () => void; footer?: React.ReactNode; numColumns?: number; columnGap?: number; rowGap?: number;
+}
+
+export function Page({ title, back, close, actions, footer, tab, children, gap = space[6], scrollRef, titleInBar, header, list }: React.PropsWithChildren<{
   title?: string; back?: () => void; close?: () => void; actions?: PageAction[]; footer?: React.ReactNode; tab?: boolean; gap?: number;
-  scrollRef?: React.RefObject<ScrollView | null>; titleInBar?: string; header?: React.ReactNode;
+  scrollRef?: React.RefObject<any>; titleInBar?: string; header?: React.ReactNode; list?: PageList<any>;
 }>) {
-  const { c } = useTheme();
+  const { c, reduceMotion } = useTheme();
   const insets = useSafeAreaInsets();
   const y = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler(e => { y.value = e.contentOffset.y; });
@@ -42,12 +52,23 @@ export function Page({ title, back, close, actions, footer, tab, children, gap =
       </View>
     </View>}
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-      <Animated.ScrollView ref={scrollRef as any} onScroll={onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: top, paddingHorizontal: space.gutter, paddingBottom: (tab ? 110 : space[8]) + (footer ? 0 : insets.bottom), gap, flexGrow: 1 }}>
-        {header}
-        {!!title && <T v="largeTitle">{title}</T>}
-        {children}
-      </Animated.ScrollView>
+      {list
+        ? <Animated.FlatList ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
+            data={list.data} keyExtractor={list.keyExtractor} renderItem={({ item, index }: { item: any; index: number }) => list.renderItem(item, index)}
+            numColumns={list.numColumns} key={list.numColumns ?? 1}
+            itemLayoutAnimation={reduceMotion ? undefined : LinearTransition.springify().damping(26).stiffness(190)}
+            columnWrapperStyle={list.numColumns && list.numColumns > 1 ? { gap: list.columnGap ?? space[3] } : undefined}
+            onEndReached={list.onEndReached} onEndReachedThreshold={.6}
+            initialNumToRender={12} maxToRenderPerBatch={12} windowSize={9} removeClippedSubviews={Platform.OS === 'android'}
+            ListHeaderComponent={<View style={{ gap, marginBottom: gap }}>{header}{!!title && <T v="largeTitle">{title}</T>}{children}</View>}
+            ListFooterComponent={list.footer ? <View style={{ marginTop: gap }}>{list.footer}</View> : null}
+            contentContainerStyle={{ paddingTop: top, paddingHorizontal: space.gutter, paddingBottom: (tab ? 110 : space[8]) + (footer ? 0 : insets.bottom), gap: list.rowGap ?? 0, flexGrow: 1 }} />
+        : <Animated.ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingTop: top, paddingHorizontal: space.gutter, paddingBottom: (tab ? 110 : space[8]) + (footer ? 0 : insets.bottom), gap, flexGrow: 1 }}>
+            {header}
+            {!!title && <T v="largeTitle">{title}</T>}
+            {children}
+          </Animated.ScrollView>}
       {footer && <View style={{ paddingHorizontal: space.gutter, paddingTop: space[3], paddingBottom: insets.bottom + space[3], gap: space[2], backgroundColor: c.canvas, borderTopWidth: 1, borderColor: c.hairline }}>{footer}</View>}
     </KeyboardAvoidingView>
 

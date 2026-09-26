@@ -6,6 +6,7 @@ Layers: routes (HTTP) -> GardenService (use cases) -> Plant Twin (domain rules)
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import select
 from .config import Settings
 from .db import Base, Profile, make_database
@@ -38,6 +39,8 @@ def create_app(database_url=None, demo=None, tokens=None, **overrides):
 
     app = FastAPI(title='Rootera Plant Twin API', version='2.0.0', lifespan=lifespan)
     app.state.settings, app.state.factory = config, factory
+    # Garden snapshots are repetitive JSON: compression cuts them by about 10x on mobile data.
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(CORSMiddleware, allow_origins=list(config.cors_origins), allow_methods=['GET', 'POST', 'PATCH', 'DELETE'], allow_headers=['Authorization', 'Content-Type'])
 
     @app.get('/health')

@@ -19,6 +19,8 @@ interface Store {
   updatePlant: (id: string, changes: Partial<Plant>) => Promise<void>;
   archivePlant: (id: string) => Promise<void>;
   logCare: (event: CareEvent) => Promise<CareResult>;
+  /** Undo a care record (it leaves the plant's history; the server keeps an audit entry). */
+  removeCare: (plantId: string, id: string) => Promise<void>;
   setDemoPlan: (plan: Plan, annual: boolean) => Promise<void>;
   syncBilling: () => Promise<void>;
 }
@@ -91,6 +93,7 @@ export function StoreProvider({ children }: React.PropsWithChildren) {
     updatePlant: (id, changes) => write(() => api.updatePlant(id, changes)).then(() => undefined),
     archivePlant: id => write(() => api.archivePlant(id)).then(() => undefined),
     logCare: event => write(() => api.logCare(event)),
+    removeCare: (plantId, id) => write(() => api.removeCare(plantId, id)).then(() => undefined),
     setDemoPlan: (plan, annual) => write(() => api.demoPlan(plan, annual)).then(() => undefined),
     syncBilling: () => write(() => api.syncBilling()).then(() => undefined),
   }), [garden, ready, source, offline, refresh, write]);

@@ -63,7 +63,8 @@ function Navigator() {
       <Stack.Screen name="AddPlant" component={AddPlant} />
       <Stack.Screen name="Camera" component={Camera} options={modal} />
       <Stack.Screen name="PlantForm" component={PlantForm} />
-      <Stack.Screen name="Plant" component={Plant} />
+      {/* Opened from a tile, the plant flies in (shared element), so the page itself only fades. */}
+      <Stack.Screen name="Plant" component={Plant} options={({ route }) => ({ animation: reduce ? 'none' : route.params?.from ? 'fade' : 'slide_from_right' })} />
       <Stack.Screen name="Care" component={Care} options={modal} />
       <Stack.Screen name="Plans" component={Plans} options={modal} />
       <Stack.Screen name="Experience" component={Experience} />

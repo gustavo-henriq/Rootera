@@ -60,7 +60,7 @@ export function Unreachable({ onRetry }: { onRetry: () => Promise<void> }) {
   const retry = async () => { setBusy(true); try { await onRetry(); } finally { setBusy(false); } };
   return <View style={{ flex: 1, backgroundColor: c.canvas, paddingTop: insets.top, paddingBottom: insets.bottom + space[4], paddingHorizontal: space.gutter }}>
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: space[3] }}>
-      <Image source={require('../../assets/flower/0-empty.png')} resizeMode="contain" accessibilityIgnoresInvertColors style={{ width: 170, height: 190 }} />
+      <Image source={require('../../assets/flower/0-empty.webp')} resizeMode="contain" accessibilityIgnoresInvertColors style={{ width: 170, height: 190 }} />
       <T v="title" center accessibilityRole="header">Can’t reach Rootera</T>
       <T v="callout" tone="ink2" center style={{ maxWidth: 320 }}>Your garden is kept on the Rootera server, so the first start needs a connection. Check your Wi-Fi or mobile data and try again.</T>
     </View>

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { AccessibilityInfo, Appearance, Platform } from 'react-native';
+import { AccessibilityInfo, Appearance, Platform, useWindowDimensions } from 'react-native';
 import { Palette, palettes, Scheme } from './tokens';
 
 interface Theme { scheme: Scheme; c: Palette; reduceMotion: boolean; reduceTransparency: boolean }
@@ -42,3 +42,13 @@ export function ThemeProvider({ children }: React.PropsWithChildren) {
 }
 
 export const useTheme = () => useContext(Context);
+
+/**
+ * Compact layouts for large text and narrow screens (Dynamic Type at 130%+, or zoom that
+ * leaves less than 330 points): absolutely placed callouts and side-by-side labels give way
+ * to simple stacked rows, so nothing overlaps or runs off screen (WCAG 1.4.4 / 1.4.10).
+ */
+export function useCompact() {
+  const { width, fontScale } = useWindowDimensions();
+  return fontScale >= 1.3 || width < 330;
+}

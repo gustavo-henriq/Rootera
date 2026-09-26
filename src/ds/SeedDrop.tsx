@@ -18,10 +18,10 @@ import { plantArt } from './plant';
 import { useTheme } from './theme';
 import { springs } from './tokens';
 
-const EMPTY = require('../../assets/flower/0-empty.png');
-const SEEDED = require('../../assets/flower/1-seed.png');
-const SPROUTED = require('../../assets/flower/2-sprout.png');
-const SEED = require('../../assets/flower/seed-sprite.png');
+const EMPTY = require('../../assets/flower/0-empty.webp');
+const SEEDED = require('../../assets/flower/1-seed.webp');
+const SPROUTED = require('../../assets/flower/2-sprout.webp');
+const SEED = require('../../assets/flower/seed-sprite.webp');
 const RATIO = 994 / 1130; // frame canvas
 /** Where the soil surface sits in the frame, as a fraction of its height. */
 export const SEED_SOIL = 555 / 1130;

@@ -8,9 +8,9 @@ import { View } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useTheme } from './theme';
 
-const LETTERS = require('../../assets/logo/letters.png');
-const O = require('../../assets/logo/o.png');
-const SPROUT = require('../../assets/logo/sprout.png');
+const LETTERS = require('../../assets/logo/letters.webp');
+const O = require('../../assets/logo/o.webp');
+const SPROUT = require('../../assets/logo/sprout.webp');
 const RATIO = 215 / 720;
 const STEM_BASE_Y = 95 / 215; // where the sprout meets the O
 const STEM_X = 185 / 720;

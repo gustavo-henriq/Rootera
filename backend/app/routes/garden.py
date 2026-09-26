@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from ..db import DomainEvent, SensorObservation, UserObservation
 from ..deps import service
@@ -35,6 +35,16 @@ def archive_plant(plant_id: str, s=Depends(service)):
 @router.post('/plants/{plant_id}/user-observations', status_code=201)
 def observation(plant_id: str, payload: UserObservationIn, s=Depends(service)):
     return s.add_user_observation(plant_id, payload)
+
+
+@router.delete('/plants/{plant_id}/user-observations/{observation_id}')
+def remove_observation(plant_id: str, observation_id: str, s=Depends(service)):
+    return s.remove_user_observation(plant_id, observation_id)
+
+
+@router.get('/journal')
+def journal(before: str | None = None, limit: int = Query(100, ge=1, le=500), plant: str | None = None, s=Depends(service)):
+    return s.journal(before, limit, plant)
 
 
 @router.get('/plants/{plant_id}/user-observations')

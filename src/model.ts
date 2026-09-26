@@ -36,6 +36,8 @@ export interface Garden {
   user_id: string; name: string; onboarded: boolean; reminders: boolean; caregiver?: Caregiver; nudges?: Nudges;
   plan: Plan; annual: boolean; plan_source?: string; plan_capacity: number | null;
   plants: Plant[]; events: CareEvent[]; twins: Record<string, Twin>; integrations: Integrations;
+  /** False when the snapshot carries only the most recent records; older ones come from /v1/journal. */
+  events_complete?: boolean;
 }
 
 export const emptyGarden: Garden = {
@@ -107,3 +109,6 @@ export function byUrgency(garden: Garden): Plant[] {
 export function atCapacity(garden: Garden) {
   return garden.plan_capacity !== null && garden.plants.length >= garden.plan_capacity;
 }
+
+/** Text for matching searches: lower case, no accents or punctuation ("Manjericão!" matches "manjericao"). */
+export const searchText = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();

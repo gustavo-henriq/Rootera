@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleProp, StyleSheet, Text, TextInput, TextStyle, View, ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
-import { useTheme } from './theme';
+import { useCompact, useTheme } from './theme';
 import { elevation, fonts, glass, radius, space, springs, type, TypeName } from './tokens';
 import { announce, haptic } from './feedback';
 import { Glyph, GlyphName } from './icons';
@@ -111,11 +111,12 @@ export function GlassIcon({ name, label, onPress, size = 44 }: { name: GlyphName
 }
 
 /** Option tag: hairline rectangle, filled with ink when chosen. */
-export function Chip({ label, selected, onPress }: { label: string; selected?: boolean; onPress: () => void }) {
+export function Chip({ label, selected, onPress, count }: { label: string; selected?: boolean; onPress: () => void; count?: number }) {
   const { c } = useTheme();
-  return <Tap role="radio" selected={selected} label={label} onPress={() => { haptic.select(); onPress(); }} ring={radius.input}
-    style={{ minHeight: 40, paddingHorizontal: 13, borderRadius: radius.input, justifyContent: 'center', borderWidth: 1, borderColor: selected ? c.ink : c.hairline, backgroundColor: selected ? c.ink : 'transparent' }}>
+  return <Tap role="radio" selected={selected} label={count === undefined ? label : `${label}, ${count} ${count === 1 ? 'plant' : 'plants'}`} onPress={() => { haptic.select(); onPress(); }} ring={radius.input}
+    style={{ minHeight: 40, paddingHorizontal: 13, borderRadius: radius.input, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: selected ? c.ink : c.hairline, backgroundColor: selected ? c.ink : 'transparent' }}>
     <T v="subhead" style={{ color: selected ? c.canvas : c.ink }}>{label}</T>
+    {count !== undefined && <T v="footnote" style={{ color: selected ? c.canvas : c.ink2, opacity: selected ? .75 : 1, fontVariant: ['tabular-nums'] }}>{count}</T>}
   </Tap>;
 }
 
@@ -219,7 +220,14 @@ export function Toast({ title, text, tone = 'success', onClose, action }: { titl
     announce([title, text].filter(Boolean).join('. '));
     if (tone === 'error') haptic.error(); else if (tone === 'success') haptic.success();
   }, [title, text]);
-  return <Glass level="control" r={radius.card} style={{ padding: space[4], flexDirection: 'row', gap: space[3], alignItems: 'flex-start' }}>
+  const shake = useSharedValue(0);
+  const { reduceMotion } = useTheme();
+  useEffect(() => {
+    if (tone !== 'error' || reduceMotion) return;
+    shake.value = withSequence(withTiming(-6, { duration: 50 }), withTiming(6, { duration: 60 }), withTiming(-4, { duration: 60 }), withTiming(3, { duration: 60 }), withTiming(0, { duration: 70 }));
+  }, [title, text]);
+  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] }));
+  return <Animated.View style={shakeStyle}><Glass level="control" r={radius.card} style={{ padding: space[4], flexDirection: 'row', gap: space[3], alignItems: 'flex-start' }}>
     <View accessibilityLiveRegion="polite" accessibilityRole={tone === 'error' ? 'alert' : undefined} style={{ flex: 1, flexDirection: 'row', gap: space[3] }}>
       <View style={{ marginTop: 1 }}><Glyph name={icon} size={20} tone={accent} /></View>
       <View style={{ flex: 1, gap: 2 }}>
@@ -228,22 +236,37 @@ export function Toast({ title, text, tone = 'success', onClose, action }: { titl
         {action && <Tap label={action.title} onPress={action.onPress} style={{ alignSelf: 'flex-start', minHeight: 36, justifyContent: 'center' }}><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{action.title}</T></Tap>}
       </View>
     </View>
-    {onClose && <Tap label="Dismiss" onPress={onClose} ring={18} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginTop: -8, marginRight: -8 }}><Glyph name="close" size={16} tone={c.ink2} /></Tap>}
-  </Glass>;
+    {onClose && <Tap label="Dismiss" onPress={onClose} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginTop: -12, marginRight: -12 }}><Glyph name="close" size={16} tone={c.ink2} /></Tap>}
+  </Glass></Animated.View>;
 }
 
 export interface TabItem { key: string; label: string; icon: GlyphName }
 /** Floating glass tab bar: lifted off the bottom edge; the selected tab gets a quiet solid plate. */
 export function FloatingTabBar({ items, active, onSelect, bottomInset }: { items: TabItem[]; active: string; onSelect: (key: string) => void; bottomInset: number }) {
   const { c } = useTheme();
+  // With large text or a narrow screen the bar keeps its size: icons only, names stay spoken.
+  const compact = useCompact();
+  const { reduceMotion } = useTheme();
+  // One plate moves between tabs (spatial continuity) instead of four backgrounds switching.
+  const [slots, setSlots] = useState<Record<string, { x: number; w: number }>>({});
+  const plateX = useSharedValue(0), plateW = useSharedValue(0);
+  const target = slots[active];
+  useEffect(() => {
+    if (!target) return;
+    if (reduceMotion || !plateW.value) { plateX.value = target.x; plateW.value = target.w; return; }
+    plateX.value = withSpring(target.x, springs.snappy); plateW.value = withSpring(target.w, springs.snappy);
+  }, [target?.x, target?.w, reduceMotion]);
+  const plate = useAnimatedStyle(() => ({ opacity: plateW.value ? 1 : 0, width: plateW.value, transform: [{ translateX: plateX.value }] }));
   return <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: Math.max(bottomInset, space[3]), alignItems: 'center' }}>
     <Glass level="chrome" r={radius.chrome} style={{ flexDirection: 'row', padding: 5, gap: 2 }}>
+      <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: 5, left: 0, height: 52, borderRadius: radius.chrome - 5, backgroundColor: c.sunken }, plate]} />
       {items.map(t => {
         const on = t.key === active;
-        return <Tap key={t.key} role="tab" selected={on} label={t.label} onPress={() => onSelect(t.key)} ring={radius.chrome - 5} scaleTo={.93}>
-          <View style={{ minWidth: 72, height: 52, borderRadius: radius.chrome - 5, alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: on ? c.sunken : 'transparent' }}>
+        return <Tap key={t.key} role="tab" selected={on} label={t.label} onPress={() => { if (!on) haptic.select(); onSelect(t.key); }} ring={radius.chrome - 5} scaleTo={.93}>
+          <View onLayout={e => { const { x, width } = e.nativeEvent.layout; setSlots(s => s[t.key]?.x === x && s[t.key]?.w === width ? s : { ...s, [t.key]: { x, w: width } }); }}
+            style={{ minWidth: compact ? 56 : 72, height: 52, borderRadius: radius.chrome - 5, alignItems: 'center', justifyContent: 'center', gap: 2 }}>
             <Glyph name={t.icon} size={22} filled={on} tone={on ? c.ink : c.ink2} />
-            <T v="caption" style={{ color: on ? c.ink : c.ink2 }}>{t.label}</T>
+            {!compact && <T v="caption" maxFontSizeMultiplier={1.2} style={{ color: on ? c.ink : c.ink2 }}>{t.label}</T>}
           </View>
         </Tap>;
       })}

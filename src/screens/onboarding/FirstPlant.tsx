@@ -12,7 +12,7 @@ import { Image, Platform, ScrollView, TextInput, useWindowDimensions, View } fro
 import Animated, { Easing, FadeIn, FadeInDown, FadeOut, FadeOutUp, LinearTransition, SharedValue, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { catalog, PlantKind, Soil } from '../../model';
 import { plantArt } from '../../ds/plant';
-import { useTheme } from '../../ds/theme';
+import { useCompact, useTheme } from '../../ds/theme';
 import { fonts, radius, space, springs, type } from '../../ds/tokens';
 import { Glyph } from '../../ds/icons';
 import { Candidate } from '../../api';
@@ -144,7 +144,8 @@ export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing
 }) {
   const kind = choice?.kind ?? null;
   const [q, setQ] = useState('');
-  const { reduceMotion } = useTheme();
+  const { c, reduceMotion } = useTheme();
+  const compact = useCompact();
   const slot = kind ? currentSlot(answers, editing) : null;
   const complete = !!kind && slot === null;
   // The plate takes over once the first answer is in: the strip leaves and the plant grows.
@@ -171,8 +172,17 @@ export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing
 
     <Animated.View layout={reduceMotion ? undefined : LinearTransition.duration(420)} style={[{ width, alignItems: 'center' }, areaStyle]}>
       <Specimen kind={kind} size={size} />
-      {plate && ORDER.filter(visible).map(s => <Note key={s} slot={s} {...place[s]} value={valueOf(s)} active={s === slot} onPress={() => setEditing(s)} width={width} />)}
+      {plate && !compact && ORDER.filter(visible).map(s => <Note key={s} slot={s} {...place[s]} value={valueOf(s)} active={s === slot} onPress={() => setEditing(s)} width={width} />)}
     </Animated.View>
+
+    {/* Large text: the notes become a plain list under the plant instead of labels pinned to it. */}
+    {plate && compact && <View style={{ borderTopWidth: 1, borderColor: c.hairline }}>
+      {ORDER.filter(visible).map(s => <Tap key={s} label={valueOf(s) ? `${LABEL[s]}: ${valueOf(s)}. Change` : `${LABEL[s]}. Choose below`} onPress={() => setEditing(s)} ring={radius.inner}
+        style={{ paddingVertical: space[2], gap: 2, borderBottomWidth: 1, borderColor: c.hairline }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><SourceMark kind={s === 'soil' || s === 'watered' ? 'observed' : 'told'} /><T v="footnote" tone="ink2">{LABEL[s]}</T></View>
+        <T v="headline" tone={valueOf(s) ? 'ink' : 'ink2'}>{valueOf(s) ?? 'Choose below'}</T>
+      </Tap>)}
+    </View>}
 
     {slot && <Animated.View key={slot} layout={reduceMotion ? undefined : LinearTransition.duration(420)} entering={FadeIn.duration(240)} exiting={FadeOut.duration(140)} style={{ gap: space[3] }}>
       <T v="headline">{QUESTION[slot]}</T>

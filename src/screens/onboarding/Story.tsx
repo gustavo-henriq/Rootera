@@ -8,18 +8,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import Animated, { cancelAnimation, Easing, FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { useTheme } from '../../ds/theme';
+import { useCompact, useTheme } from '../../ds/theme';
 import { fonts, radius, space } from '../../ds/tokens';
 import { SourceMark, T, Tap } from '../../ds/components';
 import { Ground } from '../../ds/plant';
 
 /** One image per stage (seed, sprout, young plant, bud, bloom), all on the same canvas. */
 export const flowerStages: number[] = [
-  require('../../../assets/flower/1-seed.png'),
-  require('../../../assets/flower/2-sprout.png'),
-  require('../../../assets/flower/3-leaves.png'),
-  require('../../../assets/flower/4-bud.png'),
-  require('../../../assets/flower/5-bloom.png'),
+  require('../../../assets/flower/1-seed.webp'),
+  require('../../../assets/flower/2-sprout.webp'),
+  require('../../../assets/flower/3-leaves.webp'),
+  require('../../../assets/flower/4-bud.webp'),
+  require('../../../assets/flower/5-bloom.webp'),
 ];
 const RATIO = 994 / 1130;
 
@@ -79,14 +79,14 @@ function Line({ on, from, to }: { on: boolean; from: { x: number; y: number }; t
   return <Animated.View pointerEvents="none" style={[{ position: 'absolute', backgroundColor: c.ink2 }, box as any, style]} />;
 }
 
-function Node({ source, waiting, focused, onPress }: { source: typeof SOURCES[number]; waiting: boolean; focused: boolean; onPress: () => void }) {
+function Node({ source, waiting, focused, onPress, wrap }: { source: typeof SOURCES[number]; waiting: boolean; focused: boolean; onPress: () => void; wrap?: boolean }) {
   const { c } = useTheme();
   return <Animated.View entering={FadeIn.duration(360)}>
     <Glow on={waiting} />
     <Tap label={waiting ? `${source.title}. Tap to see what it adds.` : `${source.title}. Show what it adds.`} selected={focused} onPress={onPress} ring={radius.control}
       style={{ minHeight: 44, paddingHorizontal: 10, paddingVertical: 10, borderRadius: radius.control, borderWidth: focused || waiting ? 1.5 : 1, borderColor: focused || waiting ? c.ink : c.ink3, backgroundColor: c.raised, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
       <SourceMark kind={source.key} />
-      <T v="subhead" lines={1} style={{ fontFamily: fonts.medium, flexShrink: 1 }}>{source.title}</T>
+      <T v="subhead" lines={wrap ? undefined : 1} style={{ fontFamily: fonts.medium, flexShrink: 1 }}>{source.title}</T>
     </Tap>
   </Animated.View>;
 }
@@ -95,6 +95,7 @@ function Node({ source, waiting, focused, onPress }: { source: typeof SOURCES[nu
 
 export function Story({ width, start, onComplete }: { width: number; start: number; onComplete: () => void }) {
   const { c, reduceMotion } = useTheme();
+  const compact = useCompact();
   const [stage, setStage] = useState(0);
   const [shown, setShown] = useState(0);
   const [done, setDone] = useState(0);
@@ -131,7 +132,18 @@ export function Story({ width, start, onComplete }: { width: number; start: numb
   ];
   const bloomed = done >= SOURCES.length;
   return <View style={{ gap: space[4] }}>
-    <View style={{ width, height: H }}>
+    {compact
+      // Large text: the plant on top, the sources as full-width buttons underneath (no fixed boxes).
+      ? <View style={{ alignItems: 'center', gap: space[3] }}>
+          <Flower stage={stage} size={150} />
+          {bloomed && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.input, backgroundColor: c.successSoft }}>
+            <SourceMark kind="suggested" /><T v="caption" tone="leafText">Rootera suggests</T>
+          </View>}
+          {SOURCES.slice(0, shown).map((s, i) => <View key={s.key} style={{ alignSelf: 'stretch' }}>
+            <Node source={s} waiting={waiting && i === done} focused={focus === i} onPress={() => tap(i)} wrap />
+          </View>)}
+        </View>
+      : <View style={{ width, height: H }}>
       <View style={{ position: 'absolute', left: (width - size * RATIO) / 2, top: plantTop }}><Flower stage={stage} size={size} /></View>
       {bloomed && <Animated.View entering={FadeIn.delay(450).duration(420)} style={{ position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.input, backgroundColor: c.successSoft }}>
@@ -142,7 +154,7 @@ export function Story({ width, start, onComplete }: { width: number; start: numb
       {SOURCES.slice(0, shown).map((s, i) => <View key={s.key} style={{ position: 'absolute', left: pos[i].x, top: pos[i].y, width: nodeW }}>
         <Node source={s} waiting={waiting && i === done} focused={focus === i} onPress={() => tap(i)} />
       </View>)}
-    </View>
+    </View>}
     <View style={{ minHeight: 100, gap: space[2] }} accessibilityLiveRegion="polite">
       {focus !== null
         ? <Animated.View key={focus} entering={reduceMotion ? undefined : FadeInDown.duration(300)} style={{ gap: 4 }}>
