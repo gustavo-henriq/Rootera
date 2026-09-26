@@ -10,7 +10,7 @@
 import React, { useEffect, useState } from 'react';
 import { Image, Platform, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, FadeOut, FadeOutUp, LinearTransition, SharedValue, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
-import { catalog, PlantKind, Soil } from '../../model';
+import { catalog, matchesSpecies, PlantKind, Soil } from '../../model';
 import { plantArt } from '../../ds/plant';
 import { useCompact, useTheme } from '../../ds/theme';
 import { fonts, radius, space, springs, type } from '../../ds/tokens';
@@ -93,7 +93,7 @@ function Finder({ q, setQ, choice, onChoose, photo, idState, matches, onCamera }
   const { c } = useTheme();
   const t = q.trim().toLowerCase();
   // The carousel shows the illustrated favourites; search reaches the whole catalog.
-  const list = t ? catalog.filter(s => `${s.name} ${s.latin} ${s.aliases}`.toLowerCase().includes(t)) : catalog.filter(s => s.featured);
+  const list = t ? catalog.filter(s => matchesSpecies(q, s)) : catalog.filter(s => s.featured);
   // 4.5 tiles fit the width: the half tile at the edge tells people the row scrolls.
   const screenW = Math.min(useWindowDimensions().width, 440);
   const tileW = Math.max(68, Math.floor((screenW - space.gutter - 4.5 * space[2]) / 4.5));

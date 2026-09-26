@@ -20,11 +20,13 @@ import { Plant } from './src/screens/Plant';
 import { Care } from './src/screens/Care';
 import { Plans } from './src/screens/Plans';
 import { About, Experience, Nudges } from './src/screens/Profile';
+import { Round } from './src/screens/Round';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider } from './src/ds/theme';
 import { Gallery } from './src/ds/Gallery';
 import { preloadImages } from './src/ds/preload';
 import { TodaySkeleton, Unreachable } from './src/ds/states';
+import { scheduleNudges } from './src/nudges';
 import * as SplashScreen from 'expo-splash-screen';
 
 // Keep the native splash up until fonts and artwork are ready.
@@ -46,6 +48,10 @@ function Launch({ onDone }: { onDone: () => void }) {
 function Navigator() {
   const { ready, garden, source, refresh } = useStore();
   const { c, scheme, reduceMotion: reduce } = useTheme();
+  // Phone nudges follow the garden: rescheduled when records, plants or settings change.
+  const twinKey = Object.values(garden.twins).map(t => t.guidance.action).join('');
+  React.useEffect(() => { if (source === 'server' && garden.onboarded) void scheduleNudges(garden); },
+    [source, garden.onboarded, garden.reminders, garden.nudges?.time, garden.nudges?.kinds.join(), garden.plants.length, twinKey, garden.caregiver?.detail]);
   // Decided once, when the garden first loads: the short sprout plays only if the app
   // opened on an existing garden, never in the middle of onboarding.
   const [launch, setLaunch] = React.useState<'pending' | 'play' | 'done'>('pending');
@@ -70,6 +76,7 @@ function Navigator() {
       <Stack.Screen name="Experience" component={Experience} />
       <Stack.Screen name="Nudges" component={Nudges} />
       <Stack.Screen name="About" component={About} />
+      <Stack.Screen name="Round" component={Round} options={{ presentation: 'fullScreenModal', animation: reduce ? 'none' : 'slide_from_bottom' }} />
     </Stack.Navigator>
   </NavigationContainer>;
 }

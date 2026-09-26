@@ -3,7 +3,7 @@ import { Image, TextInput, View, Platform } from 'react-native';
 import { Props } from '../navigation';
 import { useStore } from '../store';
 import { api, Candidate } from '../api';
-import { atCapacity, catalog, PlantKind, Species } from '../model';
+import { atCapacity, catalog, matchesSpecies, PlantKind, Species } from '../model';
 import { useTheme } from '../ds/theme';
 import { fonts, radius, space, type } from '../ds/tokens';
 import { Btn, T, Tap } from '../ds/components';
@@ -49,7 +49,7 @@ export function AddPlant({ navigation, route }: Props<'AddPlant'>) {
 
   const results = useMemo(() => {
     const t = q.trim().toLowerCase();
-    return t ? catalog.filter(s => `${s.name} ${s.latin} ${s.aliases}`.toLowerCase().includes(t)) : catalog;
+    return t ? catalog.filter(s => matchesSpecies(q, s)) : catalog;
   }, [q]);
   const choose = (s: Pick<Species, 'kind' | 'name' | 'latin'>) => navigation.navigate('PlantForm', { kind: s.kind, species: s.latin, name: s.name, photo });
   const custom = () => choose({ kind: 'other', name: q.trim() || 'My plant', latin: q.trim() || 'Unknown species' });

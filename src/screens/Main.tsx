@@ -14,10 +14,14 @@ import { Btn, Chip, FloatingTabBar, Group, Row, SourceLabel, T, Tap, Toast } fro
 import { Glyph, GlyphName } from '../ds/icons';
 import { Page } from '../ds/Page';
 import { Ground, PlantArt, plantArt } from '../ds/plant';
-import { Pop } from '../ds/motion';
+import { Pop, Settle } from '../ds/motion';
 import { PickerSheet } from '../ds/PickerSheet';
+import { ActionSheet } from '../ds/ActionSheet';
 import { measure, Rect } from '../ds/Flight';
 import { NameInvite } from './NameInvite';
+import { ROUND_SIZE } from './Round';
+import Swipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { haptic } from '../ds/feedback';
 
 const Tab = createBottomTabNavigator<Tabs>();
 type TabProps<T extends keyof Tabs> = CompositeScreenProps<BottomTabScreenProps<Tabs, T>, NativeStackScreenProps<Routes>>;
@@ -49,6 +53,20 @@ function Offline() {
 const CHECK_IN = { title: 'Check in', mode: 'checkin' as const, icon: 'soil' as GlyphName };
 const quick: Record<string, typeof CHECK_IN | null> = { check_soil: CHECK_IN, log_water: CHECK_IN, observe: CHECK_IN, wait: null };
 
+/**
+ * The light of the day, as a faint wash behind Today: cool in the morning, leafy at midday,
+ * warm late in the afternoon, dim at night. Set once when the screen opens; text sits on
+ * solid paper below it, so contrast is unchanged.
+ */
+function daylight(scheme: 'light' | 'dark') {
+  const h = new Date().getHours();
+  const k = scheme === 'dark' ? .55 : 1;
+  if (h >= 5 && h < 11) return `rgba(142,203,178,${.26 * k})`;
+  if (h >= 11 && h < 16) return `rgba(214,236,160,${.30 * k})`;
+  if (h >= 16 && h < 20) return `rgba(232,180,96,${.20 * k})`;
+  return `rgba(70,110,130,${.18 * k})`;
+}
+
 function greeting() {
   const h = new Date().getHours();
   return h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
@@ -69,7 +87,10 @@ const Thumb = memo(function Thumb({ plant, size = 64 }: { plant: Plant; size?: n
 /** The empty shelf, shared by Today and Plants: what happens next and one way to start. */
 function EmptyShelf({ onAdd }: { onAdd: () => void }) {
   return <View style={{ alignItems: 'center', gap: space[4], paddingTop: space[6] }}>
-    <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>{(['snake-plant', 'monstera', 'pilea'] as const).map((k, i) => <Image key={k} source={plantArt[k]} resizeMode="contain" style={{ width: i === 1 ? 130 : 96, height: i === 1 ? 130 : 96, marginHorizontal: -10 }} />)}</View>
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>{(['snake-plant', 'monstera', 'pilea'] as const).map((k, i) => {
+      const img = <Image key={k} source={plantArt[k]} resizeMode="contain" style={{ width: i === 1 ? 130 : 96, height: i === 1 ? 130 : 96, marginHorizontal: -10 }} />;
+      return i === 1 ? <Settle key={k} delay={250}>{img}</Settle> : img;
+    })}</View>
     <Ground width={240} style={{ marginTop: -18 }} />
     <T v="title2" center>Your shelf is empty</T>
     <T v="callout" tone="ink2" center>Add a plant and do a first soil check. Rootera starts learning from there.</T>
@@ -88,7 +109,15 @@ function SectionHead({ title, count, action }: { title: string; count?: number; 
 const NeedRow = memo(function NeedRow({ plant, title, action, narrow, onOpen, onCheck }: { plant: Plant; title?: string; action?: string; narrow: boolean; onOpen: (p: Plant) => void; onCheck: (p: Plant) => void }) {
   const { c } = useTheme();
   const q = action ? quick[action] : quick.check_soil;
-  return <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
+  const swipe = useRef<SwipeableMethods>(null);
+  // Swipe left for a one-handed check-in; the button stays for everyone else (and screen readers).
+  return <Swipeable ref={swipe} friction={1.6} rightThreshold={64} overshootRight={false}
+    onSwipeableOpen={() => { haptic.select(); swipe.current?.close(); onCheck(plant); }}
+    renderRightActions={() => <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden
+      style={{ width: 104, alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: c.successSoft, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
+      <Glyph name="soil" size={20} tone={c.leafText} /><T v="footnote" tone="leafText" style={{ fontFamily: fonts.medium }}>Check in</T>
+    </View>}>
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline, backgroundColor: c.canvas }}>
     <Tap label={`${plant.name}: ${title}`} onPress={() => onOpen(plant)} scaleTo={.99} ring={radius.control} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
       <Thumb plant={plant} />
       <View style={{ flex: 1, gap: 2 }}>
@@ -98,7 +127,8 @@ const NeedRow = memo(function NeedRow({ plant, title, action, narrow, onOpen, on
     </Tap>
     {/* The accessible name carries the plant, so a list is never "Check in, Check in, Check in". */}
     {q && <Btn size="regular" kind="outline" icon={narrow ? undefined : q.icon} title={narrow ? 'Check' : q.title} label={`${q.title}, ${plant.name}`} onPress={() => onCheck(plant)} />}
-  </View>;
+  </View>
+  </Swipeable>;
 });
 
 const RestRow = memo(function RestRow({ plant, title, onOpen }: { plant: Plant; title?: string; onOpen: (p: Plant) => void }) {
@@ -116,8 +146,8 @@ type TodayItem = { k: 'head'; title: string; count?: number; action?: React.Reac
   | { k: 'event'; event: CareEvent } | { k: 'calm' } | { k: 'more'; hidden: number };
 
 function Today({ navigation }: TabProps<'Today'>) {
-  const { garden } = useStore();
-  const { c } = useTheme();
+  const { garden, refresh } = useStore();
+  const { c, scheme } = useTheme();
   // On narrow phones the quick action keeps a short text label so the plant name keeps its room.
   const narrow = useWindowDimensions().width < 370;
   const ref = useRef(null); useScrollToTop(ref);
@@ -142,7 +172,7 @@ function Today({ navigation }: TabProps<'Today'>) {
     ...(resting.length ? [{ k: 'head' as const, title: 'Resting', count: resting.length }, ...resting.map(p => ({ k: 'rest' as const, plant: p }))] : []),
   ];
 
-  return <Page tab scrollRef={ref} titleInBar="Today" gap={space[4]} actions={[{ icon: 'plus', label: 'Add a plant', onPress: () => navigation.navigate('AddPlant') }]}
+  return <Page tab scrollRef={ref} titleInBar="Today" gap={space[4]} glow={daylight(scheme)} onRefresh={refresh} actions={[{ icon: 'plus', label: 'Add a plant', onPress: () => navigation.navigate('AddPlant') }]}
     header={<View style={{ gap: space[1] }}>
       <T v="footnote" tone="ink2">{new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })}</T>
       <T v="display">{greeting()}{first ? `,\n${first}` : ''}</T>
@@ -166,8 +196,23 @@ function Today({ navigation }: TabProps<'Today'>) {
     }}>
     <Offline />
     <NameInvite />
+    {needs.length >= 3 && <RoundCard count={needs.length} onStart={() => navigation.navigate('Round')} />}
     {!garden.plants.length && <EmptyShelf onAdd={() => navigation.navigate('AddPlant', { first: true })} />}
   </Page>;
+}
+
+/** One entry for many check-ins: the round asks one question per plant. About 10 s each. */
+function RoundCard({ count, onStart }: { count: number; onStart: () => void }) {
+  const { c } = useTheme();
+  const size = Math.min(count, ROUND_SIZE);
+  const minutes = Math.max(1, Math.round(size * 10 / 60));
+  return <View style={{ padding: space[4], gap: space[3], borderRadius: radius.card, backgroundColor: c.successSoft }}>
+    <View style={{ gap: 2 }}>
+      <T v="headline">Check-in round</T>
+      <T v="subhead" tone="ink2">{count > size ? `The ${size} most urgent of ${count}` : `${count} plants`}, about {minutes} {minutes === 1 ? 'minute' : 'minutes'}. One question each.</T>
+    </View>
+    <Btn title="Start the round" icon="soil" onPress={onStart} />
+  </View>;
 }
 
 /** A plant rising out of its tile, like a pot on the edge of a shelf. */
@@ -205,7 +250,7 @@ function SearchField({ value, onChange, label }: { value: string; onChange: (s: 
 type PlantCell = { k: 'plant'; plant: Plant } | { k: 'add' };
 
 function Plants({ navigation }: TabProps<'Plants'>) {
-  const { garden } = useStore();
+  const { garden, refresh } = useStore();
   const { c } = useTheme();
   const ref = useRef(null); useScrollToTop(ref);
   const screenW = Math.min(useWindowDimensions().width, 440);
@@ -228,7 +273,7 @@ function Plants({ navigation }: TabProps<'Plants'>) {
   const openPlant = useCallback((p: Plant, from?: Rect) => navigation.navigate('Plant', { id: p.id, from }), [navigation]);
   const cells: PlantCell[] = garden.plants.length ? [...list.map(p => ({ k: 'plant' as const, plant: p })), ...(t ? [] : [{ k: 'add' as const }])] : [];
 
-  return <Page tab scrollRef={ref} title="Plants" gap={space[4]} actions={[{ icon: 'plus', label: 'Add a plant', onPress: add }]}
+  return <Page tab scrollRef={ref} title="Plants" gap={space[4]} onRefresh={refresh} actions={[{ icon: 'plus', label: 'Add a plant', onPress: add }]}
     list={{
       data: cells, numColumns: 2, columnGap: space[3],
       keyExtractor: (i: PlantCell) => i.k === 'plant' ? i.plant.id : 'add',
@@ -261,7 +306,7 @@ function Plants({ navigation }: TabProps<'Plants'>) {
 
 const eventGlyph = (e: CareEvent): GlyphName => e.type === 'Watered' ? 'water' : e.type === 'Soil check' ? 'soil' : 'leaf';
 
-const EventRow = memo(function EventRow({ event, plant, onPress }: { event: CareEvent; plant?: Plant; onPress?: () => void }) {
+const EventRow = memo(function EventRow({ event, plant, onPress, onLongPress }: { event: CareEvent; plant?: Plant; onPress?: () => void; onLongPress?: () => void }) {
   const { c } = useTheme();
   const water = event.type === 'Watered';
   const body = <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[3], paddingVertical: space[3], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
@@ -275,7 +320,7 @@ const EventRow = memo(function EventRow({ event, plant, onPress }: { event: Care
     </View>
     <T v="footnote" tone="ink2">{new Date(event.at).toLocaleTimeString(LOCALE, { hour: 'numeric', minute: '2-digit' })}</T>
   </View>;
-  return onPress && plant ? <Tap label={`${describeEvent(event)}, ${plant.name}`} onPress={onPress} scaleTo={.99} ring={radius.inner}>{body}</Tap> : body;
+  return onPress && plant ? <Tap label={`${describeEvent(event)}, ${plant.name}`} onPress={onPress} onLongPress={onLongPress} longPressLabel="Delete this record" scaleTo={.99} ring={radius.inner}>{body}</Tap> : body;
 });
 
 function dayLabel(iso: string) {
@@ -288,7 +333,7 @@ type JournalItem = { k: 'day'; label: string } | { k: 'event'; event: CareEvent 
 const CHIP_LIMIT = 8;
 
 function Journal({ navigation }: TabProps<'Journal'>) {
-  const { garden } = useStore();
+  const { garden, refresh } = useStore();
   const { c } = useTheme();
   const ref = useRef(null); useScrollToTop(ref);
   const index = usePlantIndex(garden);
@@ -317,20 +362,36 @@ function Journal({ navigation }: TabProps<'Journal'>) {
     return out;
   }, [events]);
   const selectedName = plant === 'all' ? 'All plants' : index.get(plant)?.name ?? 'All plants';
+  // Editing the timeline: a record can be deleted (and restored with Undo, same id and time).
+  const { removeCare, logCare } = useStore();
+  const [menuFor, setMenuFor] = useState<CareEvent | null>(null);
+  const [deleted, setDeleted] = useState<CareEvent | null>(null);
+  const [editError, setEditError] = useState('');
+  const removeRecord = async (e: CareEvent) => {
+    setEditError('');
+    try { await removeCare(e.plantId, e.id); setOlder(o => o.filter(x => x.id !== e.id)); setDeleted(e); }
+    catch (err) { setEditError(err instanceof Error ? err.message : 'Could not delete.'); }
+  };
 
-  return <Page tab scrollRef={ref} title="Journal" gap={space[4]}
+  return <Page tab scrollRef={ref} title="Journal" gap={space[4]} onRefresh={refresh}
     list={{
       data: items, onEndReached: () => void loadMore(),
       keyExtractor: (i: JournalItem) => i.k === 'day' ? `d-${i.label}` : i.event.id,
       renderItem: (i: JournalItem) => i.k === 'day'
         ? <T v="section" style={{ paddingTop: space[5], paddingBottom: space[2], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>{i.label}</T>
-        : <EventRow event={i.event} plant={index.get(i.event.plantId)} onPress={() => navigation.navigate('Plant', { id: i.event.plantId })} />,
+        : <EventRow event={i.event} plant={index.get(i.event.plantId)} onPress={() => navigation.navigate('Plant', { id: i.event.plantId })} onLongPress={() => setMenuFor(i.event)} />,
       footer: loading ? <T v="subhead" tone="ink2">Loading older records…</T>
         : !items.length ? <View style={{ gap: space[2] }}><T v="title2">Nothing recorded yet</T><T v="callout" tone="ink2">Soil checks, watering and notes about the leaves appear here, newest first.</T></View>
         : undefined,
     }}>
     <SourceLabel kind="observed" text="Everything here was recorded by you" />
     <Offline />
+    {!!deleted && <Toast title="Record deleted" text={`${describeEvent(deleted)}, ${index.get(deleted.plantId)?.name ?? ''}`} onClose={() => setDeleted(null)}
+      action={{ title: 'Undo', onPress: () => { const e = deleted; setDeleted(null); void logCare(e).catch(() => undefined); } }} />}
+    {!!editError && <Toast tone="error" title="Not deleted" text={editError} onClose={() => setEditError('')} />}
+    <ActionSheet visible={!!menuFor} title={menuFor ? describeEvent(menuFor) : undefined} onClose={() => setMenuFor(null)} actions={menuFor ? [
+      { label: 'Delete this record', icon: 'trash', destructive: true, onPress: () => void removeRecord(menuFor) },
+    ] : []} />
     {garden.plants.length > 1 && (garden.plants.length <= CHIP_LIMIT
       ? <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.gutter, flexGrow: 0 }} contentContainerStyle={{ gap: space[2], paddingHorizontal: space.gutter }}>
           {[{ id: 'all', name: 'All plants' }, ...garden.plants].map(p => <Chip key={p.id} label={p.name} selected={plant === p.id} onPress={() => setPlant(p.id)} />)}

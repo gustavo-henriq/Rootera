@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const source = ts.transpileModule(fs.readFileSync(require.resolve('../src/model.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 const mod = { exports: {} };
 vm.runInNewContext(source, { exports: mod.exports, module: mod, Date, Math });
-const { ago, atCapacity, byUrgency, describeEvent, emptyGarden, known } = mod.exports;
+const { ago, atCapacity, byUrgency, catalog, describeEvent, emptyGarden, known, matchesSpecies, searchText } = mod.exports;
 
 const now = Date.parse('2026-09-25T12:00:00Z');
 assert.equal(ago('2026-09-25T11:59:30Z', now), 'just now');
@@ -30,4 +30,13 @@ const garden = { ...emptyGarden, plants: [plant('a', 'Zamia'), plant('b', 'Aloe'
 assert.equal(byUrgency(garden).map(p => p.id).join(), 'c,b,a');
 assert.equal(atCapacity(garden), true);
 assert.equal(atCapacity({ ...garden, plan_capacity: null }), false);
-console.log('PASS model helpers: relative time, provenance-safe labels, urgency order, plan capacity');
+// Forgiving search: accents, prefixes and one typo in longer words.
+assert.equal(searchText('Manjericão!'), 'manjericao');
+const find = q => catalog.filter(s => matchesSpecies(q, s)).map(s => s.kind).join();
+assert.equal(find('orquídea'), 'orchid');
+assert.equal(find('orquidia'), 'orchid');
+assert.equal(find('samambia'), 'fern');
+assert.equal(find('jiboa'), 'pothos');
+assert.equal(find('espada de sao'), 'snake-plant');
+assert.equal(find('xyzw'), '');
+console.log('PASS model helpers: relative time, provenance-safe labels, urgency order, plan capacity, forgiving search');

@@ -59,3 +59,15 @@ def test_garden_snapshot_query_count_does_not_grow_per_plant(client):
     finally:
         event.remove(engine, 'before_cursor_execute', listener)
     assert count['n'] < 15, count['n']
+
+
+def test_a_deleted_record_can_be_restored_with_the_same_id(planted):
+    body = soil('s1', 2)
+    planted.post('/v1/plants/aloe-1/user-observations', json=body, headers=ALICE)
+    planted.delete('/v1/plants/aloe-1/user-observations/s1', headers=ALICE)
+    again = planted.post('/v1/plants/aloe-1/user-observations', json=body, headers=ALICE)
+    assert again.status_code == 201 and again.json()['duplicate'] is False
+    g = planted.get('/v1/garden', headers=ALICE).json()
+    assert [e['id'] for e in g['events']] == ['s1']
+    types = [e['type'] for e in planted.get('/v1/plants/aloe-1/events', headers=ALICE).json()]
+    assert types.count('SoilConditionReported') == 2 and 'UserObservationRetracted' in types

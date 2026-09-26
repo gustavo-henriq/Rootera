@@ -159,7 +159,9 @@ class GardenService:
         before = self.project(plant_id)['guidance']
         row = UserObservation(id=payload.id, plant_id=plant_id, owner_id=self.owner, kind=payload.type, value=value, observed_at=at, received_at=utcnow().isoformat(), confidence=.65)
         self.db.add(row)
-        self.db.add(DomainEvent(id=f'user:{payload.id}', plant_id=plant_id, type=EVENT_TYPES[payload.type], source='USER', observation_id=payload.id, occurred_at=at, payload=value))
+        # A record restored after an undo keeps its id; the append-only log gets a new entry for it.
+        event_id = f'user:{payload.id}' if self.db.get(DomainEvent, f'user:{payload.id}') is None else f'user:{payload.id}:restored:{uuid4().hex[:8]}'
+        self.db.add(DomainEvent(id=event_id, plant_id=plant_id, type=EVENT_TYPES[payload.type], source='USER', observation_id=payload.id, occurred_at=at, payload=value))
         self.db.flush()
         twin = self.rebuild(plant_id)
         after = twin['guidance']

@@ -21,7 +21,7 @@ export interface Guidance {
   baseline_days: number | null; completed_cycles: number; baseline_note: string;
   soil: Soil | null; soil_checked_at: string | null; visual: Visual | null;
   last_watered_at: string | null; last_soil_check_at: string | null;
-  reference: { summary: string; when_dry: string; check_tip: string };
+  reference: { summary: string; when_dry: string; check_tip: string; dryness?: 'top' | 'half' | 'full' | 'unknown' };
 }
 export interface Twin {
   guidance: Guidance;
@@ -53,7 +53,7 @@ export const catalog: Species[] = [
   { kind: 'peace-lily', featured: true, name: 'Peace Lily', latin: 'Spathiphyllum wallisii', aliases: 'lirio da paz spathiphyllum' },
   { kind: 'snake-plant', featured: true, name: 'Snake Plant', latin: 'Dracaena trifasciata', aliases: 'sansevieria mother in law espada de sao jorge' },
   { kind: 'zz', featured: true, name: 'ZZ Plant', latin: 'Zamioculcas zamiifolia', aliases: 'zamioculca zanzibar gem' },
-  { kind: 'pilea', featured: true, name: 'Chinese Money Plant', latin: 'Pilea peperomioides', aliases: 'pilea pancake plant' },
+  { kind: 'pilea', featured: true, name: 'Chinese Money Plant', latin: 'Pilea peperomioides', aliases: 'pilea pancake plant planta do dinheiro chinesa' },
   { kind: 'aloe', featured: true, name: 'Aloe Vera', latin: 'Aloe barbadensis miller', aliases: 'babosa aloe' },
   { kind: 'cactus', featured: true, name: 'Cactus', latin: 'Cactaceae', aliases: 'cacto succulent' },
   { kind: 'gerbera', featured: true, name: 'Gerbera', latin: 'Gerbera jamesonii', aliases: 'gerbera daisy margarida africana flower flor' },
@@ -112,3 +112,25 @@ export function atCapacity(garden: Garden) {
 
 /** Text for matching searches: lower case, no accents or punctuation ("Manjericão!" matches "manjericao"). */
 export const searchText = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+function withinOneEdit(a: string, b: string) {
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0, j = 0, edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i++; j++; continue; }
+    if (++edits > 1) return false;
+    if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
+}
+
+/**
+ * Forgiving species search: accents and punctuation ignored, words match by prefix, and
+ * a word of 4+ letters may have one typo ("orquidia", "samambia", "jiboa" still match).
+ */
+export function matchesSpecies(query: string, s: Species) {
+  const words = searchText(query).split(' ').filter(Boolean);
+  if (!words.length) return true;
+  const hay = searchText(`${s.name} ${s.latin} ${s.aliases}`).split(' ');
+  return words.every(w => hay.some(h => h.startsWith(w) || (w.length >= 4 && (withinOneEdit(w, h) || withinOneEdit(w, h.slice(0, w.length))))));
+}

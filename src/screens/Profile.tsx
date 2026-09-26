@@ -9,6 +9,7 @@ import { Btn, Field, SourceLabel, Source, T, Tap, Toast } from '../ds/components
 import { Page } from '../ds/Page';
 import { NudgePicker, requestNudgePermission } from './onboarding/Nudges';
 import { Glyph } from '../ds/icons';
+import { scheduleNudges } from '../nudges';
 
 const hints = experienceHint;
 
@@ -49,6 +50,7 @@ export function Experience({ navigation }: Props<'Experience'>) {
 /** What the phone allows, stated plainly, with the one action that changes it. */
 function PhonePermission() {
   const { c } = useTheme();
+  const { garden } = useStore();
   const [state, setState] = useState<'granted' | 'denied' | 'undetermined' | 'web'>('undetermined');
   const read = async () => {
     if (Platform.OS === 'web') { setState('web'); return; }
@@ -60,7 +62,7 @@ function PhonePermission() {
     <Glyph name={state === 'granted' ? 'check' : 'info'} size={18} tone={state === 'granted' ? c.leafText : c.ink2} />
     <View style={{ flex: 1, gap: space[2] }}>
       <T v="subhead">{text}</T>
-      {state === 'undetermined' && <Btn size="regular" kind="outline" title="Allow notifications" onPress={() => void requestNudgePermission().then(read)} style={{ alignSelf: 'flex-start' }} />}
+      {state === 'undetermined' && <Btn size="regular" kind="outline" title="Allow notifications" onPress={() => void requestNudgePermission().then(g => { if (g) void scheduleNudges(garden); return read(); })} style={{ alignSelf: 'flex-start' }} />}
       {state === 'denied' && <Btn size="regular" kind="outline" title="Open Settings" onPress={() => void Linking.openSettings()} style={{ alignSelf: 'flex-start' }} />}
     </View>
   </View>;

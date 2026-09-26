@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Props } from '../navigation';
 import { api } from '../api';
@@ -14,6 +14,11 @@ import { Ground, PlantArt } from '../ds/plant';
 import { Appear, DrawLine, LeafBurst, Pop, Settle, WaterDrops } from '../ds/motion';
 import { CareCalendar } from '../ds/CareCalendar';
 import { ActionSheet } from '../ds/ActionSheet';
+import { GrowthDiary } from './GrowthDiary';
+import { SeedDrop } from '../ds/SeedDrop';
+import { announce, haptic } from '../ds/feedback';
+import { WhySheet } from '../ds/WhySheet';
+import Svg, { Circle } from 'react-native-svg';
 import { Flight, measure, Rect } from '../ds/Flight';
 import { useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { springs } from '../ds/tokens';
@@ -146,6 +151,43 @@ function Figure({ value, unit, caption }: { value: string; unit?: string; captio
   </View>;
 }
 
+/**
+ * Three watering cycles make a pattern. Each finished cycle closes one arc of the ring,
+ * so the next step toward "what Rootera learned" is visible (goal gradient), and the new
+ * arc pops in when a cycle completes.
+ */
+function CycleRing({ done }: { done: number }) {
+  const { c } = useTheme();
+  const R = 17, C = 2 * Math.PI * R, gap = 5, len = C / 3 - gap;
+  return <View accessible accessibilityLabel={`${done} of 3 watering cycles toward a pattern`} style={{ flex: 1, gap: 2 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], height: 38 }}>
+      <Pop key={done} delay={120}>
+        <Svg width={40} height={40} viewBox="0 0 40 40" style={{ transform: [{ rotate: '-90deg' }] }}>
+          {[0, 1, 2].map(k => <Circle key={k} cx={20} cy={20} r={R} fill="none" strokeWidth={5} strokeLinecap="round"
+            stroke={k < done ? c.leafMark : c.sunken} strokeDasharray={`${len} ${C - len}`} strokeDashoffset={-(k * C / 3)} />)}
+        </Svg>
+      </Pop>
+      <T v="figure" style={{ fontSize: 24, lineHeight: 28 }}>{done}/3</T>
+    </View>
+    <T v="footnote" tone="ink2">Cycles to a pattern</T>
+  </View>;
+}
+
+/** A plant reaching its next stage: the same growing moment as planting it, then back to the page. */
+function Milestone({ plant, stage, onDone }: { plant: PlantT; stage: string; onDone: () => void }) {
+  const { c, reduceMotion } = useTheme();
+  useEffect(() => { haptic.bloom(); announce(`${plant.name} is now ${stage.toLowerCase()}`); }, []);
+  return <Pressable accessibilityRole="button" accessibilityLabel={`${plant.name} is now ${stage.toLowerCase()}. Continue`} onPress={onDone}
+    style={[StyleSheet.absoluteFill, { zIndex: 40, backgroundColor: c.canvas, alignItems: 'center', justifyContent: 'center', gap: space[5], padding: space.gutter }]}>
+    <SeedDrop size={260} run={1} kind={plant.kind} onDone={() => setTimeout(onDone, reduceMotion ? 900 : 1600)} />
+    <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(900)} style={{ alignItems: 'center', gap: space[1] }}>
+      <T v="footnote" tone="ink2">New stage</T>
+      <T v="hero" center>{plant.name} is now {stage.toLowerCase()}</T>
+      <T v="callout" tone="ink2" center>Tap to continue</T>
+    </Animated.View>
+  </Pressable>;
+}
+
 function since(iso: string) {
   const m = Math.max(0, (Date.now() - new Date(iso).getTime()) / 60000);
   return m < 2 ? { value: 'Now' } : m < 60 ? { value: String(Math.round(m)), unit: 'min' } : m < 1440 ? { value: String(Math.round(m / 60)), unit: 'h' } : { value: String(Math.round(m / 1440)), unit: m < 2880 ? 'day' : 'days' };
@@ -161,6 +203,13 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
   const g = twin?.guidance;
   const [width, setWidth] = useState(0);
   const [menu, setMenu] = useState(false);
+  const [why, setWhy] = useState(false);
+  const [milestone, setMilestone] = useState<string | null>(null);
+  const shownMilestone = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const m = route.params.saved?.milestone;
+    if (m && shownMilestone.current !== route.params.saved?.title + m) { shownMilestone.current = route.params.saved?.title + m; setMilestone(m); }
+  }, [route.params.saved?.milestone]);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -261,11 +310,18 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
       <View style={{ flexDirection: 'row', gap: space[4], paddingVertical: space[4], borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>
         <Figure {...(water === null ? { value: '', caption: 'No watering yet' } : water === 0 ? { value: 'Today', caption: 'Last watered' } : { value: `${approx ? '~' : ''}${water}`, unit: water === 1 ? 'day' : 'days', caption: approx ? 'Since watering (approx.)' : 'Since watering' })} />
         <Figure {...(soil ? { ...soil, caption: soil.value === 'Now' ? 'Soil checked' : 'Since soil check' } : { value: '', caption: 'No soil check yet' })} />
-        <Figure {...(g?.baseline_days != null ? { value: `~${Math.round(g.baseline_days)}`, unit: 'days', caption: 'Usually dry after' } : { value: `${Math.min(g?.completed_cycles ?? 0, 3)}/3`, caption: 'Cycles to a pattern' })} />
+        {g?.baseline_days != null
+          ? <Figure value={`~${Math.round(g.baseline_days)}`} unit="days" caption="Usually dry after" />
+          : <CycleRing done={Math.min(g?.completed_cycles ?? 0, 3)} />}
       </View>
 
       <View style={{ gap: space[3] }}>
-        <SourceLabel kind="suggested" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <SourceLabel kind="suggested" />
+          {!!g?.basis?.length && <Tap label="Why this suggestion?" onPress={() => setWhy(true)} ring={radius.inner} style={{ minHeight: 44, justifyContent: 'center', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>Why?</T>
+          </Tap>}
+        </View>
         <T v="title">{g?.title ?? 'Start with a soil check'}</T>
         <T v="body" tone="ink2">{g?.reason ?? 'A first soil check tells Rootera where this plant is starting from.'}</T>
         {!!g?.tip && <View style={{ padding: space[4], borderRadius: radius.control, backgroundColor: c.sunken, gap: 4 }}>
@@ -291,6 +347,8 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
         </View>
       </View>
 
+      <GrowthDiary plantId={plant.id} plantName={plant.name} plus={garden.plan === 'Plus'} onUpgrade={() => navigation.navigate('Plans', { reason: 'diary' })} />
+
       <View style={{ gap: space[3] }}>
         <T v="section">Care calendar</T>
         <CareCalendar events={events} />
@@ -314,7 +372,9 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
       </View>
     </Page>
 
+    {!!milestone && <Milestone plant={plant} stage={milestone} onDone={() => setMilestone(null)} />}
     {flight === 'flying' && flyFrom && landing && <Flight kind={plant.kind} photo={plant.photo} from={flyFrom} to={landing} onDone={() => setFlight('done')} />}
+    <WhySheet visible={why} onClose={() => setWhy(false)} title={g?.title ?? ''} reason={g?.reason ?? ''} basis={g?.basis ?? []} />
     <ActionSheet visible={menu} title={plant.name} onClose={() => setMenu(false)} actions={[
       { label: 'Edit details', icon: 'edit', onPress: () => navigation.navigate('PlantForm', { editId: plant.id }) },
       { label: 'Remove from garden', icon: 'trash', destructive: true, onPress: () => setConfirm(true) },

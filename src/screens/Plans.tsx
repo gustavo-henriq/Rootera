@@ -17,6 +17,7 @@ const heads = {
   first: { title: 'Room to grow', text: 'Rootera Free keeps up to 3 plants. Rootera+ is for a growing collection.' },
   limit: { title: 'Make room for more plants', text: 'Your free shelf holds 3 plants. Rootera+ removes the limit.' },
   rooms: { title: 'Organize plants by room', text: 'Group plants by living room, kitchen or balcony, and filter your shelf.' },
+  diary: { title: 'Watch every plant grow', text: 'The growth diary keeps a dated photo timeline for each plant, on your phone.' },
   default: { title: 'Rootera+', text: 'For people whose plant collection keeps growing.' },
 };
 const benefits: { icon: GlyphName; title: string; text: string }[] = [

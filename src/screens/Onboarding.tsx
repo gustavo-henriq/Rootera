@@ -18,6 +18,7 @@ import { Props } from '../navigation';
 import { useStore } from '../store';
 import { api, ApiError, Candidate } from '../api';
 import { track } from '../analytics';
+import { scheduleNudges } from '../nudges';
 import { photoData } from './Camera';
 import { Experience, newId, NudgeKind, Plant } from '../model';
 import { useTheme } from '../ds/theme';
@@ -144,7 +145,12 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
     setBusy(true); setError('');
     try {
       await saveProfile({ reminders: on && nudges.length > 0, caregiver: { experience: experience || 'first', detail }, nudges: { kinds: on ? nudges : [], time } });
-      if (on && nudges.length) t('notification_permission', { granted: await requestNudgePermission() });
+      if (on && nudges.length) {
+        const granted = await requestNudgePermission();
+        t('notification_permission', { granted });
+        // Schedule right away; the garden refresh that follows keeps them current.
+        if (granted) void scheduleNudges({ ...garden, onboarded: true, reminders: true, nudges: { kinds: nudges, time }, caregiver: { experience: experience || 'first', detail } });
+      }
       navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save. Please try again.');

@@ -11,6 +11,7 @@ import { Glyph, GlyphName } from '../ds/icons';
 import { Page } from '../ds/Page';
 import { PlantArt } from '../ds/plant';
 import { haptic } from '../ds/feedback';
+import { DepthRuler } from '../ds/DepthRuler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CHECKED_IN } from './NameInvite';
 
@@ -91,7 +92,9 @@ function CheckIn({ navigation, route }: Props<'Care'>) {
       // What this check-in created, so the confirmation can offer Undo.
       const created = [ids.current.soil, ...(watered === 'yes' ? [ids.current.water] : []), ...(visual ? [ids.current.look] : [])];
       navigation.popTo('Plant', { id: plant.id, saved: { title: watered === 'yes' ? 'Check-in and watering saved' : 'Check-in saved', from: to ? g?.title : undefined, to,
-        undo: { ids: created, stage: stage && stage !== plant.stage ? plant.stage ?? 'Not sure' : undefined } } });
+        undo: { ids: created, stage: stage && stage !== plant.stage ? plant.stage ?? 'Not sure' : undefined },
+        // A stage moving forward is a milestone worth a moment (and only then).
+        milestone: stage && STAGES.indexOf(stage as any) > STAGES.indexOf((plant.stage ?? '') as any) && STAGES.includes((plant.stage ?? '') as any) ? stage : undefined } });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save. Please try again.');
     } finally { setBusy(false); }
@@ -112,6 +115,7 @@ function CheckIn({ navigation, route }: Props<'Care'>) {
 
     <View style={{ gap: space[3] }}>
       <T v="headline">How does the soil feel?</T>
+      <DepthRuler dryness={plant.kind === 'other' ? 'unknown' : g?.reference.dryness} />
       {!!g?.reference.check_tip && <T v="subhead" tone="ink2">{g.reference.check_tip}</T>}
       <Options values={soilOrder} value={soil} onChange={setSoil} label={v => soilLabel[v]} hint={v => soilHints[v]}
         lead={v => v === 'not_sure'

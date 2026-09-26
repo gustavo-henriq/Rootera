@@ -159,6 +159,6 @@ class SensorlessGuidance:
             'visual': visual,
             'last_watered_at': last_water.at if last_water else None,
             'last_soil_check_at': last_soil.at if last_soil else None,
-            'reference': {'summary': notes['summary'], 'when_dry': notes['when_dry'], 'check_tip': notes['check_tip']},
+            'reference': {'summary': notes['summary'], 'when_dry': notes['when_dry'], 'check_tip': notes['check_tip'], 'dryness': notes['dryness']},
             'weather_connected': False,
         }

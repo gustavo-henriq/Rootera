@@ -48,13 +48,16 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
 }
 
 /** Every touchable: spring press, visible keyboard focus ring, 44-pt minimum target. */
-export function Tap({ onPress, label, hint, role = 'button', selected, disabled, style, children, ring = radius.control, scaleTo = .97 }: React.PropsWithChildren<{ onPress?: () => void; label: string; hint?: string; role?: 'button' | 'link' | 'tab' | 'radio' | 'switch'; selected?: boolean; disabled?: boolean; style?: StyleProp<ViewStyle>; ring?: number; scaleTo?: number }>) {
+/** `onLongPress` is mirrored as a named accessibility action, so it is never touch-only. */
+export function Tap({ onPress, onLongPress, longPressLabel, label, hint, role = 'button', selected, disabled, style, children, ring = radius.control, scaleTo = .97 }: React.PropsWithChildren<{ onPress?: () => void; onLongPress?: () => void; longPressLabel?: string; label: string; hint?: string; role?: 'button' | 'link' | 'tab' | 'radio' | 'switch'; selected?: boolean; disabled?: boolean; style?: StyleProp<ViewStyle>; ring?: number; scaleTo?: number }>) {
   const { c, reduceMotion } = useTheme();
   const [focus, setFocus] = useState(false);
   const s = useSharedValue(1);
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
   const flat = (StyleSheet.flatten(style) ?? {}) as ViewStyle;
-  return <Pressable onPress={onPress} disabled={disabled} accessibilityRole={role} accessibilityLabel={label} accessibilityHint={hint}
+  return <Pressable onPress={onPress} onLongPress={onLongPress ? () => { haptic.tap(); onLongPress(); } : undefined} disabled={disabled} accessibilityRole={role} accessibilityLabel={label} accessibilityHint={hint}
+    accessibilityActions={onLongPress ? [{ name: 'longpress', label: longPressLabel ?? 'More options' }] : undefined}
+    onAccessibilityAction={e => { if (e.nativeEvent.actionName === 'longpress') onLongPress?.(); }}
     accessibilityState={{ disabled: !!disabled, selected: role === 'tab' ? selected : undefined, checked: role === 'radio' || role === 'switch' ? !!selected : undefined }}
     onPressIn={() => { if (!reduceMotion) s.value = withSpring(scaleTo, springs.snappy); }}
     onPressOut={() => { s.value = withSpring(1, springs.snappy); }}
