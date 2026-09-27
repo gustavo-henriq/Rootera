@@ -163,6 +163,7 @@ export const PT: Record<string, string> = {
   "Probably not dry yet": "Provavelmente ainda não secou",
   "Around when it usually dries": "Perto de quando costuma secar",
   "Check the soil today": "Cheque a terra hoje",
+  "Worth an early check": "Vale uma checagem antecipada",
 
   // Phone nudges
   "From a nudge": "Por um lembrete",

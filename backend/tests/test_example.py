@@ -27,8 +27,8 @@ def test_added_once_with_a_ready_pattern(seeded):
     g = garden['twins'][plant['id']]['guidance']
     assert g['state'] == 'PATTERN' and g['completed_cycles'] == 3
     assert g['action'] == 'wait' and g['title'] == 'Provavelmente ainda não secou'
-    assert g['forecast']['source'] == 'cycles' and (g['forecast']['low_days'], g['forecast']['high_days']) == (5, 6)
-    assert len([e for e in garden['events'] if e['plantId'] == plant['id']]) == 11
+    assert g['forecast']['source'] == 'cycles' and (g['forecast']['low_days'], g['forecast']['high_days']) == (4, 5)
+    assert len([e for e in garden['events'] if e['plantId'] == plant['id']]) == 14
     # A second read does not add another one.
     assert len(example(seeded.get('/v1/garden', headers=ALICE).json())) == 1
 

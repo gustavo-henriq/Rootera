@@ -14,6 +14,7 @@ Before a pattern exists (three cycles), guidance.py uses the window to decide be
 a check every day right after a watering. From three cycles on, the pattern rule decides.
 """
 from datetime import timedelta
+from math import floor
 from statistics import median, quantiles
 
 from .domain import parse_time
@@ -52,6 +53,15 @@ FACTORS = {
 # However many factors stack up, the estimate stays within these bounds of the start window.
 MIN_SCALE, MAX_SCALE = .6, 1.6
 FULL_TRUST_CYCLES = 3
+# A general estimate is a guess about plants like this one, so the first check is suggested
+# before its window opens: finding the soil still moist costs a check, finding it dry for
+# days costs the plant. The share grows to 1 as the caregiver's own cycles come in.
+ESTIMATE_FIRST_CHECK = .6
+
+
+def _round(x: float) -> int:
+    """Half up (4.5 -> 5); Python's round() goes to the even number."""
+    return floor(x + .5)
 
 
 def _declared(plant: dict, field: str):
@@ -119,12 +129,14 @@ def drying_window(plant: dict, dryness: str | None, cycle_hours: list[float], la
     else:
         return None
     # Whole days, to the nearest: 4.96 days reads as 5, not 4.
-    low_days = max(1, round(low))
-    high_days = max(low_days, round(high))
-    out = {'source': source, 'low_days': low_days, 'high_days': high_days, 'cycles': len(days), 'factors': factors,
-           'check_from': None, 'dry_by': None}
+    low_days = max(1, _round(low))
+    high_days = max(low_days, _round(high))
+    trust = 1.0 if source == 'cycles' else min(1.0, len(days) / FULL_TRUST_CYCLES)
+    check_after = max(1, _round(low_days * (ESTIMATE_FIRST_CHECK + (1 - ESTIMATE_FIRST_CHECK) * trust)))
+    out = {'source': source, 'low_days': low_days, 'high_days': high_days, 'check_after_days': check_after,
+           'cycles': len(days), 'factors': factors, 'check_from': None, 'dry_by': None}
     if last_water_at:
         start = parse_time(last_water_at)
-        out['check_from'] = (start + timedelta(days=low_days)).isoformat()
+        out['check_from'] = (start + timedelta(days=check_after)).isoformat()
         out['dry_by'] = (start + timedelta(days=high_days)).isoformat()
     return out

@@ -17,7 +17,9 @@ def test_estimate_is_the_species_window_when_nothing_is_declared():
     f = project([e('w', 'Watered', {}, 24)], {'kind': 'monstera'})['forecast']
     assert f['source'] == 'estimate' and (f['low_days'], f['high_days']) == START_WINDOW['half']
     assert f['factors'] == [] and f['cycles'] == 0
-    assert f['check_from'].startswith('2026-09-15') and f['dry_by'].startswith('2026-09-22')
+    # A general estimate suggests the first check before its window opens (60% of 7 days).
+    assert f['check_after_days'] == 4
+    assert f['check_from'].startswith('2026-09-12') and f['dry_by'].startswith('2026-09-22')
 
 
 def test_declared_context_moves_the_estimate_and_is_named():
@@ -40,7 +42,8 @@ def test_own_cycles_take_over_from_three():
     assert one['source'] == 'blend' and one['cycles'] == 1
     assert 2 <= one['low_days'] < START_WINDOW['half'][0]
     three = project(cycles(2, 3, 2), {'kind': 'monstera', 'pot': 'Small pot'})['forecast']
-    assert three['source'] == 'cycles' and (three['low_days'], three['high_days']) == (2, 3)
+    # Each first check already found it dry, so it may have dried a little sooner.
+    assert three['source'] == 'cycles' and (three['low_days'], three['high_days']) == (2, 2)
     assert three['factors'] == []
 
 
@@ -59,13 +62,13 @@ def test_no_window_without_a_basis_or_with_a_reservoir():
 
 
 def test_window_spares_checks_until_it_opens():
-    # Monstera, nothing declared: window 7 to 14 days. Five days after watering: wait.
-    plain = project([e('w', 'Watered', {}, 120)], {'kind': 'monstera'})
+    # Monstera, nothing declared: window 7 to 14 days, first check on day 4. Three days after watering: wait.
+    plain = project([e('w', 'Watered', {}, 72)], {'kind': 'monstera'})
     assert (plain['title'], plain['action']) == ('Probably not dry yet', 'wait')
     assert plain['basis'] == ['Your watering record', 'Species reference'] and 'general estimate' in plain['reason']
-    # A small pot in direct sun dries sooner: the same five days are already in its window.
-    fast = project([e('w', 'Watered', {}, 120)], {'kind': 'monstera', 'pot': 'Small pot', 'light': 'Direct sun'})
-    assert (fast['title'], fast['action']) == ('Around when it usually dries', 'check_soil')
+    # A small pot in direct sun dries sooner: on the same third day a check is due.
+    fast = project([e('w', 'Watered', {}, 72)], {'kind': 'monstera', 'pot': 'Small pot', 'light': 'Direct sun'})
+    assert (fast['title'], fast['action']) == ('Worth an early check', 'check_soil')
     assert 'Pot details you added' in fast['basis'] and fast['tip']
 
 

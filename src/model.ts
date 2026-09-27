@@ -26,6 +26,8 @@ export interface Plant extends PlantContext {
 /** Drying window from the server (backend/app/forecast.py). */
 export interface Forecast {
   source: 'cycles' | 'blend' | 'estimate'; low_days: number; high_days: number; cycles: number; factors: string[];
+  /** Days after watering when the app starts asking for a check (earlier than low_days while estimated). */
+  check_after_days?: number;
   check_from: string | null; dry_by: string | null;
 }
 export interface Guidance {

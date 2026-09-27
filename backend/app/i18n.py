@@ -35,6 +35,8 @@ PT = {
     'Your first cycles suggest about {low} to {high} days after watering. It has been {since}.': 'Seus primeiros ciclos indicam de {low} a {high} dias depois da rega. Já se passaram {since}.',
     'Around when it usually dries': 'Perto de quando costuma secar',
     'Check the soil today': 'Cheque a terra hoje',
+    'Worth an early check': 'Vale uma checagem antecipada',
+    'An early check shows whether this pot dries sooner than the estimate.': 'Uma checagem antecipada mostra se este vaso seca antes do estimado.',
     'Your last check, {ago}, found the soil dry. If you watered since, record it; if not, a quick check confirms it before you water.': 'Sua última checagem, {ago}, achou a terra seca. Se você regou depois, registre; se não, uma checagem rápida confirma antes de regar.',
     'Your last soil check was {ago}. Soil changes day to day, so a new check keeps the picture current.': 'Sua última checagem da terra foi {ago}. A terra muda de um dia para o outro, então uma nova checagem mantém tudo atualizado.',
     'There is no soil check since the last watering. A quick check shows how this pot is drying.': 'Não há checagem da terra desde a última rega. Uma checagem rápida mostra como este vaso está secando.',

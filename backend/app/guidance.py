@@ -22,6 +22,16 @@ RECENT_CYCLES = 6
 # A watering remembered roughly at setup: kept as the last watering, never as a cycle start.
 # Older records only carry the note, in the language of the app at the time.
 APPROXIMATE_NOTES = ('Approximate date, from setup', 'Data aproximada, da configuração')
+# How long a check that found moisture keeps the plant resting before the app asks again.
+# "Nearly dry" says check tomorrow, so it must be askable the next morning (16 h); moist
+# and wet soil need longer before another check tells anything new. A dry report stays a
+# day, since soil only gets drier until someone waters.
+MOIST_REPORT_HOURS = {'slightly_moist': 16, 'not_sure': 16, 'moist': 40, 'wet': 64}
+# When the first check of a cycle already found the soil dry, it may have dried earlier;
+# the cycle is counted as a little shorter so the next checks start a little sooner.
+# Without this, the app would only ever ask on the day it expects dryness and so learn a
+# drying time that is never shorter than what it already believes.
+FIRST_CHECK_DRY = .8
 SOIL_WORDS = {'dry': 'dry', 'slightly_moist': 'slightly moist', 'moist': 'moist', 'wet': 'very wet'}
 
 
@@ -60,10 +70,6 @@ class SensorlessGuidance:
         last_soil = soils[-1] if soils else None
         last_water = water[-1] if water else None
         after_water = lambda e: not last_water or parse_time(e.at) > parse_time(last_water.at)
-        recent_soil = bool(last_soil and age(last_soil) <= DAY and after_water(last_soil))
-        fresh = recent_soil and last_soil.value['soil'] != 'not_sure'
-        unsure = recent_soil and last_soil.value['soil'] == 'not_sure'
-        condition = last_soil.value['soil'] if fresh else None
         recent_visual = visuals[-1] if visuals and age(visuals[-1]) <= DAY else None
         visual = recent_visual.value['visual'] if recent_visual and recent_visual.value['visual'] != 'not_sure' else None
 
@@ -72,23 +78,36 @@ class SensorlessGuidance:
         no_drainage = plant.get('drainage') == 'No'
         reservoir = plant.get('self_watering') == 'Yes'
 
-        # A cycle interval is the first dry check after a watering. It depends on
-        # how often the caregiver checks, so it is not a measured drying time.
-        intervals = []
+        # A cycle is a watering followed by the first dry check. That check is when dryness was
+        # FOUND (it depends on how often the caregiver checks), so the soil dried somewhere
+        # between the last check that found moisture and it. `intervals` keeps the found time
+        # (what the text reports); `dried` estimates when it dried (what the window uses).
+        intervals, dried = [], []
         for i, event in enumerate(water):
             if approximate(event):
                 continue
             start = parse_time(event.at)
             end = parse_time(water[i + 1].at) if i + 1 < len(water) else now
-            dry = next((e for e in soils if e.value['soil'] == 'dry' and start < parse_time(e.at) <= end), None)
+            inside = [e for e in soils if start < parse_time(e.at) <= end]
+            dry = next((e for e in inside if e.value['soil'] == 'dry'), None)
             if dry:
                 hours = (parse_time(dry.at) - start).total_seconds() / 3600
                 if 1 <= hours <= 1440:
                     intervals.append(hours)
+                    moist = [e for e in inside if parse_time(e.at) < parse_time(dry.at) and e.value['soil'] in ('slightly_moist', 'moist', 'wet')]
+                    last_moist = (parse_time(moist[-1].at) - start).total_seconds() / 3600 if moist else None
+                    dried.append((last_moist + hours) / 2 if last_moist is not None else hours * FIRST_CHECK_DRY)
         recent = intervals[-RECENT_CYCLES:]
         baseline = round(median(recent) / 24, 1) if len(recent) >= 3 else None
         since_water = age(last_water) / DAY if last_water else None
-        window = drying_window(plant, notes['dryness'], recent, last_water.at if last_water else None)
+        window = drying_window(plant, notes['dryness'], dried[-RECENT_CYCLES:], last_water.at if last_water else None)
+        # Slow plants rest longer between checks: the rest scales with the expected cycle.
+        pace = max(1.0, (window['low_days'] if window else 7) / 7)
+        report_life = DAY if not last_soil or last_soil.value['soil'] == 'dry' else min(3 * DAY, MOIST_REPORT_HOURS[last_soil.value['soil']] * 3600 * pace)
+        recent_soil = bool(last_soil and age(last_soil) < report_life and after_water(last_soil))
+        fresh = recent_soil and last_soil.value['soil'] != 'not_sure'
+        unsure = recent_soil and last_soil.value['soil'] == 'not_sure'
+        condition = last_soil.value['soil'] if fresh else None
         # Dry at the last check, which is more than a day old, with no watering recorded since.
         stale_dry = bool(last_soil and not recent_soil and after_water(last_soil) and last_soil.value['soil'] == 'dry')
 
@@ -157,7 +176,7 @@ class SensorlessGuidance:
         elif baseline is not None and last_water:
             reason = _('In your last {n} cycles, you first found the soil dry about {baseline} after watering. It has been {since}.', n=len(recent), baseline=_days(baseline, lang), since=_days(since_water, lang))
             # The same threshold the app draws: the window opens on its first day.
-            opens = window['low_days'] if window else baseline * .75
+            opens = window['check_after_days'] if window else baseline * .75
             if since_water < opens:
                 title, action = _('Probably not dry yet'), 'wait'
             else:
@@ -172,8 +191,13 @@ class SensorlessGuidance:
                 reason = _('A general estimate for this species and pot is about {low} to {high} days after watering. It has been {since}. Your own checks will replace it.', **span)
             else:
                 reason = _('Your first cycles suggest about {low} to {high} days after watering. It has been {since}.', **span)
-            if since_water < window['low_days']:
+            if since_water < window['check_after_days']:
                 title, action = _('Probably not dry yet'), 'wait'
+            elif since_water < window['low_days']:
+                # Still before the estimated window: a check now tests the estimate early.
+                title, action = _('Worth an early check'), 'check_soil'
+                reason += ' ' + _('An early check shows whether this pot dries sooner than the estimate.')
+                tip = notes['check_tip']
             else:
                 title, action = _('Around when it usually dries'), 'check_soil'
                 tip = notes['check_tip']
