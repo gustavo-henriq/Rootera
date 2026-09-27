@@ -66,7 +66,8 @@ def test_baseline_requires_separate_cycles():
         events += [e(f'w{i}', 'Watered', {}, hours), e(f'd{i}', 'Soil check', {'soil': 'dry'}, hours - 48)]
     assert project(events[:-2])['baseline_days'] is None
     g = project(events)
-    assert g['baseline_days'] == 2 and g['completed_cycles'] == 3
+    # Each first check was already dry at 2 days, so it dried a little before: 1.6 days.
+    assert g['baseline_days'] == 1.6 and g['completed_cycles'] == 3
     assert g['learning'] == 'Pattern found' and g['state'] == 'PATTERN'
 
 
@@ -77,7 +78,7 @@ def test_pattern_explains_timing_without_a_schedule():
     events.append(e('w-last', 'Watered', {}, 30))
     g = project(events)
     assert g['title'] == 'Probably not dry yet' and g['action'] == 'wait'
-    assert 'about 4 days' in g['reason'] and 'every' not in g['reason']
+    assert 'about 3 days' in g['reason'] and 'every' not in g['reason']
     later = SensorlessGuidance().project({'kind': 'aloe'}, {}, events, NOW + timedelta(days=3))
     assert later['action'] == 'check_soil' and later['title'] == 'Around when it usually dries'
 

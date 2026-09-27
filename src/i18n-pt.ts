@@ -529,7 +529,7 @@ export const PT: Record<string, string> = {
   "Tip": "Dica",
   "What Rootera knows": "O que o Rootera sabe",
   "Learned from your records": "Aprendido com os seus registros",
-  "In {n} watering cycles, you first found the soil dry about {days} days after watering. How often you check affects this number.": "Em {n} ciclos de rega, você achou a terra seca pela primeira vez cerca de {days} dias depois de regar. A frequência das suas checagens afeta este número.",
+  "In your last {n} watering cycles, the soil dried about {days} days after watering, judging by your checks. How often you check affects this number.": "Nos seus últimos {n} ciclos de rega, pelas suas checagens, a terra secou cerca de {days} dias depois da rega. A frequência das suas checagens afeta este número.",
   "Each watering followed by a dry soil check is one cycle. After three, Rootera shows how long this plant usually takes to dry.": "Cada rega seguida de uma checagem com a terra seca é um ciclo. Depois de três, o Rootera mostra quanto tempo esta planta costuma levar para secar.",
   "No species notes yet": "Sem notas da espécie ainda",
   "{genus} in general": "{genus} em geral",

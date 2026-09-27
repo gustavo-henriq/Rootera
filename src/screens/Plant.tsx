@@ -343,7 +343,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
         <View style={{ gap: space[2] }}>
           {g?.forecast?.source !== 'cycles' && <SourceLabel kind="suggested" text={t("Learned from your records")} />}
           {g?.baseline_days != null
-            ? <T v="body">{t('In {n} watering cycles, you first found the soil dry about {days} days after watering. How often you check affects this number.', { n: g.completed_cycles, days: Math.round(g.baseline_days) })}</T>
+            ? <T v="body">{t('In your last {n} watering cycles, the soil dried about {days} days after watering, judging by your checks. How often you check affects this number.', { n: g.pattern_cycles ?? g.completed_cycles, days: Math.round(g.baseline_days) })}</T>
             : <T v="body">{t("Each watering followed by a dry soil check is one cycle. After three, Rootera shows how long this plant usually takes to dry.")}</T>}
         </View>
         <View style={{ gap: space[2] }}>

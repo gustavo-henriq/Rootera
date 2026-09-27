@@ -111,7 +111,9 @@ class SensorlessGuidance:
         # (what the text reports); `dried` estimates when it dried (what the window uses).
         intervals, dried = cycles(timed)
         recent = intervals[-RECENT_CYCLES:]
-        baseline = round(median(recent) / 24, 1) if len(recent) >= 3 else None
+        # The pattern speaks of when the soil dried (estimated from the checks), the same measure
+        # the drying window draws, so the page never shows two different numbers for one thing.
+        baseline = round(median(dried[-RECENT_CYCLES:]) / 24, 1) if len(recent) >= 3 else None
         since_water = age(last_water) / DAY if last_water else None
         window = drying_window(plant, notes['dryness'], dried[-RECENT_CYCLES:], last_water.at if last_water else None)
         # Slow plants rest longer between checks: the rest scales with the expected cycle.
@@ -187,7 +189,7 @@ class SensorlessGuidance:
             reason = _('Give it time to soak in. A soil check in a day or two shows how quickly this pot dries.')
             basis = ['Your watering record']
         elif baseline is not None and last_water:
-            reason = _('In your last {n} cycles, you first found the soil dry about {baseline} after watering. It has been {since}.', n=len(recent), baseline=_days(baseline, lang), since=_days(since_water, lang))
+            reason = _('In your last {n} cycles, the soil dried about {baseline} after watering, judging by your checks. It has been {since}.', n=len(recent), baseline=_days(baseline, lang), since=_days(since_water, lang))
             # The same threshold the app draws: the window opens on its first day.
             opens = window['check_after_days'] if window else baseline * .75
             if since_water < opens:
@@ -234,9 +236,10 @@ class SensorlessGuidance:
             'state': state,
             'learning': _({'NEW': 'Getting started', 'LEARNING': 'Learning', 'PATTERN': 'Pattern found'}[state]),
             'evidence_ids': [e.id for e in events], 'signals': signals,
-            'baseline_days': baseline, 'completed_cycles': len(intervals),
+            # completed_cycles counts every cycle; the pattern uses the most recent ones.
+            'baseline_days': baseline, 'completed_cycles': len(intervals), 'pattern_cycles': len(recent),
             'forecast': window,
-            'baseline_note': _('Typical time until your first dry check after watering. How often you check affects this number.'),
+            'baseline_note': _('Typical time until the soil dries after watering, judging by your checks. How often you check affects this number.'),
             'soil': condition, 'soil_checked_at': last_soil.at if recent_soil else None,
             'visual': visual,
             'last_watered_at': last_water.at if last_water else None,

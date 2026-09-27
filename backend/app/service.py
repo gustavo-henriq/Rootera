@@ -16,7 +16,7 @@ from .schemas import PLAN_CAPACITY, CaregiverProfile, NudgePrefs, CalibrationIn,
 EVENT_WINDOW = 400
 # What the app reads from a twin in the garden snapshot. The full twin (reported, inferred,
 # limitations, evidence ids) stays available per plant at /v1/plants/{id}/twin.
-LEAN_GUIDANCE = ('title', 'reason', 'action', 'tip', 'basis', 'state', 'learning', 'baseline_days', 'completed_cycles', 'forecast',
+LEAN_GUIDANCE = ('title', 'reason', 'action', 'tip', 'basis', 'state', 'learning', 'baseline_days', 'completed_cycles', 'pattern_cycles', 'forecast',
                  'baseline_note', 'soil', 'soil_checked_at', 'visual', 'last_watered_at', 'last_soil_check_at', 'reference')
 
 
