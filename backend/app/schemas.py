@@ -94,9 +94,13 @@ class UserObservationIn(Timed):
     soil: Literal['dry', 'slightly_moist', 'moist', 'wet', 'not_sure'] | None = None
     amount_ml: float | None = Field(default=None, ge=0, le=100000)
     visual: Literal['great', 'different', 'unwell', 'not_sure'] | None = None
+    # A watering remembered roughly (at setup): kept as the last watering, not as a cycle start.
+    approximate: bool = False
 
     @model_validator(mode='after')
     def meanings(self):
+        if self.approximate and self.type != 'Watered':
+            raise ValueError('Only a watering can be approximate.')
         if self.soil is not None and self.type != 'Soil check':
             raise ValueError('Soil condition belongs to Soil check.')
         if self.type == 'Soil check' and self.soil is None:

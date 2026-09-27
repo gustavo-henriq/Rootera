@@ -268,7 +268,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
   const soil = g?.last_soil_check_at ? since(g.last_soil_check_at) : null;
   const where = [known(plant.stage) ? t(`${plant.stage} plant`) : null, known(plant.environment?.location) ? t(plant.environment!.location) : null, garden.plan === 'Plus' && known(plant.room) ? plant.room : null].filter(Boolean).join(', ');
   const lastWater = events.find(e => e.type === 'Watered');
-  const approx = !!lastWater?.note && (lastWater.note.startsWith('Approximate') || lastWater.note.startsWith(t('Approximate')));
+  const approx = !!lastWater && (!!lastWater.approximate || !!lastWater.note?.startsWith('Approximate') || !!lastWater.note?.startsWith(t('Approximate')));
   // Long names step down in size and stop at three lines instead of pushing the page down.
   const titleStyle = plant.name.length > 40 ? { fontSize: 26, lineHeight: 31 } : plant.name.length > 22 ? { fontSize: 32, lineHeight: 36 } : undefined;
 

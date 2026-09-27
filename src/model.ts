@@ -8,7 +8,10 @@ export type Soil = 'dry' | 'slightly_moist' | 'moist' | 'wet' | 'not_sure';
 export type Visual = 'great' | 'different' | 'unwell' | 'not_sure';
 export type Action = 'check_soil' | 'log_water' | 'observe' | 'wait';
 
-export interface CareEvent { id: string; plantId: string; type: CareType; note: string; at: string; source: 'USER'; soil?: Soil | null; visual?: Visual | null; amount_ml?: number | null }
+export interface CareEvent { id: string; plantId: string; type: CareType; note: string; at: string; source: 'USER'; soil?: Soil | null; visual?: Visual | null; amount_ml?: number | null;
+  /** A watering remembered roughly (at setup): not used as the start of a drying cycle. */
+  approximate?: boolean;
+}
 
 export interface PlantContext {
   room: string; pot: string; light: string; time_with_owner?: string; stage?: string;

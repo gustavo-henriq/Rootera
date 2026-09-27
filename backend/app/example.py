@@ -32,6 +32,10 @@ HISTORY = [
 ]
 
 
+def example_id(owner: str) -> str:
+    return f'example-{owner}'
+
+
 def is_example(plant: Plant) -> bool:
     return bool(plant.data.get('example'))
 
@@ -39,7 +43,7 @@ def is_example(plant: Plant) -> bool:
 def seed_example(db, owner: str, lang: str = 'en') -> str:
     """Add the example plant and its history. Returns the plant id."""
     now = utcnow()
-    plant_id = f'example-{owner}'
+    plant_id = example_id(owner)
     db.add(Plant(id=plant_id, owner_id=owner, data={
         'id': plant_id, 'kind': 'monstera', 'species': 'Monstera deliciosa', 'name': NAMES.get(lang, NAMES['en']),
         'photo': None, 'room': 'Not sure', 'pot': 'Medium pot', 'light': 'Bright indirect light',

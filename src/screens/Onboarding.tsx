@@ -124,7 +124,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
       const days = answers.watered !== undefined ? WATERED[answers.watered].days : null;
       if (days !== null) {
         const at = new Date(Date.now() - (days ? days * 86400000 : 60000)).toISOString();
-        await logCare({ id: ids.current.water, plantId: p.id, type: 'Watered', note: t('Approximate date, from setup'), at, source: 'USER' });
+        await logCare({ id: ids.current.water, plantId: p.id, type: 'Watered', note: t('Approximate date, from setup'), approximate: true, at, source: 'USER' });
       }
       // "Not sure" is not an observation: the plant starts without a soil check instead.
       if (soilValue !== 'not_sure') {

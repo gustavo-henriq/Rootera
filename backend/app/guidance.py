@@ -7,6 +7,7 @@ Inputs are kept apart and every suggestion lists the basis it came from:
 Sensor readings, weather and photo analysis never feed this layer. A qualitative
 report such as "dry" is never turned into a percentage.
 """
+from datetime import timedelta
 from statistics import median
 from .domain import parse_time, utcnow
 from .forecast import drying_window
@@ -14,13 +15,25 @@ from .i18n import tr
 from .species import notes_for
 
 DAY = 86400
+# The API accepts records up to 5 minutes ahead (a phone clock slightly fast); they count now.
+CLOCK_SKEW = timedelta(minutes=5)
+# The pattern and window follow the most recent cycles, so a season ago does not outweigh now.
+RECENT_CYCLES = 6
+# A watering remembered roughly at setup: kept as the last watering, never as a cycle start.
+# Older records only carry the note, in the language of the app at the time.
+APPROXIMATE_NOTES = ('Approximate date, from setup', 'Data aproximada, da configuração')
 SOIL_WORDS = {'dry': 'dry', 'slightly_moist': 'slightly moist', 'moist': 'moist', 'wet': 'very wet'}
 
 
 def _days(value: float, lang: str = 'en') -> str:
     if value < 2:
-        return tr('{n} hours', lang, n=round(value * 24))
+        hours = max(1, round(value * 24))
+        return tr('{n} hour' if hours == 1 else '{n} hours', lang, n=hours)
     return tr('{n} days', lang, n=round(value))
+
+
+def approximate(event) -> bool:
+    return bool(event.value.get('approximate')) or str(event.value.get('note', '')).startswith(APPROXIMATE_NOTES)
 
 
 def _ago(seconds: float, lang: str = 'en') -> str:
@@ -39,8 +52,8 @@ class SensorlessGuidance:
         """`lang` only changes the wording; titles, actions and basis are decided the same way."""
         now = now or utcnow()
         _ = lambda text, **values: tr(text, lang, **values)
-        age = lambda e: (now - parse_time(e.at)).total_seconds()
-        events = sorted((e for e in evidence if e.source == 'USER' and not e.demo and parse_time(e.at) <= now), key=lambda e: (parse_time(e.at), e.id))
+        age = lambda e: max(0.0, (now - parse_time(e.at)).total_seconds())
+        events = sorted((e for e in evidence if e.source == 'USER' and not e.demo and parse_time(e.at) <= now + CLOCK_SKEW), key=lambda e: (parse_time(e.at), e.id))
         soils = [e for e in events if e.kind == 'Soil check' and e.value.get('soil') is not None]
         water = [e for e in events if e.kind == 'Watered']
         visuals = [e for e in events if e.kind == 'Observation' and e.value.get('visual') is not None]
@@ -63,6 +76,8 @@ class SensorlessGuidance:
         # how often the caregiver checks, so it is not a measured drying time.
         intervals = []
         for i, event in enumerate(water):
+            if approximate(event):
+                continue
             start = parse_time(event.at)
             end = parse_time(water[i + 1].at) if i + 1 < len(water) else now
             dry = next((e for e in soils if e.value['soil'] == 'dry' and start < parse_time(e.at) <= end), None)
@@ -70,9 +85,12 @@ class SensorlessGuidance:
                 hours = (parse_time(dry.at) - start).total_seconds() / 3600
                 if 1 <= hours <= 1440:
                     intervals.append(hours)
-        baseline = round(median(intervals) / 24, 1) if len(intervals) >= 3 else None
+        recent = intervals[-RECENT_CYCLES:]
+        baseline = round(median(recent) / 24, 1) if len(recent) >= 3 else None
         since_water = age(last_water) / DAY if last_water else None
-        window = drying_window(plant, notes['dryness'], intervals, last_water.at if last_water else None)
+        window = drying_window(plant, notes['dryness'], recent, last_water.at if last_water else None)
+        # Dry at the last check, which is more than a day old, with no watering recorded since.
+        stale_dry = bool(last_soil and not recent_soil and after_water(last_soil) and last_soil.value['soil'] == 'dry')
 
         basis: list[str] = []
         tip = None
@@ -127,13 +145,20 @@ class SensorlessGuidance:
             title, action = _('No clear answer yet'), 'wait'
             reason = _('That is fine. Soil can be hard to read at first. Next time, try a little deeper or compare with how it felt right after watering.')
             basis = ['Your soil check']
+        elif stale_dry:
+            title, action = _('Check the soil today'), 'check_soil'
+            reason = _('Your last check, {ago}, found the soil dry. If you watered since, record it; if not, a quick check confirms it before you water.', ago=_ago(age(last_soil), lang))
+            basis = ['Your soil check']
+            tip = notes['check_tip']
         elif last_water and since_water < 1:
             title, action = _('Watering recorded'), 'wait'
             reason = _('Give it time to soak in. A soil check in a day or two shows how quickly this pot dries.')
             basis = ['Your watering record']
         elif baseline is not None and last_water:
-            reason = _('In your last {n} cycles, you first found the soil dry about {baseline} after watering. It has been {since}.', n=len(intervals), baseline=_days(baseline, lang), since=_days(since_water, lang))
-            if since_water < baseline * .75:
+            reason = _('In your last {n} cycles, you first found the soil dry about {baseline} after watering. It has been {since}.', n=len(recent), baseline=_days(baseline, lang), since=_days(since_water, lang))
+            # The same threshold the app draws: the window opens on its first day.
+            opens = window['low_days'] if window else baseline * .75
+            if since_water < opens:
                 title, action = _('Probably not dry yet'), 'wait'
             else:
                 title, action = _('Around when it usually dries'), 'check_soil'

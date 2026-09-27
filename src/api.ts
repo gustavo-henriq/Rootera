@@ -59,7 +59,7 @@ export const api = {
   archivePlant: (id: string) => request(`/v1/plants/${encodeURIComponent(id)}`, 'DELETE'),
   logCare: (e: CareEvent) => request<CareResult>(`/v1/plants/${encodeURIComponent(e.plantId)}/user-observations`, 'POST', {
     id: e.id, type: e.type, note: e.note, observed_at: e.at,
-    soil: e.soil ?? null, amount_ml: e.amount_ml ?? null, ...(e.visual ? { visual: e.visual } : {}),
+    soil: e.soil ?? null, amount_ml: e.amount_ml ?? null, ...(e.visual ? { visual: e.visual } : {}), ...(e.approximate ? { approximate: true } : {}),
   }),
   demoPlan: (plan: Plan, annual: boolean) => request('/v1/demo/plan', 'POST', { plan, annual }),
   syncBilling: () => request<{ plan: Plan }>('/v1/billing/sync', 'POST'),

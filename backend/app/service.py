@@ -4,10 +4,11 @@ from collections import defaultdict
 from uuid import uuid4
 from fastapi import HTTPException
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from .db import Calibration, Device, DomainEvent, Plant, Profile, SensorObservation, TwinSnapshot, UserObservation
 from .domain import Evidence, PlantTwinEngine, normalize_adc, utcnow
-from .example import is_example, seed_example
+from .example import example_id, is_example, seed_example
 from .guidance import SensorlessGuidance
 from .schemas import PLAN_CAPACITY, CaregiverProfile, NudgePrefs, CalibrationIn, PlantIn, PlantUpdate, SensorIn, UserObservationIn, normalize_plan
 
@@ -149,11 +150,14 @@ class GardenService:
         return state
 
     def add_user_observation(self, plant_id: str, payload: UserObservationIn):
-        self.plant(plant_id, lock=True)
+        if self.plant(plant_id, lock=True).data.get('archived'):
+            raise HTTPException(404, 'Plant not found')
         old = self.db.get(UserObservation, payload.id)
         value = {'note': payload.note, 'soil': payload.soil, 'amount_ml': payload.amount_ml}
         if payload.visual is not None:
             value['visual'] = payload.visual
+        if payload.approximate:
+            value['approximate'] = True
         at = payload.observed_at.isoformat()
         if old:
             if old.plant_id != plant_id or old.owner_id != self.owner or old.kind != payload.type or old.value != value or old.observed_at != at:
@@ -203,7 +207,7 @@ class GardenService:
 
     @staticmethod
     def event_view(o):
-        return {'id': o.id, 'plantId': o.plant_id, 'type': o.kind, 'note': o.value['note'], 'soil': o.value.get('soil'), 'amount_ml': o.value.get('amount_ml'), 'visual': o.value.get('visual'), 'at': o.observed_at, 'source': 'USER'}
+        return {'id': o.id, 'plantId': o.plant_id, 'type': o.kind, 'note': o.value['note'], 'soil': o.value.get('soil'), 'amount_ml': o.value.get('amount_ml'), 'visual': o.value.get('visual'), 'approximate': bool(o.value.get('approximate')), 'at': o.observed_at, 'source': 'USER'}
 
     # ---- devices (kept for future hardware; not part of the MVP UI) ---------
     def add_device(self, plant_id: str, name: str, demo: bool = False, device_id: str | None = None):
@@ -253,14 +257,24 @@ class GardenService:
         twin = self.rebuild(device.plant_id)
         return {'id': row.id, 'duplicate': False, 'normalized_percent': value, 'twin': twin}
 
+    def ensure_example(self, profile: Profile):
+        """Add the example plant once. Its row (kept when archived) is the record that it was
+        added, so removing it never brings it back and the profile is never rewritten here.
+        Two first loads at once: the second insert hits the same id and is dropped."""
+        if profile.data.get('example_seeded') or self.db.get(Plant, example_id(self.owner)) is not None:
+            return
+        try:
+            with self.db.begin_nested():
+                seed_example(self.db, self.owner, self.lang)
+        except IntegrityError:
+            return
+        self.rebuild(example_id(self.owner))
+
     # ---- read model --------------------------------------------------------
     def snapshot(self):
         profile = self.profile()
-        if self.seed_example and not profile.data.get('example_seeded'):
-            # Once per account; removing the example later does not bring it back.
-            plant_id = seed_example(self.db, self.owner, self.lang)
-            profile.data = {**profile.data, 'example_seeded': True}
-            self.rebuild(plant_id)
+        if self.seed_example:
+            self.ensure_example(profile)
         plants = self.active_plants()
         ids = {p.id for p in plants}
         observations = self.db.scalars(select(UserObservation).where(UserObservation.owner_id == self.owner).order_by(UserObservation.observed_at)).all()

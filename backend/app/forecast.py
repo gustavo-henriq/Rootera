@@ -14,7 +14,7 @@ Before a pattern exists (three cycles), guidance.py uses the window to decide be
 a check every day right after a watering. From three cycles on, the pattern rule decides.
 """
 from datetime import timedelta
-from statistics import quantiles
+from statistics import median, quantiles
 
 from .domain import parse_time
 
@@ -74,10 +74,21 @@ def estimate(plant: dict, dryness: str | None):
     return start[0] * scale, start[1] * scale, used
 
 
+def _typical(days: list[float]) -> list[float]:
+    """Cycles without the odd ones out: a check forgotten for weeks makes one cycle look
+    far longer than the plant needed. Kept when within half to twice the median."""
+    if len(days) < 3:
+        return days
+    mid = median(days)
+    kept = [d for d in days if mid / 2 <= d <= mid * 2]
+    return kept if len(kept) >= 2 else days
+
+
 def _own_window(days: list[float]):
-    """Middle half of the caregiver's cycles; with few cycles, all of them."""
+    """Middle half of the caregiver's typical cycles; with few cycles, all of them."""
+    days = _typical(days)
     if len(days) >= 5:
-        q = quantiles(days, n=4)
+        q = quantiles(days, n=4, method='inclusive')
         return q[0], q[2]
     return min(days), max(days)
 
@@ -94,20 +105,22 @@ def drying_window(plant: dict, dryness: str | None, cycle_hours: list[float], la
         source = 'cycles'
     elif days and prior:
         weight = len(days) / FULL_TRUST_CYCLES
-        low = (1 - weight) * prior[0] + weight * min(days)
-        high = (1 - weight) * prior[1] + weight * max(days)
+        own_low, own_high = _own_window(days)
+        low = (1 - weight) * prior[0] + weight * own_low
+        high = (1 - weight) * prior[1] + weight * own_high
         source, factors = 'blend', prior[2]
     elif days:
         # No species reference (a plant added by name): only its own cycles, however few.
-        low, high = min(days), max(days)
+        low, high = _own_window(days)
         source = 'cycles'
     elif prior:
         low, high = prior[0], prior[1]
         source, factors = 'estimate', prior[2]
     else:
         return None
-    low_days = max(1, int(low))
-    high_days = max(low_days, -int(-high // 1))  # ceil
+    # Whole days, to the nearest: 4.96 days reads as 5, not 4.
+    low_days = max(1, round(low))
+    high_days = max(low_days, round(high))
     out = {'source': source, 'low_days': low_days, 'high_days': high_days, 'cycles': len(days), 'factors': factors,
            'check_from': None, 'dry_by': None}
     if last_water_at:

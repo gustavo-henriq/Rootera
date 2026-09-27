@@ -1,6 +1,9 @@
 """Deterministic, explainable Plant Twin v1. No invented ML or sensor readings."""
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+
+# Records accepted up to 5 minutes ahead (a phone clock slightly fast) count as now.
+CLOCK_SKEW = timedelta(minutes=5)
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -35,9 +38,9 @@ class PlantTwinEngine:
     def project(self, plant_id: str, evidence: list[Evidence], now: datetime | None = None) -> dict:
         now = now or utcnow()
         ordered = sorted(evidence, key=lambda e: (parse_time(e.at), e.id))
-        eligible = [e for e in ordered if not e.demo and parse_time(e.at) <= now]
+        eligible = [e for e in ordered if not e.demo and parse_time(e.at) <= now + CLOCK_SKEW]
         sensor = next((e for e in reversed(eligible) if e.source == 'SENSOR' and e.confidence >= .5), None)
-        soil = next((e for e in reversed(eligible) if e.source == 'USER' and e.kind == 'Soil check' and e.value.get('soil') in ('dry', 'moist', 'wet')), None)
+        soil = next((e for e in reversed(eligible) if e.source == 'USER' and e.kind == 'Soil check' and e.value.get('soil') in ('dry', 'slightly_moist', 'moist', 'wet')), None)
         watered = next((e for e in reversed(eligible) if e.source == 'USER' and e.kind == 'Watered'), None)
         fresh_sensor = sensor is not None and (now - parse_time(sensor.at)).total_seconds() <= 21600
         fresh_soil = soil is not None and (now - parse_time(soil.at)).total_seconds() <= 86400
@@ -64,7 +67,7 @@ class PlantTwinEngine:
             ids = [sensor.id]
         elif fresh_soil:
             status = 'check_soil' if soil.value['soil'] == 'dry' else 'observed'
-            reason, confidence, ids = f"You reported {soil.value['soil']} soil. No sensor percentage was inferred.", .6, [soil.id]
+            reason, confidence, ids = f"You reported {soil.value['soil'].replace('_', ' ')} soil. No sensor percentage was inferred.", .6, [soil.id]
         elif watered and (now - parse_time(watered.at)).total_seconds() < 86400:
             status, reason, confidence, ids = 'care_logged', 'Watering recorded. Current soil moisture is still unknown.', .5, [watered.id]
         return {'plant_id': plant_id, 'engine_version': self.version, 'evaluated_at': now.isoformat(),
