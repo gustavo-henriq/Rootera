@@ -19,16 +19,28 @@ from statistics import quantiles
 from .domain import parse_time
 
 # General starting windows in days, by how deep the species likes to dry before watering
-# (species.py `dryness`). Rules of thumb for indoor pots, deliberately wide. PRODUCT
-# DECISION PENDING: to be reviewed before these are shown as more than a rough estimate.
-START_WINDOW = {'top': (3, 7), 'half': (5, 10), 'full': (10, 21)}
+# (species.py `dryness`), for indoor pots in the growing season. Sources:
+# - Virginia Tech Extension, "Properly Watering Container Houseplants" (SPES-804):
+#   cacti and succulents "once or twice a month" -> full: 14 to 30 days; tropical
+#   houseplants "sometimes once or twice a week" -> top: 3 to 7 days.
+#   https://www.pubs.ext.vt.edu/content/pubs_ext_vt_edu/en/SPES/spes-804.html
+# - half (dry about a third of the way down): between the two, 7 to 14 days. This one is
+#   interpolated, not quoted.
+# All sources say the finger test overrides any calendar, which is how the app uses it.
+START_WINDOW = {'top': (3, 7), 'half': (7, 14), 'full': (14, 30)}
 
 # Declared context that makes soil dry faster (<1) or slower (>1). Each is a named factor
-# so the app can say what the estimate was adjusted for.
+# so the app can say what the estimate was adjusted for. The direction of every factor is
+# from extension sources: small pots, terra cotta, coarse mixes and more light dry the
+# mix faster; larger pots and fine mixes hold water longer (Virginia Tech SPES-804 above;
+# Colorado State Extension PlantTalk 1315,
+# https://planttalk.colostate.edu/topics/houseplants/1315-houseplants-containers/).
+# The SIZE of each factor is not given by those sources and is a conservative choice:
+# growers report terra cotta drying up to about twice as fast as plastic, used here as .75.
 FACTORS = {
     'small_pot': ('pot', 'Small pot', .8),
     'large_pot': ('pot', 'Large pot', 1.2),
-    'terracotta': ('material', 'Terracotta', .85),
+    'terracotta': ('material', 'Terracotta', .75),
     'no_drainage': ('drainage', 'No', 1.2),
     'chunky_mix': ('substrate', 'Very draining / chunky', .85),
     'dense_mix': ('substrate', 'Dense / holds water', 1.2),
