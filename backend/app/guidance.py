@@ -55,6 +55,30 @@ def _ago(seconds: float, lang: str = 'en') -> str:
     return tr('{n} days ago', lang, n=int(days))
 
 
+def cycles(timed):
+    """(found, dried) hours for each finished cycle, in order, from (time, evidence) pairs
+    sorted by time. One pass: a watering opens a cycle (unless approximate), the first dry
+    check after it closes it, moist checks in between narrow when it dried."""
+    found, dried = [], []
+    start = last_moist = None
+    for t, e in timed:
+        if e.kind == 'Watered':
+            start = None if approximate(e) else t
+            last_moist = None
+        elif start is not None and e.kind == 'Soil check' and t > start:
+            soil = e.value.get('soil')
+            if soil == 'dry':
+                hours = (t - start).total_seconds() / 3600
+                if 1 <= hours <= 1440:
+                    found.append(hours)
+                    moist = (last_moist - start).total_seconds() / 3600 if last_moist is not None else None
+                    dried.append((moist + hours) / 2 if moist is not None else hours * FIRST_CHECK_DRY)
+                start = None  # only the first dry check closes the cycle
+            elif soil in ('slightly_moist', 'moist', 'wet'):
+                last_moist = t
+    return found, dried
+
+
 class SensorlessGuidance:
     version = 'sensorless-2.0'
 
@@ -63,7 +87,10 @@ class SensorlessGuidance:
         now = now or utcnow()
         _ = lambda text, **values: tr(text, lang, **values)
         age = lambda e: max(0.0, (now - parse_time(e.at)).total_seconds())
-        events = sorted((e for e in evidence if e.source == 'USER' and not e.demo and parse_time(e.at) <= now + CLOCK_SKEW), key=lambda e: (parse_time(e.at), e.id))
+        # Each timestamp is parsed once: long histories (years of daily checks) stay fast.
+        timed = sorted(((parse_time(e.at), e) for e in evidence if e.source == 'USER' and not e.demo), key=lambda p: (p[0], p[1].id))
+        timed = [(t, e) for t, e in timed if t <= now + CLOCK_SKEW]
+        events = [e for _, e in timed]
         soils = [e for e in events if e.kind == 'Soil check' and e.value.get('soil') is not None]
         water = [e for e in events if e.kind == 'Watered']
         visuals = [e for e in events if e.kind == 'Observation' and e.value.get('visual') is not None]
@@ -82,21 +109,7 @@ class SensorlessGuidance:
         # FOUND (it depends on how often the caregiver checks), so the soil dried somewhere
         # between the last check that found moisture and it. `intervals` keeps the found time
         # (what the text reports); `dried` estimates when it dried (what the window uses).
-        intervals, dried = [], []
-        for i, event in enumerate(water):
-            if approximate(event):
-                continue
-            start = parse_time(event.at)
-            end = parse_time(water[i + 1].at) if i + 1 < len(water) else now
-            inside = [e for e in soils if start < parse_time(e.at) <= end]
-            dry = next((e for e in inside if e.value['soil'] == 'dry'), None)
-            if dry:
-                hours = (parse_time(dry.at) - start).total_seconds() / 3600
-                if 1 <= hours <= 1440:
-                    intervals.append(hours)
-                    moist = [e for e in inside if parse_time(e.at) < parse_time(dry.at) and e.value['soil'] in ('slightly_moist', 'moist', 'wet')]
-                    last_moist = (parse_time(moist[-1].at) - start).total_seconds() / 3600 if moist else None
-                    dried.append((last_moist + hours) / 2 if last_moist is not None else hours * FIRST_CHECK_DRY)
+        intervals, dried = cycles(timed)
         recent = intervals[-RECENT_CYCLES:]
         baseline = round(median(recent) / 24, 1) if len(recent) >= 3 else None
         since_water = age(last_water) / DAY if last_water else None

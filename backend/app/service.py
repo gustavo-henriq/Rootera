@@ -277,7 +277,11 @@ class GardenService:
             self.ensure_example(profile)
         plants = self.active_plants()
         ids = {p.id for p in plants}
-        observations = self.db.scalars(select(UserObservation).where(UserObservation.owner_id == self.owner).order_by(UserObservation.observed_at)).all()
+        # Plain rows, not ORM objects: a large garden carries 100k+ records and the identity
+        # map costs more than the twins themselves. Rows keep the attribute names event_view reads.
+        U = UserObservation
+        observations = self.db.execute(select(U.id, U.plant_id, U.kind, U.value, U.observed_at, U.confidence)
+                                       .where(U.owner_id == self.owner).order_by(U.observed_at)).all()
         # Batch everything the twins need: one pass over records, one query for sensor readings.
         evidence = defaultdict(list)
         for o in observations:

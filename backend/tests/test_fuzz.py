@@ -84,3 +84,45 @@ def test_random_histories_hold_the_invariants(seed):
             assert plant.get('self_watering') != 'Yes'
         if en['baseline_days'] is not None:
             assert en['completed_cycles'] >= 3 and en['state'] == 'PATTERN'
+
+
+def reference_cycles(events, now):
+    """The original quadratic version of guidance.cycles, kept to prove the fast one equal."""
+    from app.domain import parse_time
+    from app.guidance import FIRST_CHECK_DRY, approximate
+    soils = [e for e in events if e.kind == 'Soil check' and e.value.get('soil') is not None]
+    water = [e for e in events if e.kind == 'Watered']
+    found, dried = [], []
+    for i, event in enumerate(water):
+        if approximate(event):
+            continue
+        start = parse_time(event.at)
+        end = parse_time(water[i + 1].at) if i + 1 < len(water) else now
+        inside = [e for e in soils if start < parse_time(e.at) <= end]
+        dry = next((e for e in inside if e.value['soil'] == 'dry'), None)
+        if dry:
+            hours = (parse_time(dry.at) - start).total_seconds() / 3600
+            if 1 <= hours <= 1440:
+                found.append(hours)
+                moist = [e for e in inside if parse_time(e.at) < parse_time(dry.at) and e.value['soil'] in ('slightly_moist', 'moist', 'wet')]
+                last = (parse_time(moist[-1].at) - start).total_seconds() / 3600 if moist else None
+                dried.append((last + hours) / 2 if last is not None else hours * FIRST_CHECK_DRY)
+    return found, dried
+
+
+@pytest.mark.parametrize('seed', range(20))
+def test_fast_cycles_equal_the_reference(seed):
+    from app.domain import parse_time
+    from app.guidance import cycles
+    rng = random.Random(1000 + seed)
+    for _ in range(50):
+        # Distinct timestamps: the reference and the one-pass version only differ on exact ties.
+        events = [x for x in random_history(rng) if x.source == 'USER']
+        seen, unique = set(), []
+        for x in events:
+            if x.at not in seen:
+                seen.add(x.at)
+                unique.append(x)
+        timed = sorted(((parse_time(x.at), x) for x in unique), key=lambda p: (p[0], p[1].id))
+        timed = [(t, x) for t, x in timed if t <= NOW]
+        assert cycles(timed) == reference_cycles([x for _, x in timed], NOW)

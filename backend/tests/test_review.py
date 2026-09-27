@@ -142,3 +142,18 @@ def test_approximate_flag_round_trips(seeded):
     bad = seeded.post(f'/v1/plants/{plant_id}/user-observations', headers=ALICE,
                       json={'id': 'bad', 'type': 'Soil check', 'soil': 'dry', 'note': '', 'approximate': True, 'observed_at': datetime.now(timezone.utc).isoformat()})
     assert bad.status_code == 422
+
+
+# Performance: years of daily records per plant stay cheap (the cycle scan is one pass).
+def test_long_history_is_fast():
+    import time
+    events, t, n = [], NOW - timedelta(days=730), 0
+    while t < NOW:
+        events.append(Evidence(f'w{n}', 'USER', 'Watered', {'note': ''}, t.isoformat(), .65))
+        for d in range(1, 7):
+            events.append(Evidence(f's{n}-{d}', 'USER', 'Soil check', {'note': '', 'soil': 'dry' if d == 6 else 'moist'}, (t + timedelta(days=d)).isoformat(), .65))
+        t, n = t + timedelta(days=6.2), n + 1
+    start = time.perf_counter()
+    for _ in range(20):
+        g = SensorlessGuidance().project({'kind': 'monstera'}, {}, events, NOW)
+    assert (time.perf_counter() - start) / 20 < .05 and g['state'] == 'PATTERN'

@@ -37,8 +37,10 @@ class PlantTwinEngine:
 
     def project(self, plant_id: str, evidence: list[Evidence], now: datetime | None = None) -> dict:
         now = now or utcnow()
-        ordered = sorted(evidence, key=lambda e: (parse_time(e.at), e.id))
-        eligible = [e for e in ordered if not e.demo and parse_time(e.at) <= now + CLOCK_SKEW]
+        # Each timestamp parsed once; the sort and the cut-off reuse it.
+        timed = sorted(((parse_time(e.at), e) for e in evidence), key=lambda p: (p[0], p[1].id))
+        ordered = [e for _, e in timed]
+        eligible = [e for t, e in timed if not e.demo and t <= now + CLOCK_SKEW]
         sensor = next((e for e in reversed(eligible) if e.source == 'SENSOR' and e.confidence >= .5), None)
         soil = next((e for e in reversed(eligible) if e.source == 'USER' and e.kind == 'Soil check' and e.value.get('soil') in ('dry', 'slightly_moist', 'moist', 'wet')), None)
         watered = next((e for e in reversed(eligible) if e.source == 'USER' and e.kind == 'Watered'), None)
