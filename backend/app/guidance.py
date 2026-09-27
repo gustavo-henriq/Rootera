@@ -9,6 +9,7 @@ report such as "dry" is never turned into a percentage.
 """
 from statistics import median
 from .domain import parse_time, utcnow
+from .forecast import drying_window
 from .i18n import tr
 from .species import notes_for
 
@@ -71,6 +72,7 @@ class SensorlessGuidance:
                     intervals.append(hours)
         baseline = round(median(intervals) / 24, 1) if len(intervals) >= 3 else None
         since_water = age(last_water) / DAY if last_water else None
+        window = drying_window(plant, notes['dryness'], intervals, last_water.at if last_water else None)
 
         basis: list[str] = []
         tip = None
@@ -137,6 +139,21 @@ class SensorlessGuidance:
                 title, action = _('Around when it usually dries'), 'check_soil'
                 tip = notes['check_tip']
             basis = ['Your watering records', 'Your soil checks']
+        elif window and last_water:
+            # Before a pattern: the drying window (a general estimate, blended with the first
+            # cycles) spares daily checks right after a watering. See forecast.py.
+            span = dict(low=window['low_days'], high=window['high_days'], since=_days(since_water, lang))
+            if window['source'] == 'estimate':
+                reason = _('A general estimate for this species and pot is about {low} to {high} days after watering. It has been {since}. Your own checks will replace it.', **span)
+            else:
+                reason = _('Your first cycles suggest about {low} to {high} days after watering. It has been {since}.', **span)
+            if since_water < window['low_days']:
+                title, action = _('Probably not dry yet'), 'wait'
+            else:
+                title, action = _('Around when it usually dries'), 'check_soil'
+                tip = notes['check_tip']
+            basis = (['Your watering records', 'Your soil checks'] if window['cycles'] else ['Your watering record'])
+            basis += (['Species reference'] if window['source'] != 'cycles' else []) + (['Pot details you added'] if window['factors'] else [])
         else:
             title, action = _('Check the soil today'), 'check_soil'
             if last_soil:
@@ -156,6 +173,7 @@ class SensorlessGuidance:
             'learning': _({'NEW': 'Getting started', 'LEARNING': 'Learning', 'PATTERN': 'Pattern found'}[state]),
             'evidence_ids': [e.id for e in events], 'signals': signals,
             'baseline_days': baseline, 'completed_cycles': len(intervals),
+            'forecast': window,
             'baseline_note': _('Typical time until your first dry check after watering. How often you check affects this number.'),
             'soil': condition, 'soil_checked_at': last_soil.at if recent_soil else None,
             'visual': visual,

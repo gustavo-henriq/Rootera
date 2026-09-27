@@ -1,0 +1,105 @@
+"""Drying window: roughly how many days after a watering this plant's soil is found dry.
+
+Two sources, always labelled:
+- `cycles`: the caregiver's own records. A cycle is a watering followed by the first
+  dry soil check; its length depends on how often they check, so it is a window, not a
+  measured drying time.
+- `estimate`: a general starting point from how deep the species likes to dry, adjusted
+  by the pot, soil, light and place the caregiver declared. It describes plants like this
+  one in general, never this plant. It gives way to the caregiver's own cycles: one or two
+  cycles are blended in (`blend`), and from three on only their own records count.
+
+Before a pattern exists (three cycles), guidance.py uses the window to decide between
+"probably not dry yet" and "around when it usually dries", so a plant is not flagged for
+a check every day right after a watering. From three cycles on, the pattern rule decides.
+"""
+from datetime import timedelta
+from statistics import quantiles
+
+from .domain import parse_time
+
+# General starting windows in days, by how deep the species likes to dry before watering
+# (species.py `dryness`). Rules of thumb for indoor pots, deliberately wide. PRODUCT
+# DECISION PENDING: to be reviewed before these are shown as more than a rough estimate.
+START_WINDOW = {'top': (3, 7), 'half': (5, 10), 'full': (10, 21)}
+
+# Declared context that makes soil dry faster (<1) or slower (>1). Each is a named factor
+# so the app can say what the estimate was adjusted for.
+FACTORS = {
+    'small_pot': ('pot', 'Small pot', .8),
+    'large_pot': ('pot', 'Large pot', 1.2),
+    'terracotta': ('material', 'Terracotta', .85),
+    'no_drainage': ('drainage', 'No', 1.2),
+    'chunky_mix': ('substrate', 'Very draining / chunky', .85),
+    'dense_mix': ('substrate', 'Dense / holds water', 1.2),
+    'direct_sun': ('light', 'Direct sun', .8),
+    'bright_light': ('light', 'Bright indirect light', .9),
+    'low_light': ('light', 'Low light', 1.25),
+    'outdoors': ('location', 'Outdoors', .85),
+}
+# However many factors stack up, the estimate stays within these bounds of the start window.
+MIN_SCALE, MAX_SCALE = .6, 1.6
+FULL_TRUST_CYCLES = 3
+
+
+def _declared(plant: dict, field: str):
+    if field == 'location':
+        return (plant.get('environment') or {}).get('location')
+    return plant.get(field)
+
+
+def estimate(plant: dict, dryness: str | None):
+    """(low, high, factor keys) from the species and declared context, or None."""
+    start = START_WINDOW.get(dryness or '')
+    if start is None:
+        return None
+    used, scale = [], 1.0
+    for key, (field, value, factor) in FACTORS.items():
+        if _declared(plant, field) == value:
+            used.append(key)
+            scale *= factor
+    scale = min(MAX_SCALE, max(MIN_SCALE, scale))
+    return start[0] * scale, start[1] * scale, used
+
+
+def _own_window(days: list[float]):
+    """Middle half of the caregiver's cycles; with few cycles, all of them."""
+    if len(days) >= 5:
+        q = quantiles(days, n=4)
+        return q[0], q[2]
+    return min(days), max(days)
+
+
+def drying_window(plant: dict, dryness: str | None, cycle_hours: list[float], last_water_at: str | None):
+    # A reservoir keeps feeding the soil from below, so surface dryness says little about timing.
+    if plant.get('self_watering') == 'Yes':
+        return None
+    days = [h / 24 for h in cycle_hours]
+    prior = estimate(plant, dryness)
+    factors: list[str] = []
+    if len(days) >= FULL_TRUST_CYCLES:
+        low, high = _own_window(days)
+        source = 'cycles'
+    elif days and prior:
+        weight = len(days) / FULL_TRUST_CYCLES
+        low = (1 - weight) * prior[0] + weight * min(days)
+        high = (1 - weight) * prior[1] + weight * max(days)
+        source, factors = 'blend', prior[2]
+    elif days:
+        # No species reference (a plant added by name): only its own cycles, however few.
+        low, high = min(days), max(days)
+        source = 'cycles'
+    elif prior:
+        low, high = prior[0], prior[1]
+        source, factors = 'estimate', prior[2]
+    else:
+        return None
+    low_days = max(1, int(low))
+    high_days = max(low_days, -int(-high // 1))  # ceil
+    out = {'source': source, 'low_days': low_days, 'high_days': high_days, 'cycles': len(days), 'factors': factors,
+           'check_from': None, 'dry_by': None}
+    if last_water_at:
+        start = parse_time(last_water_at)
+        out['check_from'] = (start + timedelta(days=low_days)).isoformat()
+        out['dry_by'] = (start + timedelta(days=high_days)).isoformat()
+    return out

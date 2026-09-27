@@ -40,6 +40,7 @@ const TABLES = {
   'src/ds/components.tsx': ['sourceText'],
   'src/ds/WhySheet.tsx': ['GROUPS'],
   'src/ds/DepthRuler.tsx': ['DEPTH'],
+  'src/ds/DryWindow.tsx': ['factorLabel'],
   'src/screens/Care.tsx': ['soilHints', 'visualHints', 'AMOUNTS', 'STAGES', 'stageHints'],
   'src/screens/Plant.tsx': ['statusSpeech'],
   'src/screens/Main.tsx': ['tabs', 'CHECK_IN', 'nudgeNames'],
@@ -52,7 +53,7 @@ const TABLES = {
   'src/screens/onboarding/Opening.tsx': ['LINE', 'SUB'],
 };
 // Not prose: identifiers, kinds, latin names and aliases that happen to sit in these tables.
-const VALUES = new Set(['nudgeNames']);
+const VALUES = new Set(['nudgeNames', 'factorLabel']);
 const SKIP = /^([a-z0-9_-]+|[A-Z][a-z]+ [a-z]+( [a-z]+)?|\d+)$/;
 for (const [f, names] of Object.entries(TABLES)) {
   const src = read(f);

@@ -18,6 +18,7 @@ import { GrowthDiary } from './GrowthDiary';
 import { SeedDrop } from '../ds/SeedDrop';
 import { announce, haptic } from '../ds/feedback';
 import { WhySheet } from '../ds/WhySheet';
+import { DryWindow } from '../ds/DryWindow';
 import Svg, { Circle } from 'react-native-svg';
 import { Flight, measure, Rect } from '../ds/Flight';
 import { useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
@@ -337,6 +338,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
 
       <View style={{ gap: space[4] }}>
         <T v="section">{t("What Rootera knows")}</T>
+        {!!g?.forecast && <DryWindow forecast={g.forecast} lastWatered={g.last_watered_at} />}
         <View style={{ gap: space[2] }}>
           <SourceLabel kind="suggested" text={t("Learned from your records")} />
           {g?.baseline_days != null

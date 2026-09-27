@@ -31,6 +31,8 @@ PT = {
     'Give it time to soak in. A soil check in a day or two shows how quickly this pot dries.': 'Dê tempo para a água penetrar. Uma checagem em um ou dois dias mostra a rapidez com que este vaso seca.',
     'In your last {n} cycles, you first found the soil dry about {baseline} after watering. It has been {since}.': 'Nos seus últimos {n} ciclos, você achou a terra seca pela primeira vez cerca de {baseline} depois de regar. Já se passaram {since}.',
     'Probably not dry yet': 'Provavelmente ainda não secou',
+    'A general estimate for this species and pot is about {low} to {high} days after watering. It has been {since}. Your own checks will replace it.': 'Uma estimativa geral para esta espécie e vaso é de {low} a {high} dias depois da rega. Já se passaram {since}. Suas checagens vão substituí-la.',
+    'Your first cycles suggest about {low} to {high} days after watering. It has been {since}.': 'Seus primeiros ciclos indicam de {low} a {high} dias depois da rega. Já se passaram {since}.',
     'Around when it usually dries': 'Perto de quando costuma secar',
     'Check the soil today': 'Cheque a terra hoje',
     'Your last soil check was {ago}. Soil changes day to day, so a new check keeps the picture current.': 'Sua última checagem da terra foi {ago}. A terra muda de um dia para o outro, então uma nova checagem mantém tudo atualizado.',

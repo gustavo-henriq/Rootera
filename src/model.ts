@@ -16,10 +16,15 @@ export interface PlantContext {
 }
 export interface Plant extends PlantContext { id: string; name: string; species: string; kind: PlantKind; photo?: string | null }
 
+/** Drying window from the server (backend/app/forecast.py). */
+export interface Forecast {
+  source: 'cycles' | 'blend' | 'estimate'; low_days: number; high_days: number; cycles: number; factors: string[];
+  check_from: string | null; dry_by: string | null;
+}
 export interface Guidance {
   title: string; reason: string; action: Action; tip: string | null; basis: string[];
   state: 'NEW' | 'LEARNING' | 'PATTERN'; learning: string;
-  baseline_days: number | null; completed_cycles: number; baseline_note: string;
+  baseline_days: number | null; completed_cycles: number; baseline_note: string; forecast?: Forecast | null;
   soil: Soil | null; soil_checked_at: string | null; visual: Visual | null;
   last_watered_at: string | null; last_soil_check_at: string | null;
   reference: { summary: string; when_dry: string; check_tip: string; dryness?: 'top' | 'half' | 'full' | 'unknown' };
