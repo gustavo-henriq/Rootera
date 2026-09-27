@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Props, Routes, Tabs } from '../navigation';
 import { useStore } from '../store';
 import { api } from '../api';
-import { atCapacity, byUrgency, CareEvent, describeEvent, experienceLabel, Garden, known, Plant, searchText } from '../model';
+import { atCapacity, byUrgency, CareEvent, describeEvent, experienceLabel, Garden, known, Plant, planUsed, searchText } from '../model';
 import { useTheme } from '../ds/theme';
 import { fonts, radius, space, type } from '../ds/tokens';
 import { Btn, Chip, FloatingTabBar, Group, Row, SourceLabel, T, Tap, Toast } from '../ds/components';
@@ -122,7 +122,7 @@ const NeedRow = memo(function NeedRow({ plant, title, action, narrow, onOpen, on
     <Tap label={`${plant.name}: ${title}`} onPress={() => onOpen(plant)} scaleTo={.99} ring={radius.control} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
       <Thumb plant={plant} />
       <View style={{ flex: 1, gap: 2 }}>
-        <T v="headline" lines={1}>{plant.name}</T>
+        <T v="headline" lines={1}>{plant.name}{plant.example ? <T v="footnote" tone="ink2">{`  ${t('Example')}`}</T> : null}</T>
         <T v="subhead" tone="ink2" lines={2}>{title ?? t('Start with a soil check')}</T>
       </View>
     </Tap>
@@ -137,10 +137,18 @@ const RestRow = memo(function RestRow({ plant, title, onOpen }: { plant: Plant; 
   return <Tap label={`${plant.name}: ${title}`} onPress={() => onOpen(plant)} scaleTo={.99} ring={radius.inner}
     style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[2], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
     <Thumb plant={plant} size={48} />
-    <View style={{ flex: 1 }}><T v="body" lines={1}>{plant.name}</T><T v="footnote" tone="ink2" lines={1}>{title}</T></View>
+    <View style={{ flex: 1 }}><T v="body" lines={1}>{plant.name}{plant.example ? <T v="footnote" tone="ink2">{`  ${t('Example')}`}</T> : null}</T><T v="footnote" tone="ink2" lines={1}>{title}</T></View>
     <Glyph name="forward" size={15} tone={c.ink3} />
   </Tap>;
 });
+
+/** Marks the example plant wherever it is listed. */
+export function ExampleTag() {
+  const { c } = useTheme();
+  return <View style={{ alignSelf: 'flex-start', paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.inner, borderWidth: 1, borderColor: c.ink3 }}>
+    <T v="caption" tone="ink2">{t('Example')}</T>
+  </View>;
+}
 
 const NEEDS_PREVIEW = 5;
 type TodayItem = { k: 'head'; title: string; count?: number; action?: React.ReactNode } | { k: 'need' | 'rest'; plant: Plant }
@@ -224,6 +232,7 @@ const Tile = memo(function Tile({ plant, width, onPress, needs, where, animate }
   const art = <View ref={artRef} collapsable={false}><PlantArt kind={plant.kind} photo={plant.photo} size={width * .8} /></View>;
   return <Tap label={`${plant.name}, ${needs ? t('needs you') : t('resting')}`} onPress={() => { let done = false; const go = (r?: Rect) => { if (done) return; done = true; onPress(plant, r); }; measure(artRef, go); setTimeout(() => go(), 80); }} ring={radius.card} style={{ width, paddingTop: width * .36, marginBottom: space[4] }}>
     <View style={{ height: width * .9, borderRadius: radius.card, borderCurve: 'continuous', backgroundColor: c.sunken, justifyContent: 'flex-end', padding: space[3], gap: 2 }}>
+      {plant.example && <ExampleTag />}
       <T v="headline" lines={1}>{plant.name}</T>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: needs ? c.clay : c.leafMark }} />
@@ -285,7 +294,7 @@ function Plants({ navigation }: TabProps<'Plants'>) {
             <View style={{ height: col * .9, borderRadius: radius.card, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.ink3, alignItems: 'center', justifyContent: 'center', gap: space[1], padding: space[3] }}>
               <Glyph name={full ? 'lock' : 'plus'} size={24} tone={c.ink2} />
               <T v="subhead" center style={{ fontFamily: fonts.medium }}>{full ? t('Shelf full') : t('Add a plant')}</T>
-              {garden.plan_capacity !== null && <T v="footnote" tone="ink2" center>{t('{n} of {max} on the free plan', { n: garden.plants.length, max: garden.plan_capacity })}</T>}
+              {garden.plan_capacity !== null && <T v="footnote" tone="ink2" center>{t('{n} of {max} on the free plan', { n: planUsed(garden), max: garden.plan_capacity })}</T>}
             </View>
           </Tap>,
       footer: !!needle && !list.length ? <T v="callout" tone="ink2">{t('No plant matches “{q}”.', { q })}</T> : undefined,
@@ -426,7 +435,7 @@ function You({ navigation }: TabProps<'You'>) {
       <Row title={t("Nudges")} detail={`${nudgeText}. ${detail === 'Guided' ? t('Walk me through it') : t('Just tell me')}`} onPress={() => navigation.navigate('Nudges')} />
     </Group>
     <Group header={t("Plan")}>
-      <Row title={garden.plan === 'Plus' ? 'Rootera+' : t('Rootera Free')} detail={garden.plan === 'Plus' ? `${t('Unlimited plants and rooms')}${garden.plan_source === 'demo' ? t(', preview activation') : ''}` : t('{n} of {max} plants used', { n: garden.plants.length, max: garden.plan_capacity ?? '' })} onPress={() => navigation.navigate('Plans')} />
+      <Row title={garden.plan === 'Plus' ? 'Rootera+' : t('Rootera Free')} detail={garden.plan === 'Plus' ? `${t('Unlimited plants and rooms')}${garden.plan_source === 'demo' ? t(', preview activation') : ''}` : t('{n} of {max} plants used', { n: planUsed(garden), max: garden.plan_capacity ?? '' })} onPress={() => navigation.navigate('Plans')} />
     </Group>
     <Group header={t('Language')}>
       <Row title={t('App language')} detail={langNames[langChoice()]} onPress={() => setLangSheet(true)} />

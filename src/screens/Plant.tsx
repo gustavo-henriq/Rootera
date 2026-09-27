@@ -306,6 +306,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
         <View style={{ alignItems: 'center', gap: 2 }}>
           <T v="display" center lines={3} style={titleStyle}>{plant.name}</T>
           <T v="latin" tone="ink2" center>{plant.species}</T>
+          {plant.example && <T v="footnote" tone="ink2" center style={{ marginTop: space[2], maxWidth: 320 }}>{t('Example plant: its history is a demonstration of three watering cycles, so you can see how Rootera learns. It does not count toward your plan. Check in on it, or remove it from the options menu.')}</T>}
           {!!where && <T v="footnote" tone="ink2" style={{ marginTop: space[1] }}>{where}</T>}
         </View>
       </View>
@@ -340,7 +341,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
         <T v="section">{t("What Rootera knows")}</T>
         {!!g?.forecast && <DryWindow forecast={g.forecast} lastWatered={g.last_watered_at} />}
         <View style={{ gap: space[2] }}>
-          <SourceLabel kind="suggested" text={t("Learned from your records")} />
+          {g?.forecast?.source !== 'cycles' && <SourceLabel kind="suggested" text={t("Learned from your records")} />}
           {g?.baseline_days != null
             ? <T v="body">{t('In {n} watering cycles, you first found the soil dry about {days} days after watering. How often you check affects this number.', { n: g.completed_cycles, days: Math.round(g.baseline_days) })}</T>
             : <T v="body">{t("Each watering followed by a dry soil check is one cycle. After three, Rootera shows how long this plant usually takes to dry.")}</T>}

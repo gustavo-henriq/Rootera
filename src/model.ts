@@ -14,7 +14,11 @@ export interface PlantContext {
   room: string; pot: string; light: string; time_with_owner?: string; stage?: string;
   environment?: { location: string; near_window: string }; drainage?: string; material?: string; self_watering?: string; substrate?: string;
 }
-export interface Plant extends PlantContext { id: string; name: string; species: string; kind: PlantKind; photo?: string | null }
+export interface Plant extends PlantContext {
+  id: string; name: string; species: string; kind: PlantKind; photo?: string | null;
+  /** The example plant every account starts with (backend/app/example.py): labelled, outside the plan limit. */
+  example?: boolean;
+}
 
 /** Drying window from the server (backend/app/forecast.py). */
 export interface Forecast {
@@ -41,6 +45,8 @@ export interface Integrations { billing: boolean; identification: boolean; weath
 export interface Garden {
   user_id: string; name: string; onboarded: boolean; reminders: boolean; caregiver?: Caregiver; nudges?: Nudges;
   plan: Plan; annual: boolean; plan_source?: string; plan_capacity: number | null;
+  /** Plants that count toward the plan (the example plant does not). */
+  plan_used?: number;
   plants: Plant[]; events: CareEvent[]; twins: Record<string, Twin>; integrations: Integrations;
   /** False when the snapshot carries only the most recent records; older ones come from /v1/journal. */
   events_complete?: boolean;
@@ -115,8 +121,10 @@ export function byUrgency(garden: Garden): Plant[] {
   return [...garden.plants].sort((a, b) => (rank[garden.twins[a.id]?.guidance.action ?? 'check_soil'] - rank[garden.twins[b.id]?.guidance.action ?? 'check_soil']) || a.name.localeCompare(b.name));
 }
 
+export const planUsed = (garden: Garden) => garden.plan_used ?? garden.plants.filter(p => !p.example).length;
+
 export function atCapacity(garden: Garden) {
-  return garden.plan_capacity !== null && garden.plants.length >= garden.plan_capacity;
+  return garden.plan_capacity !== null && planUsed(garden) >= garden.plan_capacity;
 }
 
 /** Text for matching searches: lower case, no accents or punctuation ("Manjericão!" matches "manjericao"). */

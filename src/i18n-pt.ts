@@ -656,5 +656,7 @@ export const PT: Record<string, string> = {
   "low light": "pouca luz",
   "outdoors": "ao ar livre",
   "today": "hoje",
+  "Example": "Exemplo",
+  "Example plant: its history is a demonstration of three watering cycles, so you can see how Rootera learns. It does not count toward your plan. Check in on it, or remove it from the options menu.": "Planta de exemplo: o histórico dela é uma demonstração de três ciclos de rega, para você ver como o Rootera aprende. Ela não conta no seu plano. Faça checagens nela ou remova pelo menu de opções.",
   "tomorrow": "amanhã",
 };

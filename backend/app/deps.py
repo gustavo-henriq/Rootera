@@ -31,7 +31,8 @@ def integrations(config: Settings) -> dict:
 
 
 def service(request: Request, user: str = Depends(owner), db=Depends(session)) -> GardenService:
-    return GardenService(db, user, integrations(request.app.state.settings), lang_from(request.headers.get('accept-language')))
+    config = request.app.state.settings
+    return GardenService(db, user, integrations(config), lang_from(request.headers.get('accept-language')), seed_example=config.seed_example)
 
 
 def demo_only(config: Settings = Depends(settings)):

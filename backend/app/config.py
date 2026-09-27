@@ -19,6 +19,8 @@ class Settings:
     tokens: dict[str, str] = field(default_factory=dict)
     cors_origins: tuple[str, ...] = ('http://localhost:8081', 'http://127.0.0.1:8081')
     seed_demo: bool = False
+    # Every account gets the example plant once (see example.py).
+    seed_example: bool = True
     revenuecat_secret_key: str = ''
     revenuecat_entitlement: str = 'plus'
     revenuecat_webhook_auth: str = ''
@@ -40,6 +42,7 @@ class Settings:
             tokens=json.loads(os.getenv('ROOTERA_USER_TOKENS', '{}')),
             cors_origins=tuple(o.strip() for o in os.getenv('CORS_ORIGINS', 'http://localhost:8081,http://127.0.0.1:8081').split(',') if o.strip()),
             seed_demo=_flag('ROOTERA_SEED_DEMO', 'false'),
+            seed_example=_flag('ROOTERA_SEED_EXAMPLE', 'true'),
             revenuecat_secret_key=os.getenv('REVENUECAT_SECRET_KEY', ''),
             revenuecat_entitlement=os.getenv('REVENUECAT_ENTITLEMENT', 'plus'),
             revenuecat_webhook_auth=os.getenv('REVENUECAT_WEBHOOK_AUTH', ''),

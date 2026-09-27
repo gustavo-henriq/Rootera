@@ -7,6 +7,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from .db import Calibration, Device, DomainEvent, Plant, Profile, SensorObservation, TwinSnapshot, UserObservation
 from .domain import Evidence, PlantTwinEngine, normalize_adc, utcnow
+from .example import is_example, seed_example
 from .guidance import SensorlessGuidance
 from .schemas import PLAN_CAPACITY, CaregiverProfile, NudgePrefs, CalibrationIn, PlantIn, PlantUpdate, SensorIn, UserObservationIn, normalize_plan
 
@@ -31,9 +32,9 @@ def digest(token: str) -> str:
 class GardenService:
     """Use cases for one owner's garden. Routes stay thin; rules live here and in the Twin."""
 
-    def __init__(self, db: Session, owner: str, integrations: dict | None = None, lang: str = 'en'):
+    def __init__(self, db: Session, owner: str, integrations: dict | None = None, lang: str = 'en', seed_example: bool = False):
         # `lang` words the garden snapshot's guidance; stored twins and change reports stay in English.
-        self.db, self.owner, self.lang = db, owner, lang
+        self.db, self.owner, self.lang, self.seed_example = db, owner, lang, seed_example
         self.engine = PlantTwinEngine()
         self.integrations = integrations or {}
 
@@ -88,7 +89,8 @@ class GardenService:
                 raise HTTPException(409, 'Plant ID already used with different data')
             return existing.data
         capacity = PLAN_CAPACITY[normalize_plan(profile.data.get('plan'))]
-        if capacity is not None and len(self.active_plants()) >= capacity:
+        # The example plant never takes one of the plan's spots.
+        if capacity is not None and len([p for p in self.active_plants() if not is_example(p)]) >= capacity:
             raise HTTPException(409, 'Plant limit reached for your plan.')
         self.db.add(Plant(id=payload.id, owner_id=self.owner, data=data))
         self.db.flush()
@@ -254,6 +256,11 @@ class GardenService:
     # ---- read model --------------------------------------------------------
     def snapshot(self):
         profile = self.profile()
+        if self.seed_example and not profile.data.get('example_seeded'):
+            # Once per account; removing the example later does not bring it back.
+            plant_id = seed_example(self.db, self.owner, self.lang)
+            profile.data = {**profile.data, 'example_seeded': True}
+            self.rebuild(plant_id)
         plants = self.active_plants()
         ids = {p.id for p in plants}
         observations = self.db.scalars(select(UserObservation).where(UserObservation.owner_id == self.owner).order_by(UserObservation.observed_at)).all()
@@ -281,7 +288,7 @@ class GardenService:
         mine = [o for o in observations if o.plant_id in ids]
         view = self.profile_view(profile.data)
         capacity = PLAN_CAPACITY[view['plan']]
-        return {'version': 1, 'user_id': self.owner, **view, 'plan_capacity': capacity,
+        return {'version': 1, 'user_id': self.owner, **view, 'plan_capacity': capacity, 'plan_used': sum(not is_example(p) for p in plants),
                 'plants': [p.data for p in plants],
                 'events': [self.event_view(o) for o in mine[-EVENT_WINDOW:]], 'events_complete': len(mine) <= EVENT_WINDOW,
                 'sensors': sensors, 'twins': twins, 'integrations': self.integrations}

@@ -21,7 +21,7 @@ def database_url(tmp_path):
 
 @pytest.fixture
 def client(database_url):
-    with TestClient(create_app(database_url, demo=False, tokens=TOKENS)) as client:
+    with TestClient(create_app(database_url, demo=False, tokens=TOKENS, seed_example=False)) as client:
         yield client
 
 

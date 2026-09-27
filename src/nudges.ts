@@ -54,7 +54,8 @@ export async function scheduleNudges(garden: Garden) {
     const [hour, minute] = (garden.nudges.time ?? '08:00').split(':').map(Number);
     const detail = garden.caregiver?.detail ?? 'Guided';
     if (garden.nudges.kinds.includes('soil_check')) {
-      const needs = byUrgency(garden).filter(p => { const a = garden.twins[p.id]?.guidance.action; return a === 'check_soil' || a === 'log_water'; });
+      // The example plant never sends a nudge to the phone.
+      const needs = byUrgency(garden).filter(p => !p.example).filter(p => { const a = garden.twins[p.id]?.guidance.action; return a === 'check_soil' || a === 'log_water'; });
       const first = needs[0];
       if (first) {
         const g = garden.twins[first.id]?.guidance;
@@ -71,7 +72,7 @@ export async function scheduleNudges(garden: Garden) {
         });
       }
     }
-    if (garden.nudges.kinds.includes('leaves') && garden.plants.length) {
+    if (garden.nudges.kinds.includes('leaves') && garden.plants.some(p => !p.example)) {
       await N.scheduleNotificationAsync({
         content: { title: t('How do the leaves look?'), body: detail === 'Guided' ? t('A quick look now and then helps spot changes early. Note anything new in Rootera.') : t('Take a quick look at the leaves.') },
         trigger: { type: N.SchedulableTriggerInputTypes.WEEKLY, weekday: 1, hour, minute },
