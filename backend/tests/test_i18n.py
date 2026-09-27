@@ -52,3 +52,11 @@ def test_change_report_stays_english(planted):
     g = planted.get('/v1/garden', headers=PT_HEADERS).json()['twins']['aloe-1']['guidance']
     assert g['title'] == tr('You found the soil dry', 'pt')
     assert g['reason'] == SPECIES_PT['aloe']['when_dry']
+
+
+def test_errors_follow_the_app_language(planted):
+    missing = planted.patch('/v1/plants/nope', json={'name': 'x'}, headers=PT_HEADERS)
+    assert missing.status_code == 404 and missing.json()['detail'] == 'Planta não encontrada.'
+    assert planted.patch('/v1/plants/nope', json={'name': 'x'}, headers=ALICE).json()['detail'] == 'Plant not found'
+    # The app recognises the plan limit by the word "limit" in either language.
+    assert 'Limite' in tr('Plant limit reached for your plan.', 'pt')

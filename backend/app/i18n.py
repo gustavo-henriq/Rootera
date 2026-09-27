@@ -50,6 +50,18 @@ PT = {
     'today': 'hoje',
     'yesterday': 'ontem',
     '{n} days ago': 'há {n} dias',
+    # Error details the app may show as they are
+    'Plant not found': 'Planta não encontrada.',
+    'Record not found': 'Registro não encontrado.',
+    'Plant limit reached for your plan.': 'Limite de plantas do seu plano atingido.',
+    'Observation ID reused with different data': 'Este registro já foi salvo com outros dados.',
+    'Plant ID already used with different data': 'Esta planta já foi salva com outros dados.',
+    'Invalid user token': 'Sessão inválida. Abra o app de novo.',
+    'Photo identification is not connected yet.': 'A identificação por foto ainda não está conectada.',
+    'Could not reach Pl@ntNet.': 'Não foi possível falar com o Pl@ntNet.',
+    'The photo could not be read.': 'Não foi possível ler a foto.',
+    'RevenueCat is not configured on the server.': 'A loja ainda não está configurada no servidor.',
+    'Could not reach RevenueCat.': 'Não foi possível falar com a loja.',
     # Soil words used inside sentences
     'dry': 'seca', 'slightly moist': 'levemente úmida', 'moist': 'úmida', 'very wet': 'encharcada',
 }

@@ -4,13 +4,16 @@ Layers: routes (HTTP) -> GardenService (use cases) -> Plant Twin (domain rules)
 -> SQLAlchemy models (SQLite locally, PostgreSQL through DATABASE_URL).
 """
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import select
 from .config import Settings
 from .db import Base, Profile, make_database
 from .deps import integrations
+from .i18n import lang_from, tr
 from .routes import analytics, devices, garden, integrations as integration_routes
 from .schemas import PlantIn
 from .service import GardenService
@@ -48,6 +51,14 @@ def create_app(database_url=None, demo=None, tokens=None, **overrides):
         with factory() as db:
             db.execute(select(1))
         return {'status': 'ok', 'demo': config.demo, 'twin_engine': 'rules-1.0.0', 'guidance': 'sensorless-2.0', 'integrations': integrations(config)}
+
+    @app.exception_handler(StarletteHTTPException)
+    async def localized_error(request: Request, exc: StarletteHTTPException):
+        # The app shows `detail` as it is, so it follows the app's language like the guidance.
+        detail = exc.detail
+        if isinstance(detail, str):
+            detail = tr(detail, lang_from(request.headers.get('accept-language')))
+        return JSONResponse({'detail': detail}, status_code=exc.status_code, headers=getattr(exc, 'headers', None))
 
     app.include_router(garden.router)
     app.include_router(integration_routes.router)

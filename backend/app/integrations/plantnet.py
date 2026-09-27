@@ -27,7 +27,8 @@ def kind_for(scientific: str, family: str = '') -> str:
     return 'cactus' if family == 'Cactaceae' else 'other'
 
 
-def identify(image_base64: str, organ: str, api_key: str, client: httpx.Client | None = None) -> list[dict]:
+def identify(image_base64: str, organ: str, api_key: str, client: httpx.Client | None = None, lang: str = 'en') -> list[dict]:
+    """`lang` asks Pl@ntNet for common names in the app's language ('en' or 'pt')."""
     if not api_key:
         raise IdentificationUnavailable('Photo identification is not connected yet.')
     try:
@@ -37,7 +38,7 @@ def identify(image_base64: str, organ: str, api_key: str, client: httpx.Client |
     own = client is None
     client = client or httpx.Client(timeout=20)
     try:
-        response = client.post(API, params={'api-key': api_key, 'nb-results': 3, 'lang': 'en'},
+        response = client.post(API, params={'api-key': api_key, 'nb-results': 3, 'lang': 'pt' if lang == 'pt' else 'en'},
                                files={'images': ('plant.jpg', image, 'image/jpeg')}, data={'organs': organ})
     except httpx.HTTPError as error:
         raise IdentificationUnavailable('Could not reach Pl@ntNet.') from error

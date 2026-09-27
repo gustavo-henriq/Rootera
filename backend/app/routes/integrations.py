@@ -52,7 +52,7 @@ def demo_plan(payload: DemoPlanIn, s=Depends(service)):
 @router.post('/identify')
 def identify(payload: IdentifyIn, s=Depends(service), config: Settings = Depends(settings)):
     try:
-        return {'results': plantnet.identify(payload.image_base64, payload.organ, config.plantnet_api_key), 'source': 'Pl@ntNet'}
+        return {'results': plantnet.identify(payload.image_base64, payload.organ, config.plantnet_api_key, lang=s.lang), 'source': 'Pl@ntNet'}
     except plantnet.IdentificationUnavailable as error:
         raise HTTPException(503, str(error))
     except ValueError as error:
