@@ -1,4 +1,5 @@
 import { NativeModules, Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { CareEvent, Caregiver, Garden, Nudges, Plan, Plant, PlantKind } from './model';
 import { lang, t } from './i18n';
 
@@ -10,7 +11,11 @@ function apiUrl() {
   const configured = process.env.EXPO_PUBLIC_API_URL;
   if (configured === 'metro') {
     const bundle: string | undefined = Platform.OS === 'web' ? (typeof window !== 'undefined' ? window.location.href : undefined) : NativeModules.SourceCode?.scriptURL;
-    const origin = bundle?.match(/^(https?:\/\/[^/]+)/)?.[1];
+    // With the new architecture NativeModules.SourceCode can be missing; Expo still knows
+    // the dev server it loaded from ("192.168.0.129:8081", or a tunnel host served over https).
+    const host = Constants.expoConfig?.hostUri;
+    const fromHost = host ? `${/\.exp\.direct$|ngrok/.test(host.split(':')[0]) ? 'https' : 'http'}://${host}` : undefined;
+    const origin = bundle?.match(/^(https?:\/\/[^/]+)/)?.[1] ?? fromHost;
     if (origin) return `${origin}/rootera-api`;
   }
   if (configured && configured !== 'metro') return configured;
