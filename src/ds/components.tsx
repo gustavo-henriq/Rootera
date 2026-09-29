@@ -129,13 +129,13 @@ export function Chip({ label, selected, onPress, count }: { label: string; selec
  * decorative icons. Reads like a catalogue index, not a settings template.
  */
 /** `accent` draws the rules in a thin leaf green, for a short list of links set apart on a page. */
-export function Group({ header, footer, accent, children }: React.PropsWithChildren<{ header?: string; footer?: string; accent?: boolean }>) {
+export function Group({ header, footer, children }: React.PropsWithChildren<{ header?: string; footer?: string }>) {
   const { c } = useTheme();
   const rows = React.Children.toArray(children).filter(Boolean);
   return <View>
     {header && <T v="section" style={{ marginBottom: space[2] }}>{header}</T>}
-    <View style={{ borderTopWidth: accent ? 1 : StyleSheet.hairlineWidth, borderColor: accent ? c.leafMark : c.ink3 }}>
-      {rows.map((row, i) => <View key={i} style={{ borderBottomWidth: accent ? 1 : StyleSheet.hairlineWidth, borderColor: accent ? c.leafMark : c.hairline }}>{row}</View>)}
+    <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>
+      {rows.map((row, i) => <View key={i} style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>{row}</View>)}
     </View>
     {footer && <T v="footnote" tone="ink3" style={{ marginTop: space[2] }}>{footer}</T>}
   </View>;

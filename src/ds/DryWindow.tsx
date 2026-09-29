@@ -26,7 +26,7 @@ function dayName(at: number, now: number) {
   return days <= 0 ? t('today') : days === 1 ? t('tomorrow') : new Date(at).toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'short' });
 }
 
-export function DryWindow({ forecast: f, lastWatered, now = Date.now() }: { forecast: Forecast; lastWatered: string | null; now?: number }) {
+export function DryWindow({ forecast: f, lastWatered, now = Date.now(), compact }: { forecast: Forecast; lastWatered: string | null; now?: number; compact?: boolean }) {
   const { c } = useTheme();
   const own = f.source === 'cycles';
   const range = `${f.low_days}–${f.high_days}`;
@@ -59,7 +59,7 @@ export function DryWindow({ forecast: f, lastWatered, now = Date.now() }: { fore
       </View>
     </View>
     <T v="subhead" tone="ink2" style={{ marginTop: space[2] }}>{next}</T>
-    {!!f.factors.length && <T v="footnote" tone="ink2">{t('Adjusted for: {list}.', { list: f.factors.map(k => t(factorLabel[k] ?? k)).join(', ') })}</T>}
-    {!own && <T v="footnote" tone="ink2">{t('Your own checks replace this estimate after three watering cycles.')}</T>}
+    {!compact && !!f.factors.length && <T v="footnote" tone="ink2">{t('Adjusted for: {list}.', { list: f.factors.map(k => t(factorLabel[k] ?? k)).join(', ') })}</T>}
+    {!compact && !own && <T v="footnote" tone="ink2">{t('Your own checks replace this estimate after three watering cycles.')}</T>}
   </View>;
 }

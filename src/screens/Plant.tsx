@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Props } from '../navigation';
 import { api } from '../api';
@@ -7,8 +7,7 @@ import { useStore } from '../store';
 import { ago, CareEvent, describeEvent, known, Plant as PlantT, soilLabel, Twin, visualLabel } from '../model';
 import { useCompact, useTheme } from '../ds/theme';
 import { fonts, radius, space } from '../ds/tokens';
-import { Btn, Glass, Group, Row, SourceLabel, SourceMark, T, Tap, Toast } from '../ds/components';
-import { Glyph, GlyphName } from '../ds/icons';
+import { Btn, Group, Row, T, Tap, Toast } from '../ds/components';
 import { Page } from '../ds/Page';
 import { Ground, PlantArt } from '../ds/plant';
 import { Appear, DrawLine, LeafBurst, pivot, Pop, Settle, WaterDrops } from '../ds/motion';
@@ -142,17 +141,6 @@ function Specimen({ plant, twin, width, drops, events, arriving, artRef }: { pla
   </View>;
 }
 
-function Figure({ value, unit, caption }: { value: string; unit?: string; caption: string }) {
-  const narrow = useWindowDimensions().width < 370;
-  const { c } = useTheme();
-  return <View style={{ flex: 1, gap: 2 }}>
-    {value
-      ? <T v="figure" lines={1} style={narrow ? { fontSize: 24, lineHeight: 28 } : undefined}>{value}{!!unit && <T v="subhead" tone="ink2"> {unit}</T>}</T>
-      : <View accessibilityElementsHidden style={{ height: narrow ? 28 : 38, justifyContent: 'center' }}><View style={{ width: 22, height: 2, backgroundColor: c.ink3 }} /></View>}
-    <T v="footnote" tone="ink2">{caption}</T>
-  </View>;
-}
-
 /**
  * Three watering cycles make a pattern. Each finished cycle closes one arc of the ring,
  * so the next step toward "what Rootera learned" is visible (goal gradient), and the new
@@ -191,13 +179,6 @@ function Milestone({ plant, stage, onDone }: { plant: PlantT; stage: string; onD
   </Pressable>;
 }
 
-function since(iso: string) {
-  const m = Math.max(0, (Date.now() - new Date(iso).getTime()) / 60000);
-  return m < 2 ? { value: t('Now'), now: true } : m < 60 ? { value: String(Math.round(m)), unit: 'min' } : m < 1440 ? { value: String(Math.round(m / 60)), unit: 'h' } : { value: String(Math.round(m / 1440)), unit: m < 2880 ? t('day') : t('days') };
-}
-
-
-
 export function Plant({ navigation, route }: Props<'Plant'>) {
   const { garden, archivePlant, removeCare, updatePlant } = useStore();
   const { c } = useTheme();
@@ -207,6 +188,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
   const [width, setWidth] = useState(0);
   const [menu, setMenu] = useState(false);
   const [why, setWhy] = useState(false);
+  const [notes, setNotes] = useState(false);
   const [milestone, setMilestone] = useState<string | null>(null);
   const shownMilestone = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -267,11 +249,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
   const recentHere = garden.events.filter(e => e.plantId === plant.id).slice().reverse();
   const seen = new Set(recentHere.map(e => e.id));
   const events = [...recentHere, ...older.filter(e => !seen.has(e.id))].sort((a, b) => b.at.localeCompare(a.at));
-  const water = g?.last_watered_at ? Math.max(0, Math.floor((Date.now() - new Date(g.last_watered_at).getTime()) / 86400000)) : null;
-  const soil = g?.last_soil_check_at ? since(g.last_soil_check_at) : null;
   const where = [known(plant.stage) ? t(`${plant.stage} plant`) : null, known(plant.environment?.location) ? t(plant.environment!.location) : null, garden.plan === 'Plus' && known(plant.room) ? plant.room : null].filter(Boolean).join(', ');
-  const lastWater = events.find(e => e.type === 'Watered');
-  const approx = !!lastWater && (!!lastWater.approximate || !!lastWater.note?.startsWith('Approximate') || !!lastWater.note?.startsWith(t('Approximate')));
   // Long names step down in size and stop at three lines instead of pushing the page down.
   const titleStyle = plant.name.length > 40 ? { fontSize: 26, lineHeight: 31 } : plant.name.length > 22 ? { fontSize: 32, lineHeight: 36 } : undefined;
 
@@ -304,76 +282,53 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
           action={saved.undo?.ids.length ? { title: busy ? t('Undoing…') : t('Undo'), onPress: () => void undo() } : undefined} />
       </Animated.View>}
 
+      {/* The page reads top to bottom as: the plant, what to do now, its rhythm, then the rest.
+          Everything else (history, photos, species notes) is one tap away in plain rows. */}
       <View onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ alignItems: 'center', gap: space[4] }}>
         <LeafBurst run={burst} />
         {!!width && <Specimen plant={plant} twin={twin} width={width} drops={drops} events={events} artRef={flyFrom ? artRef : undefined} arriving={flyFrom ? flight !== 'done' : undefined} />}
         <View style={{ alignItems: 'center', gap: 2 }}>
           <T v="display" center lines={3} style={titleStyle}>{plant.name}</T>
           <T v="latin" tone="ink2" center>{plant.species}</T>
-          {plant.example && <T v="footnote" tone="ink2" center style={{ marginTop: space[2], maxWidth: 320 }}>{t('Example plant: its history is a demonstration of three watering cycles, so you can see how Rootera learns. It does not count toward your plan. Check in on it, or remove it from the options menu.')}</T>}
-          {!!where && <T v="footnote" tone="ink2" style={{ marginTop: space[1] }}>{where}</T>}
+          {!!where && <T v="footnote" tone="ink2">{where}</T>}
+          {plant.example && <T v="footnote" tone="ink2" center style={{ marginTop: space[2], maxWidth: 320 }}>{t('Example plant, with three demo cycles. It does not count toward your plan.')}</T>}
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: space[4], paddingVertical: space[4], borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>
-        <Figure {...(water === null ? { value: '', caption: t('No watering yet') } : water === 0 ? { value: t('Today'), caption: t('Last watered') } : { value: `${approx ? '~' : ''}${water}`, unit: water === 1 ? t('day') : t('days'), caption: approx ? t('Since watering (approx.)') : t('Since watering') })} />
-        <Figure {...(soil ? { value: soil.value, unit: soil.unit, caption: soil.now ? t('Soil checked') : t('Since soil check') } : { value: '', caption: t('No soil check yet') })} />
-        {g?.baseline_days != null
-          ? <Figure value={`~${Math.round(g.baseline_days)}`} unit={t('days')} caption={t("Usually dry after")} />
-          : <CycleRing done={Math.min(g?.completed_cycles ?? 0, 3)} />}
-      </View>
-
-      <View style={{ gap: space[3] }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <SourceLabel kind="suggested" />
-          {!!g?.basis?.length && <Tap label={t("Why this suggestion?")} onPress={() => setWhy(true)} ring={radius.inner} style={{ minHeight: 44, justifyContent: 'center', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      {/* What to do now: the next step and the one button that acts on it. */}
+      <View style={{ gap: space[2] }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[3] }}>
+          <T v="title" style={{ flex: 1 }}>{g?.title ?? t('Start with a soil check')}</T>
+          {!!g?.basis?.length && <Tap label={t("Why this suggestion?")} onPress={() => setWhy(true)} ring={radius.inner} style={{ minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' }}>
             <T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{t("Why?")}</T>
           </Tap>}
         </View>
-        <T v="title">{g?.title ?? t('Start with a soil check')}</T>
         <T v="body" tone="ink2">{g?.reason ?? t('A first soil check tells Rootera where this plant is starting from.')}</T>
-        {!!g?.tip && <View style={{ padding: space[4], borderRadius: radius.control, backgroundColor: c.sunken, gap: 4 }}>
-          <T v="subhead" style={{ fontFamily: fonts.medium }}>{g.action === 'log_water' ? t('How to water') : g.action === 'check_soil' ? t('How to check') : t('Tip')}</T>
-          <T v="subhead" tone="ink2">{g.tip}</T>
-        </View>}
         {!!error && <Toast tone="error" title={t("Not saved")} text={error} onClose={() => setError('')} />}
         {/* One check-in covers soil, watering and leaves; resting plants can still be checked. */}
         <Btn title={t("Check in")} icon="soil" kind={g?.action === 'wait' ? 'outline' : 'filled'} onPress={() => navigation.navigate('Care', { id: plant.id, mode: 'checkin' })} style={{ marginTop: space[2] }} />
       </View>
 
-      <View style={{ gap: space[4] }}>
-        <T v="section">{t("What Rootera knows")}</T>
-        {!!g?.forecast && <DryWindow forecast={g.forecast} lastWatered={g.last_watered_at} />}
-        <View style={{ gap: space[2] }}>
-          {g?.forecast?.source !== 'cycles' && <SourceLabel kind="suggested" text={t("Learned from your records")} />}
-          {g?.baseline_days != null
-            ? <T v="body">{t('In your last {n} watering cycles, the soil dried about {days} days after watering, judging by your checks. How often you check affects this number.', { n: g.pattern_cycles ?? g.completed_cycles, days: Math.round(g.baseline_days) })}</T>
-            : <T v="body">{t("Each watering followed by a dry soil check is one cycle. After three, Rootera shows how long this plant usually takes to dry.")}</T>}
-        </View>
-        <View style={{ gap: space[2] }}>
-          <SourceLabel kind="species" text={plant.kind === 'other' ? t('No species notes yet') : t('{genus} in general', { genus: plant.species.split(' ')[0] })} />
-          <T v="body">{plant.kind === 'other' ? t('Guidance for this plant comes from your own checks.') : g?.reference.summary}</T>
-        </View>
-      </View>
-
-      <View style={{ gap: space[3] }}>
-        <T v="section">{t("Care calendar")}</T>
+      {/* Its rhythm: when it usually dries, and the month of care that taught Rootera that. */}
+      <View style={{ gap: space[5] }}>
+        {g?.forecast ? <DryWindow forecast={g.forecast} lastWatered={g.last_watered_at} compact /> : <CycleRing done={Math.min(g?.completed_cycles ?? 0, 3)} />}
         <CareCalendar events={events} />
       </View>
 
-      {/* The plant's records and photos live in the Journal; here they are two plain rows. */}
-      <Group accent>
+      <Group>
         <Row title={t('Plant history')} detail={events.length ? t('{n} records, the latest {ago}', { n: events.length, ago: ago(events[0].at) }) : t('Nothing recorded yet')}
           onPress={() => navigation.navigate('Main', { screen: 'Journal', params: { plant: plant.id, show: 'history' } } as never)} />
         <Row title={t('Plant photos')} detail={garden.plan === 'Plus' ? t('Growth diary') : t('Growth diary, with Rootera+')}
           onPress={() => navigation.navigate('Main', { screen: 'Journal', params: { plant: plant.id, show: 'photos' } } as never)} />
+        {plant.kind !== 'other' && !!g?.reference.summary && <Row title={t('{genus} in general', { genus: plant.species.split(' ')[0] })} detail={notes ? g.reference.summary : t('What the species usually likes')}
+          onPress={() => setNotes(n => !n)} />}
       </Group>
     </Page>
 
     <FarewellSheet plant={plant} visible={confirm} onClose={() => setConfirm(false)} onConfirm={leave} />
     {!!milestone && <Milestone plant={plant} stage={milestone} onDone={() => setMilestone(null)} />}
     {flight === 'flying' && flyFrom && landing && <Flight kind={plant.kind} photo={plant.photo} from={flyFrom} to={landing} onDone={() => setFlight('done')} />}
-    <WhySheet visible={why} onClose={() => setWhy(false)} title={g?.title ?? ''} reason={g?.reason ?? ''} basis={g?.basis ?? []} />
+    <WhySheet visible={why} onClose={() => setWhy(false)} title={g?.title ?? ''} reason={[g?.reason, g?.tip].filter(Boolean).join('\n\n')} basis={g?.basis ?? []} />
     <ActionSheet visible={menu} title={plant.name} onClose={() => setMenu(false)} actions={[
       { label: t('Edit details'), icon: 'edit', onPress: () => navigation.navigate('PlantForm', { editId: plant.id }) },
       { label: t('Remove from garden'), icon: 'trash', destructive: true, onPress: () => setConfirm(true) },
