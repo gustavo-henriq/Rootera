@@ -28,9 +28,11 @@ def test_watering_every_three_days_soaks_a_succulent_and_teaches_nothing():
     assert s['cycles'] == 0 and s['window_source'] == 'estimate'
 
 
-def test_a_forgotten_pothos_goes_thirsty():
-    s = run('pothos', 'forgetful')['summary']
+def test_a_forgotten_peace_lily_goes_thirsty_but_a_pothos_copes():
+    s = run('peace-lily', 'forgetful')['summary']
     assert s['dry_days'] > 10 and s['unwell_days'] > 0
+    # Pothos dries to a finger's depth and forgives a two-week gap (Clemson HGIC).
+    assert run('pothos', 'forgetful')['summary']['unwell_days'] == 0
 
 
 def test_pot_and_place_change_the_virtual_plant():

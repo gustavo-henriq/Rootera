@@ -43,7 +43,7 @@ def test_own_cycles_take_over_from_three():
     assert 2 <= one['low_days'] < START_WINDOW['half'][0]
     three = project(cycles(2, 3, 2), {'kind': 'monstera', 'pot': 'Small pot'})['forecast']
     # Each first check already found it dry, so it may have dried a little sooner.
-    assert three['source'] == 'cycles' and (three['low_days'], three['high_days']) == (2, 2)
+    assert three['source'] == 'cycles' and (three['low_days'], three['high_days']) == (2, 3)
     assert three['factors'] == []
 
 

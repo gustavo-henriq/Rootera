@@ -22,14 +22,21 @@ from .soil import DECISIVE, summarize
 from .species import notes_for
 
 # Days after a thorough watering until each layer is dry, for a medium plastic pot with
-# drainage, regular mix, bright indirect light, indoors. By how deep the species dries
-# (species.py `dryness`). Calibrated against extension guidance on how often these groups
-# need water (see docs in lab_calibration.md); the virtual plant, not a rule of the app.
+# drainage, regular mix, bright indirect light, indoors. "top" is the surface (a fingertip),
+# "middle" about 5 cm down (a finger), "bottom" the bottom of the pot (a skewer). By how deep
+# the species dries (species.py `dryness`), calibrated so a caregiver who checks before
+# watering ends up at the intervals extension services give (docs/calibracao-shipaton.md):
+# - top (peace lily, fern, calathea): top inch dry, about weekly (SDSU Extension);
+# - half (monstera, pothos, rubber plant): top 1-2 inches dry, every 7-14 days (UMN
+#   Extension for monstera, Clemson HGIC for pothos);
+# - full (aloe, snake plant, ZZ, cacti): dry through, every 2-3 weeks in the growing season
+#   (Virginia Tech SPES-804: cacti and succulents once or twice a month).
+# The virtual plant, not a rule of the app: Rootera never reads these numbers.
 TRUTH_DAYS = {
-    'top': {'top': 4.0, 'middle': 7.0, 'bottom': 10.0},     # pothos, peace lily, fern…
-    'half': {'top': 4.0, 'middle': 8.0, 'bottom': 12.0},    # monstera, rubber plant…
-    'full': {'top': 3.0, 'middle': 8.0, 'bottom': 14.0},    # aloe, snake plant, cacti (gritty mix)
-    'unknown': {'top': 4.0, 'middle': 8.0, 'bottom': 12.0},
+    'top': {'top': 5.5, 'middle': 8.0, 'bottom': 11.0},
+    'half': {'top': 4.5, 'middle': 9.0, 'bottom': 13.0},
+    'full': {'top': 3.5, 'middle': 9.0, 'bottom': 16.0},
+    'unknown': {'top': 4.5, 'middle': 9.0, 'bottom': 13.0},
 }
 # The physics of the pot and place, per layer (top, middle, bottom). Kept apart from the
 # estimator's factors in forecast.py, so the lab is not grading the app against itself.
@@ -125,7 +132,8 @@ def simulate(run: LabRun, start: datetime | None = None) -> dict:
         # The morning check: by the method, or forced; the answers come from the plant unless typed in.
         due = run.method == 'rootera' and (guidance is None or guidance['action'] in ('check_soil', 'log_water') or d - last_check >= max(run.check_every, 3))
         due = due or (run.method != 'rootera' and d - last_check >= run.check_every)
-        checked = o.check if o.check is not None else (due or o.layers is not None)
+        # Typed answers always make a check; otherwise the tester's choice, then the method.
+        checked = True if o.layers is not None else o.check if o.check is not None else due
         if checked:
             layers = o.layers or soil
             evidence.append(Evidence(f'lab-c{d}', 'USER', 'Soil check', {'soil': summarize(layers, dryness), 'layers': layers, 'note': ''}, at(9), .65))

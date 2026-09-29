@@ -28,7 +28,9 @@ SPECIES_NOTES = {
         'thirst_sign': 'Curling or drooping leaves can mean the soil stayed dry for a while.',
     },
     'pothos': {
-        'dryness': 'top',
+        # Dry about 3-5 cm down (a finger's depth), not just the surface: Clemson HGIC,
+        # 'How to Grow Pothos Indoors'; growers agree on the top 1-2 inches, every 7-10 days.
+        'dryness': 'half',
         'summary': 'Forgiving and adaptable; recovers well from a short dry spell.',
         'when_dry': 'Pothos usually does well when the top few centimetres have dried.',
         'check_tip': 'Touch the top 3-5 cm of soil. Dry at that depth is usually the cue for a pothos.',

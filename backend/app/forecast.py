@@ -130,7 +130,9 @@ def drying_window(plant: dict, dryness: str | None, cycle_hours: list[float], la
         return None
     # Whole days, to the nearest: 4.96 days reads as 5, not 4.
     low_days = max(1, _round(low))
-    high_days = max(low_days, _round(high))
+    # Checks come a day apart at best, so a window is never narrower than a day ("4-4 days"
+    # would claim a precision the records cannot have).
+    high_days = max(low_days + 1, _round(high))
     trust = 1.0 if source == 'cycles' else min(1.0, len(days) / FULL_TRUST_CYCLES)
     check_after = max(1, _round(low_days * (ESTIMATE_FIRST_CHECK + (1 - ESTIMATE_FIRST_CHECK) * trust)))
     out = {'source': source, 'low_days': low_days, 'high_days': high_days, 'check_after_days': check_after,

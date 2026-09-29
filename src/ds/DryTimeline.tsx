@@ -19,6 +19,17 @@ import { pivot } from './motion';
 
 const DAY = 86400000;
 
+/**
+ * Where a plant is in its drying, the same phases the guidance uses (guidance.py): before
+ * the first check is worth it, an early check (a general estimate opens its checks before
+ * the window), inside the window, past it. Every surface that talks about the window uses this.
+ */
+export type Phase = 'before' | 'early' | 'window' | 'past';
+export function phase(f: Forecast, since: number): Phase {
+  const checkAfter = f.check_after_days ?? f.low_days;
+  return since < checkAfter ? 'before' : since < f.low_days ? 'early' : since <= f.high_days ? 'window' : 'past';
+}
+
 /** "today", "tomorrow", or the weekday and date. */
 export function dayName(at: number, now: number) {
   const days = Math.round((new Date(new Date(at).toDateString()).getTime() - new Date(new Date(now).toDateString()).getTime()) / DAY);
@@ -44,9 +55,10 @@ export function DryTimeline({ forecast: f, lastWatered, now = Date.now() }: { fo
   const own = f.source === 'cycles';
   const span = Math.max(f.high_days * 1.25, since + 1, f.high_days + 1);
   const x = (d: number) => Math.min(1, d / span) * w;
-  const until = Math.max(1, Math.round(f.low_days - since)), past = Math.max(1, Math.round(since - f.high_days));
-  const state = since < f.low_days ? tn(until, '{n} day to its window', '{n} days to its window')
-    : since <= f.high_days ? t('In its drying window') : tn(past, 'Past its window by {n} day', 'Past its window by {n} days');
+  const p = phase(f, since);
+  const until = Math.max(1, Math.round((f.check_after_days ?? f.low_days) - since)), past = Math.max(1, Math.round(since - f.high_days));
+  const state = p === 'before' ? tn(until, '{n} day until a check is worth it', '{n} days until a check is worth it')
+    : p === 'early' ? t('Worth an early check') : p === 'window' ? t('In its drying window') : tn(past, 'Past its window by {n} day', 'Past its window by {n} days');
   const dryBy = f.dry_by ? new Date(f.dry_by).getTime() : new Date(lastWatered!).getTime() + f.high_days * DAY;
   fillW.value = Math.max(1, x(since));
   return <View accessible accessibilityLabel={`${state}. ${t('Usually dry {low} to {high} days after watering', { low: f.low_days, high: f.high_days })}`} style={{ gap: space[2] }}>

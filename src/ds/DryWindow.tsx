@@ -12,6 +12,7 @@ import { locale, t, tn } from '../i18n';
 import { useTheme } from './theme';
 import { radius, space } from './tokens';
 import { SourceLabel, T } from './components';
+import { phase } from './DryTimeline';
 
 const factorLabel: Record<string, string> = {
   small_pot: 'small pot', large_pot: 'large pot', terracotta: 'terracotta pot', no_drainage: 'no drainage hole',
@@ -34,9 +35,10 @@ export function DryWindow({ forecast: f, lastWatered, now = Date.now(), compact 
   const since = lastWatered ? Math.max(0, (now - new Date(lastWatered).getTime()) / DAY) : null;
   const checkFrom = f.check_from ? new Date(f.check_from).getTime() : null;
   const dryBy = f.dry_by ? new Date(f.dry_by).getTime() : null;
-  const next = checkFrom === null || dryBy === null ? t('It starts counting from the next watering you record.')
-    : now < checkFrom ? t('Suggested next check: {date}', { date: dayName(checkFrom, now) })
-    : now <= dryBy ? t('It may be dry now. A soil check will tell.')
+  const p = since === null ? null : phase(f, since);
+  const next = checkFrom === null || dryBy === null || p === null ? t('It starts counting from the next watering you record.')
+    : p === 'before' ? t('Suggested next check: {date}', { date: dayName(checkFrom, now) })
+    : p === 'early' ? t('Worth an early check') : p === 'window' ? t('It may be dry now. A soil check will tell.')
     : t('Past its usual window. Worth a soil check.');
   const source = own ? t('Learned from your records')
     : f.source === 'blend' ? tn(f.cycles, 'Your first cycle, mixed with a general estimate', 'Your first {n} cycles, mixed with a general estimate')
