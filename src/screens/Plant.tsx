@@ -272,7 +272,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
         <View style={{ alignItems: 'center', gap: 2 }}>
           <T v="display" center lines={3} fit style={titleStyle}>{plant.name}</T>
           <T v="latin" tone="ink2" center>{plant.species}</T>
-          {plant.kind === 'other' && !plant.photo && <T v="footnote" tone="ink2" center style={{ marginTop: space[2], maxWidth: 300 }}>{t('We\u2019re still drawing this plant! For now it lives in this pot :)')}</T>}
+          {plant.kind === 'other' && !plant.photo && <T v="footnote" tone="ink2" center style={{ marginTop: space[2], maxWidth: 300 }}>{t('We’re still drawing this plant! For now it lives in this pot :)')}</T>}
         </View>
       </View>
 
