@@ -72,6 +72,8 @@ class PlantUpdate(StrictModel):
     material: str | None = Field(default=None, max_length=60)
     self_watering: Literal['Yes', 'No', 'Not sure'] | None = None
     substrate: str | None = Field(default=None, max_length=100)
+    # The caregiver has seen that the plant got its own illustration (clears `art_new`).
+    art_seen: Literal[True] | None = None
 
 
 class Timed(StrictModel):

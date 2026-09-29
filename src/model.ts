@@ -22,6 +22,10 @@ export interface PlantContext {
   environment?: { location: string; near_window: string }; drainage?: string; material?: string; self_watering?: string; substrate?: string;
 }
 export interface Plant extends PlantContext {
+  /** It just left the plain pot: its species now has a drawing (announced once, see ArtUpdate). */
+  art_new?: boolean;
+  /** Sent to clear `art_new`. */
+  art_seen?: true;
   id: string; name: string; species: string; kind: PlantKind; photo?: string | null;
   /** The example plant every account starts with (backend/app/example.py): labelled, outside the plan limit. */
   example?: boolean;

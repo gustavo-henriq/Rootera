@@ -12,6 +12,7 @@ from .example import NAME as EXAMPLE_NAME, OLD_NAMES, example_id, is_example, se
 from .guidance import SensorlessGuidance
 from .soil import summarize
 from .species import notes_for
+from .integrations.plantnet import kind_for
 from .schemas import PLAN_CAPACITY, CaregiverProfile, NudgePrefs, CalibrationIn, PlantIn, PlantUpdate, SensorIn, UserObservationIn, normalize_plan
 
 # The garden snapshot carries the most recent care records; older ones are paged by journal().
@@ -104,7 +105,12 @@ class GardenService:
         p = self.plant(plant_id, lock=True)
         if p.data.get('archived'):
             raise HTTPException(404, 'Plant not found')
-        p.data = {**p.data, **payload.model_dump(exclude_unset=True, exclude_none=True, mode='json')}
+        changes = payload.model_dump(exclude_unset=True, exclude_none=True, mode='json')
+        seen = changes.pop('art_seen', False)
+        data = {**p.data, **changes}
+        if seen:
+            data.pop('art_new', None)
+        p.data = data
         self.db.flush()
         self.rebuild(plant_id)
         return p.data
@@ -280,12 +286,26 @@ class GardenService:
             return
         self.rebuild(example_id(self.owner))
 
+    def upgrade_art(self, plants: list[Plant]):
+        """A plant added before Rootera had its species (shown in the plain pot) gets the
+        species' illustration and notes as soon as a version knows it. `art_new` tells the app
+        to announce it once; the caregiver clears it (art_seen)."""
+        for p in plants:
+            if p.data.get('kind') != 'other' or not p.data.get('species'):
+                continue
+            kind = kind_for(p.data['species'])
+            if kind != 'other':
+                p.data = {**p.data, 'kind': kind, 'art_new': True}
+                self.db.flush()
+                self.rebuild(p.id)
+
     # ---- read model --------------------------------------------------------
     def snapshot(self):
         profile = self.profile()
         if self.seed_example:
             self.ensure_example(profile)
         plants = self.active_plants()
+        self.upgrade_art(plants)
         ids = {p.id for p in plants}
         # Plain rows, not ORM objects: a large garden carries 100k+ records and the identity
         # map costs more than the twins themselves. Rows keep the attribute names event_view reads.
