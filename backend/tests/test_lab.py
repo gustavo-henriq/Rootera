@@ -80,3 +80,15 @@ def test_the_lab_route(client):
     assert client.post('/v1/lab/simulate', json={}).status_code in (401, 403)
     # Nothing is stored.
     assert client.get('/v1/garden', headers=ALICE).json()['plants'] == []
+
+
+def test_real_climates_are_bundled_and_change_the_plant():
+    from app.lab import climate_series
+    spring, winter = climate_series('sp_spring'), climate_series('poa_winter')
+    assert len(spring) >= 90 and len(winter) >= 90 and sum(winter) / len(winter) < sum(spring) / len(spring)
+    cold = run('monstera', days=91, weather=winter)
+    mild = run('monstera', days=91)
+    # Winter: the cycles really take longer, and Rootera waters less often.
+    assert sum(cold['truth']['real_cycle_days']) / len(cold['truth']['real_cycle_days']) > mild['truth']['dry_after_days'] * 1.15
+    assert cold['summary']['waterings'] < mild['summary']['waterings']
+    assert cold['summary']['wet_days'] == cold['summary']['dry_days'] == 0

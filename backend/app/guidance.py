@@ -58,10 +58,11 @@ def _ago(seconds: float, lang: str = 'en') -> str:
     return tr('{n} days ago', lang, n=int(days))
 
 
-def cycles(timed):
+def cycles(timed, spans: list | None = None):
     """(found, dried) hours for each finished cycle, in order, from (time, evidence) pairs
     sorted by time. One pass: a watering opens a cycle (unless approximate), the first dry
-    check after it closes it, moist checks in between narrow when it dried."""
+    check after it closes it, moist checks in between narrow when it dried. `spans`, when
+    given, receives (start, days until dried) per cycle, for the weather it had."""
     found, dried = [], []
     start = last_moist = None
     for t, e in timed:
@@ -76,6 +77,8 @@ def cycles(timed):
                     found.append(hours)
                     moist = (last_moist - start).total_seconds() / 3600 if last_moist is not None else None
                     dried.append((moist + hours) / 2 if moist is not None else hours * FIRST_CHECK_DRY)
+                    if spans is not None:
+                        spans.append((start, dried[-1] / 24))
                 start = None  # only the first dry check closes the cycle
             elif soil in ('slightly_moist', 'moist', 'wet'):
                 last_moist = t
@@ -112,13 +115,14 @@ class SensorlessGuidance:
         # FOUND (it depends on how often the caregiver checks), so the soil dried somewhere
         # between the last check that found moisture and it. `intervals` keeps the found time
         # (what the text reports); `dried` estimates when it dried (what the window uses).
-        intervals, dried = cycles(timed)
+        spans: list = []
+        intervals, dried = cycles(timed, spans)
         recent = intervals[-RECENT_CYCLES:]
         # The pattern speaks of when the soil dried (estimated from the checks), the same measure
         # the drying window draws, so the page never shows two different numbers for one thing.
         baseline = round(median(dried[-RECENT_CYCLES:]) / 24, 1) if len(recent) >= 3 else None
         since_water = age(last_water) / DAY if last_water else None
-        window = drying_window(plant, notes['dryness'], dried[-RECENT_CYCLES:], last_water.at if last_water else None)
+        window = drying_window(plant, notes['dryness'], dried[-RECENT_CYCLES:], last_water.at if last_water else None, spans[-RECENT_CYCLES:])
         # Slow plants rest longer between checks: the rest scales with the expected cycle.
         pace = max(1.0, (window['low_days'] if window else 7) / 7)
         report_life = DAY if not last_soil or last_soil.value['soil'] == 'dry' else min(3 * DAY, MOIST_REPORT_HOURS[last_soil.value['soil']] * 3600 * pace)

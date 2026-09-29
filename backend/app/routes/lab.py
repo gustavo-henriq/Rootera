@@ -7,7 +7,7 @@ from pydantic import Field
 
 from ..deps import owner
 from ..i18n import lang_from
-from ..lab import MAX_DAYS, DayInput, LabRun, simulate
+from ..lab import MAX_DAYS, DayInput, LabRun, climate_series, simulate
 from ..schemas import SoilLayers, StrictModel
 from ..species import SPECIES_NOTES
 
@@ -34,8 +34,8 @@ class LabIn(StrictModel):
     # This plant against a typical one: below 1 it dries faster.
     pace: float = Field(default=1.0, ge=.5, le=1.5)
     overrides: list[LabDay] = Field(default_factory=list, max_length=MAX_DAYS)
-    # Kept for when a weather source and photos are connected; not simulated yet.
-    weather: dict | None = None
+    # Real weather for the run: three months of daily ET0 from Open-Meteo's archive.
+    climate: Literal['none', 'sp_spring', 'poa_winter'] = 'none'
 
 
 @router.post('/simulate')
@@ -43,4 +43,5 @@ def run(payload: LabIn, request: Request, _user: str = Depends(owner)):
     overrides = {o.day: DayInput(water=o.water, check=o.check, layers=o.layers.model_dump() if o.layers else None, leaves=o.leaves) for o in payload.overrides}
     plant = {'pot': payload.pot, 'drainage': payload.drainage, 'light': payload.light, 'environment': {'location': 'Indoors'}}
     return simulate(LabRun(kind=payload.kind, plant=plant, method=payload.method, days=payload.days, check_every=payload.check_every,
-                           pace=payload.pace, overrides=overrides, lang=lang_from(request.headers.get('accept-language'))))
+                           pace=payload.pace, overrides=overrides, lang=lang_from(request.headers.get('accept-language')),
+                           weather=climate_series(payload.climate) if payload.climate != 'none' else None))

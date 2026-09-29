@@ -3,6 +3,7 @@
 Both are optional: without credentials the endpoints answer 503 with a plain
 explanation, and the app keeps working in its documented demo mode.
 """
+from datetime import datetime, timezone
 import secrets
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from ..config import Settings
@@ -49,8 +50,19 @@ def demo_plan(payload: DemoPlanIn, s=Depends(service)):
     return {'demo': True, **s.set_plan(payload.plan, payload.annual, 'demo')}
 
 
+# Pl@ntNet's free quota (500 a day) is shared by everyone: one account, or a bug retrying in a
+# loop, must not spend it for all. Three photos per plant is the app's own limit; this allows
+# several plants a day.
+IDENTIFY_PER_DAY = 30
+_identified: dict[tuple[str, str], int] = {}
+
+
 @router.post('/identify')
 def identify(payload: IdentifyIn, s=Depends(service), config: Settings = Depends(settings)):
+    key = (s.owner, datetime.now(timezone.utc).date().isoformat())
+    if _identified.get(key, 0) >= IDENTIFY_PER_DAY:
+        raise HTTPException(429, 'Photo identification limit reached for today. Search by name instead.')
+    _identified[key] = _identified.get(key, 0) + 1
     try:
         return {'results': plantnet.identify(payload.image_base64, payload.organ, config.plantnet_api_key, lang=s.lang), 'source': 'Pl@ntNet'}
     except plantnet.IdentificationUnavailable as error:

@@ -41,7 +41,7 @@ const TABLES = {
   'src/ds/WhySheet.tsx': ['GROUPS'],
   'src/ds/DepthRuler.tsx': ['DEPTH'],
   'src/ds/SoilLayers.tsx': ['INFO', 'HINT'],
-  'src/screens/Lab.tsx': ['METHODS', 'STEPS', 'LAYER_NAME', 'LAYER_VALUE', 'LEAVES', 'POTS', 'LIGHTS', 'PACES', 'SCENES'],
+  'src/screens/Lab.tsx': ['METHODS', 'STEPS', 'LAYER_NAME', 'LAYER_VALUE', 'LEAVES', 'POTS', 'LIGHTS', 'PACES', 'SCENES', 'CLIMATES'],
   'src/screens/LabStory.tsx': ['SKY_LABEL'],
   'src/ds/DryWindow.tsx': ['factorLabel'],
   'src/screens/Farewell.tsx': ['CHOICES', 'WORDS'],

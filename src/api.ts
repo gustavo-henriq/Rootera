@@ -60,7 +60,8 @@ export interface Candidate { scientific_name: string; common_name: string; famil
 export type LabMethod = 'rootera' | 'weekly' | 'often' | 'forgetful' | 'manual';
 export interface LabDayIn { day: number; water?: boolean | null; check?: boolean | null; layers?: SoilLayers | null; leaves?: 'great' | 'different' | 'unwell' | null }
 export interface LabIn { kind: PlantKind; pot: 'Small pot' | 'Medium pot' | 'Large pot'; drainage: 'Yes' | 'No'; light: 'Low light' | 'Bright indirect light' | 'Direct sun';
-  method: LabMethod; days: number; check_every: number; pace: number; overrides: LabDayIn[] }
+  method: LabMethod; days: number; check_every: number; pace: number; overrides: LabDayIn[]; climate?: LabClimate }
+export type LabClimate = 'none' | 'sp_spring' | 'poa_winter';
 export interface LabDay {
   day: number; date: string; soil: Record<LayerKey, Layer>; leaves: 'great' | 'different' | 'unwell'; stress: 'wet' | 'dry' | null;
   events: ({ type: 'water' } | { type: 'check'; layers: SoilLayers; typed: boolean } | { type: 'leaves'; visual: 'great' | 'different' | 'unwell'; typed: boolean })[];
@@ -68,7 +69,7 @@ export interface LabDay {
 }
 export interface LabOut {
   plant: { name: string; kind: PlantKind; dryness: string; decisive: LayerKey[] };
-  truth: { layer_days: Record<LayerKey, number>; dry_after_days: number };
+  truth: { layer_days: Record<LayerKey, number>; dry_after_days: number; real_cycle_days: number[] };
   days: LabDay[];
   summary: { waterings: number; checks: number; wet_days: number; dry_days: number; unwell_days: number; learned_days: number | null; window: [number, number] | null; window_source: string | null; cycles: number; error_days: number | null };
   integrations: { weather: boolean; photos: boolean };

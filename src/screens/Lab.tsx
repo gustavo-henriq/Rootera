@@ -22,7 +22,7 @@ import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, Line, Path, RadialGradient, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { Props } from '../navigation';
-import { api, LabDayIn, LabIn, LabMethod, LabOut } from '../api';
+import { api, LabClimate, LabDayIn, LabIn, LabMethod, LabOut } from '../api';
 import { catalog, Layer, LayerKey, PlantKind, SoilLayers, speciesName } from '../model';
 import { useTheme } from '../ds/theme';
 import { fonts, radius, space } from '../ds/tokens';
@@ -44,7 +44,9 @@ const KINDS: PlantKind[] = ['monstera', 'pothos', 'peace-lily', 'snake-plant', '
 const POTS = [['Small pot', 'Small'], ['Medium pot', 'Medium'], ['Large pot', 'Large']] as const;
 const LIGHTS = [['Low light', 'Low'], ['Bright indirect light', 'Bright, indirect'], ['Direct sun', 'Direct sun']] as const;
 const PACES = [[.8, 'Faster'], [1, 'Typical'], [1.2, 'Slower']] as const;
-const LENGTHS = [28, 42, 56] as const;
+const LENGTHS = [28, 42, 56, 91] as const;
+/** Real weather (Open-Meteo archive, bundled): none, a warming spring, a cool winter. */
+const CLIMATES = [['none', 'No weather'], ['sp_spring', 'Spring in São Paulo'], ['poa_winter', 'Winter in Porto Alegre']] as const;
 const METHODS: { key: LabMethod; label: string; means: string; main?: boolean }[] = [
   { key: 'rootera', main: true, label: 'Follow Rootera', means: 'Check before watering, water when it’s dry. This is how Rootera learns.' },
   { key: 'weekly', main: true, label: 'Water every week', means: 'A fixed calendar, to compare: watered before it dries, Rootera can’t close a cycle.' },
@@ -309,6 +311,7 @@ export function Lab({ navigation }: Props<'Lab'>) {
   const [drainage, setDrainage] = useState<LabIn['drainage']>('Yes');
   const [light, setLight] = useState<LabIn['light']>('Bright indirect light');
   const [pace, setPace] = useState(1);
+  const [climate, setClimate] = useState<LabClimate>('none');
   const [method, setMethod] = useState<LabMethod>('rootera');
   const [length, setLength] = useState<number>(42);
   const [checkEvery, setCheckEvery] = useState(2);
@@ -326,7 +329,7 @@ export function Lab({ navigation }: Props<'Lab'>) {
   const go = (p: Phase) => { setPhase(p); scroll.current?.scrollTo({ y: 0, animated: false }); };
 
   // Every change runs the simulation again (debounced), through the real engine.
-  const body: LabIn = { kind, pot, drainage, light, pace, method, days: length, check_every: checkEvery, overrides: Object.values(overrides).filter(o => o.day < length) };
+  const body: LabIn = { kind, pot, drainage, light, pace, climate, method, days: length, check_every: checkEvery, overrides: Object.values(overrides).filter(o => o.day < length) };
   const key = JSON.stringify(body);
   useEffect(() => {
     let live = true;
@@ -426,6 +429,7 @@ export function Lab({ navigation }: Props<'Lab'>) {
               <Chip label={t('None')} on={drainage === 'No'} onPress={() => setDrainage('No')} />
             </Row>
             <Row label={t('Light')}>{LIGHTS.map(([v, l]) => <Chip key={v} label={t(l)} on={light === v} onPress={() => setLight(v)} />)}</Row>
+            <Row label={t('Weather')}>{CLIMATES.map(([v, l]) => <Chip key={v} label={t(l)} on={climate === v} onPress={() => setClimate(v)} />)}</Row>
             <Row label={t('This plant, against a typical one')}>{PACES.map(([v, l]) => <Chip key={v} label={t(l)} on={pace === v} onPress={() => setPace(v)} />)}</Row>
           </More>
           <View style={{ flexGrow: 1 }} />
@@ -445,7 +449,7 @@ export function Lab({ navigation }: Props<'Lab'>) {
             <Row label={t('Compare with')}>{METHODS.filter(m => !m.main).map(m => <Chip key={m.key} label={t(m.label)} on={method === m.key} onPress={() => { setMethod(m.key); setOverrides({}); }} />)}</Row>
             {(method === 'often' || method === 'forgetful') && <T v="subhead" style={{ color: L.dim }}>{t(methodInfo.means)}</T>}
             {method !== 'rootera' && <Row label={t('Soil checks')}>{[1, 2, 3].map(n => <Chip key={n} label={tn(n, 'Every day', 'Every {n} days')} on={checkEvery === n} onPress={() => setCheckEvery(n)} />)}</Row>}
-            <Row label={t('Length')}>{LENGTHS.map(n => <Chip key={n} label={t('{n} weeks', { n: n / 7 })} on={length === n} onPress={() => setLength(n)} />)}</Row>
+            <Row label={t('Length')}>{LENGTHS.map(n => <Chip key={n} label={n === 91 ? t('3 months') : t('{n} weeks', { n: n / 7 })} on={length === n} onPress={() => setLength(n)} />)}</Row>
           </More>
           <View style={{ flexGrow: 1 }} />
           <Primary title={t('See the result')} onPress={() => { setDay(0); go('stage'); }} />
@@ -501,7 +505,7 @@ export function Lab({ navigation }: Props<'Lab'>) {
             {now.stress && <T v="subhead" style={{ color: now.stress === 'wet' ? L.warn : L.bad }}>{now.stress === 'wet' ? t('The roots are sitting wet.') : t('The plant is thirsty.')}</T>}
           </View>}
 
-          <Primary title={playing ? t('Pause') : t('Play {n} weeks', { n: length / 7 })} onPress={() => { if (!playing && out && day >= out.days.length - 1) setDay(0); setPlaying(p => !p); setUsed(u => ({ ...u, forecast: true })); }} />
+          <Primary title={playing ? t('Pause') : (length === 91 ? t('Play 3 months') : t('Play {n} weeks', { n: length / 7 }))} onPress={() => { if (!playing && out && day >= out.days.length - 1) setDay(0); setPlaying(p => !p); setUsed(u => ({ ...u, forecast: true })); }} />
 
           {!!s && <View style={{ gap: space[3] }}>
             <T v="callout" style={{ color: L.text }}>{result}</T>

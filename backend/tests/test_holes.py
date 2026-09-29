@@ -61,3 +61,16 @@ def test_a_typed_check_is_never_skipped_in_the_lab(client):
     body = {'days': 7, 'method': 'manual', 'overrides': [{'day': 3, 'check': False, 'layers': {'top': 'wet', 'middle': 'wet', 'bottom': 'wet'}}]}
     day3 = client.post('/v1/lab/simulate', json=body, headers=ALICE).json()['days'][3]
     assert any(e['type'] == 'check' and e['typed'] for e in day3['events'])
+
+
+def test_photo_identification_has_a_daily_limit_per_person(client, monkeypatch):
+    from app.integrations import plantnet
+    from app.routes import integrations
+    integrations._identified.clear()
+    monkeypatch.setattr(integrations, 'IDENTIFY_PER_DAY', 2)
+    monkeypatch.setattr(plantnet, 'identify', lambda *a, **k: [])
+    photo = {'image_base64': 'a' * 200}
+    codes = [client.post('/v1/identify', json=photo, headers=ALICE).status_code for _ in range(3)]
+    assert codes[:2] != [429, 429] and codes[2] == 429
+    # Someone else still has their own.
+    assert client.post('/v1/identify', json=photo, headers=BOB).status_code != 429

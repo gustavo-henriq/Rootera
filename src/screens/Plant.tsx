@@ -10,7 +10,7 @@ import { fonts, radius, space } from '../ds/tokens';
 import { Btn, Group, Row, Segmented, T, Tap, Toast } from '../ds/components';
 import { Page } from '../ds/Page';
 import { Glyph } from '../ds/icons';
-import { enableLocalWeather } from '../weather';
+import { askForLocalWeather } from '../weather';
 import { Ground, PlantArt } from '../ds/plant';
 import { LeafBurst, pivot, Pop, Settle, WaterDrops } from '../ds/motion';
 import { ActionSheet } from '../ds/ActionSheet';
@@ -301,7 +301,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
           {g?.forecast ? <DryWindow forecast={g.forecast} lastWatered={g.last_watered_at} /> : <CycleRing done={Math.min(g?.completed_cycles ?? 0, 3)} />}
           {garden.weather
             ? <T v="footnote" tone="ink2">{t('This week{place}: highs around {t} °C, {rh}% humidity.', { place: garden.location?.place ? ` (${garden.location.place})` : '', t: Math.round(garden.weather.tmax ?? 0), rh: garden.weather.rh ?? '–' })}</T>
-            : !!g?.forecast && <Tap label={t('Adjust to your local weather')} onPress={() => void enableLocalWeather().then(refresh)} ring={radius.control}
+            : !!g?.forecast && <Tap label={t('Adjust to your local weather')} onPress={() => void askForLocalWeather().then(() => refresh())} ring={radius.control}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], padding: space[3], borderRadius: radius.control, borderWidth: 1, borderColor: c.hairline }}>
                 <Glyph name="plus" size={18} tone={c.leafText} />
                 <View style={{ flex: 1 }}>

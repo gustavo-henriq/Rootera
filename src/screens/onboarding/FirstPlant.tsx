@@ -92,7 +92,7 @@ function Specimen({ kind, size }: { kind: PlantKind | null; size: SharedValue<nu
 const speciesLabel = (kind: PlantKind) => { const s = catalog.find(x => x.kind === kind); return s ? t(s.name) : t('Your plant'); };
 
 export interface Choice { kind: PlantKind; name: string; latin: string; via: 'featured' | 'search' | 'photo' | 'custom' }
-export type IdState = 'idle' | 'loading' | 'off' | 'error';
+export type IdState = 'idle' | 'loading' | 'off' | 'error' | 'limit';
 
 /** Search, photo identification and "add by name", above the carousel. */
 function Finder({ q, setQ, choice, onChoose, photo, idState, matches, attempt, onCamera }: {

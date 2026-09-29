@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Image, TextInput, View, Platform } from 'react-native';
 import { Props } from '../navigation';
 import { useStore } from '../store';
-import { api, Candidate } from '../api';
+import { api, ApiError, Candidate } from '../api';
 import { atCapacity, catalog, matchesSpecies, PlantKind, Species } from '../model';
 import { useTheme } from '../ds/theme';
 import { fonts, radius, space, type } from '../ds/tokens';
@@ -12,7 +12,7 @@ import { Page } from '../ds/Page';
 import { Ground, PlantArt, plantArt } from '../ds/plant';
 import { Stagger } from '../ds/motion';
 import { photoData } from './Camera';
-import { IdentifyResult, MAX_ATTEMPTS } from './Identify';
+import { IdentifyResult, IdState, MAX_ATTEMPTS } from './Identify';
 import { t } from '../i18n';
 
 /** Specimen swatch: the plant rising out of its tile, a label underneath. */
@@ -36,7 +36,7 @@ export function AddPlant({ navigation, route }: Props<'AddPlant'>) {
   const attempt = route.params?.attempt ?? 1;
   const [q, setQ] = useState('');
   const [matches, setMatches] = useState<Candidate[] | null>(null);
-  const [idState, setIdState] = useState<'idle' | 'loading' | 'off' | 'error'>('idle');
+  const [idState, setIdState] = useState<IdState>('idle');
   const [w, setW] = useState(0);
   const col = w ? (w - space[3]) / 2 : 0;
 
@@ -46,7 +46,7 @@ export function AddPlant({ navigation, route }: Props<'AddPlant'>) {
     if (!garden.integrations.identification || !data) { setIdState('off'); return; }
     let live = true;
     setIdState('loading');
-    api.identify(data).then(r => { if (live) { setMatches(r.results); setIdState('idle'); } }).catch(() => live && setIdState('error'));
+    api.identify(data).then(r => { if (live) { setMatches(r.results); setIdState('idle'); } }).catch(e => live && setIdState(e instanceof ApiError && e.status === 429 ? 'limit' : 'error'));
     return () => { live = false; };
   }, [photo, garden.integrations.identification]);
 
@@ -86,7 +86,7 @@ export function AddPlant({ navigation, route }: Props<'AddPlant'>) {
 
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], borderBottomWidth: 1, borderColor: c.ink3 }}>
       <Glyph name="search" size={20} tone={c.ink2} />
-      <TextInput accessibilityLabel={t("Search plants")} autoFocus={!!photo && attempt >= MAX_ATTEMPTS && (idState === 'error' || (matches !== null && !matches.some(m => m.score >= .2)))} value={q} onChangeText={setQ} placeholder={t("Monstera, pothos, babosa…")} placeholderTextColor={c.ink3} returnKeyType="search" maxFontSizeMultiplier={1.5}
+      <TextInput accessibilityLabel={t("Search plants")} autoFocus={!!photo && (idState === 'limit' || attempt >= MAX_ATTEMPTS && (idState === 'error' || (matches !== null && !matches.some(m => m.score >= .2))))} value={q} onChangeText={setQ} placeholder={t("Monstera, pothos, babosa…")} placeholderTextColor={c.ink3} returnKeyType="search" maxFontSizeMultiplier={1.5}
         style={[type.body, { flex: 1, minHeight: 52, color: c.ink }, Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)]} />
       {!photo && <Tap label={t("Identify from a photo")} onPress={() => navigation.navigate('Camera')} ring={radius.inner} style={{ height: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: space[2] }}>
         <Glyph name="camera" size={20} tone={c.leafText} /><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{t("Photo")}</T>

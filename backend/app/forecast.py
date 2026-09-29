@@ -59,12 +59,29 @@ WEATHER_WEIGHT = {'indoors': .3, 'outdoors': .9}
 WEATHER_BOUNDS = (.8, 1.25)
 
 
-def weather_factor(plant: dict) -> tuple[str | None, float]:
+def cycles_et0(weather: dict, spans: list) -> float | None:
+    """The mean ET0 during the learned cycles (each day of each cycle), when known."""
+    daily = weather.get('daily') or {}
+    values = []
+    for start, days in spans:
+        for i in range(max(1, round(days))):
+            v = daily.get((start + timedelta(days=i)).date().isoformat())
+            if v is not None:
+                values.append(v)
+    return sum(values) / len(values) if values else None
+
+
+def weather_factor(plant: dict, own_weight: float = 0.0, spans: list | None = None) -> tuple[str | None, float]:
+    """This week against the weather the window was built on: a mild reference day for the
+    species estimate, and the weather the plant's own cycles actually had (they already
+    carry it; comparing them with the reference again would count the weather twice)."""
     w = plant.get('weather')
     if not w or not w.get('et0'):
         return None, 1.0
     outdoors = (plant.get('environment') or {}).get('location') == 'Outdoors'
-    ratio = WEATHER_REF_ET0 / max(.5, w['et0'])
+    learned = cycles_et0(w, spans or []) if own_weight else None
+    ref = WEATHER_REF_ET0 if learned is None else (1 - own_weight) * WEATHER_REF_ET0 + own_weight * learned
+    ratio = ref / max(.5, w['et0'])
     mult = 1 + WEATHER_WEIGHT['outdoors' if outdoors else 'indoors'] * (ratio - 1)
     mult = min(WEATHER_BOUNDS[1], max(WEATHER_BOUNDS[0], mult))
     if abs(mult - 1) < .05:
@@ -133,7 +150,7 @@ def _own_window(days: list[float]):
     return min(days), max(days)
 
 
-def drying_window(plant: dict, dryness: str | None, cycle_hours: list[float], last_water_at: str | None):
+def drying_window(plant: dict, dryness: str | None, cycle_hours: list[float], last_water_at: str | None, spans: list | None = None):
     # A reservoir keeps feeding the soil from below, so surface dryness says little about timing.
     if plant.get('self_watering') == 'Yes':
         return None
@@ -160,7 +177,8 @@ def drying_window(plant: dict, dryness: str | None, cycle_hours: list[float], la
     else:
         return None
     # This week's weather, when the caregiver turned it on.
-    key, mult = weather_factor(plant)
+    own = 1.0 if source == 'cycles' else weight if source == 'blend' else 0.0
+    key, mult = weather_factor(plant, own, spans)
     if key:
         low, high = low * mult, high * mult
         factors = [*factors, key]

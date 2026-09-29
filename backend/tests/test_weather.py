@@ -12,11 +12,11 @@ def test_open_meteo_is_read_and_cached():
     calls = []
     def handler(request):
         calls.append(request.url)
-        return httpx.Response(200, json={'daily': {'et0_fao_evapotranspiration': [4.0, 5.0, None], 'temperature_2m_max': [30, 32], 'relative_humidity_2m_mean': [70, 74]}})
+        return httpx.Response(200, json={'daily': {'time': ['2026-09-01', '2026-09-02', '2026-09-03'], 'et0_fao_evapotranspiration': [4.0, 5.0, None], 'temperature_2m_max': [30, 32], 'relative_humidity_2m_mean': [70, 74]}})
     client = httpx.Client(transport=httpx.MockTransport(handler))
     weather._cache.clear()
     w = weather.recent(-23.5512, -46.6333, client)
-    assert w == {'et0': 4.5, 'tmax': 31.0, 'rh': 72, 'days': 2}
+    assert w == {'et0': 4.5, 'tmax': 31.0, 'rh': 72, 'days': 2, 'daily': {'2026-09-01': 4.0, '2026-09-02': 5.0}}
     # Only the rounded place ever leaves the server.
     assert calls[0].params['latitude'] == '-23.6' and calls[0].params['longitude'] == '-46.6'
     assert weather.recent(-23.58, -46.61, client) == w and len(calls) == 1  # same place: cached
@@ -56,3 +56,17 @@ def test_the_place_is_rounded_and_can_be_forgotten(client, monkeypatch):
     garden = client.get('/v1/garden', headers=ALICE).json()
     assert garden['weather'] is None and 'location' not in garden
     assert client.put('/v1/profile/location', json={'lat': 200, 'lon': 0}, headers=ALICE).status_code == 422
+
+
+def test_cycles_already_carry_their_weather():
+    from datetime import datetime, timedelta, timezone
+    start = datetime(2026, 9, 1, tzinfo=timezone.utc)
+    spans = [(start + timedelta(days=9 * i), 8.0) for i in range(3)]
+    hot = {f'2026-09-{d:02d}': 5.5 for d in range(1, 31)}
+    # Learned in a hot month and still hot: no adjustment (it would count the heat twice).
+    same = drying_window({**HOME, 'weather': {'et0': 5.5, 'daily': hot}}, 'half', [8 * 24.0] * 3, None, spans)
+    plain = drying_window(HOME, 'half', [8 * 24.0] * 3, None, spans)
+    assert 'warm_dry_week' not in same['factors'] and (same['low_days'], same['high_days']) == (plain['low_days'], plain['high_days'])
+    # Learned in the heat, now a cool, humid week: the soil will take longer.
+    cooler = drying_window({**HOME, 'weather': {'et0': 2.0, 'daily': hot}}, 'half', [8 * 24.0] * 3, None, spans)
+    assert 'cool_humid_week' in cooler['factors'] and cooler['high_days'] > plain['high_days']

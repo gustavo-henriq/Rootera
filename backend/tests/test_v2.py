@@ -67,7 +67,7 @@ def test_integrations_answer_plainly_without_credentials(planted):
     assert planted.post('/v1/identify', json={'image_base64': 'a' * 200}, headers=ALICE).status_code == 503
     assert planted.post('/v1/billing/webhook', json={'event': {'app_user_id': 'alice'}}).status_code == 401
     health = planted.get('/health').json()
-    assert health['integrations'] == {'billing': False, 'identification': False, 'weather': False, 'demo': False}
+    assert health['integrations'] == {'billing': False, 'identification': False, 'weather': True, 'demo': False}
 
 
 def test_revenuecat_entitlement_is_read_on_the_server():

@@ -60,7 +60,51 @@ EARLY_SHARE = .7
 SOGGY_BOTTOM_DAYS = 14
 LEAVES_CHANGE_DAYS, LEAVES_UNWELL_DAYS = 7, 14
 LEAF_NOTE_EVERY = 7
-MAX_DAYS = 60
+MAX_DAYS = 91
+# Real weather for the lab: three months of daily ET0 from Open-Meteo's archive.
+CLIMATES = {
+    'sp_spring': (-23.55, -46.63, '2025-09-01', '2025-11-30'),   # São Paulo, spring: warming, ET0 3.7-4.3
+    'poa_winter': (-30.03, -51.23, '2025-06-01', '2025-08-31'),  # Porto Alegre, winter: ET0 1.5-2.2
+}
+_climates: dict[str, list[float]] = {}
+# How much the outdoor weather reaches the virtual plant's pot indoors (a house buffers heat
+# and humidity, but not all of it). Kept apart from the engine's damping (forecast.py), so the
+# lab does not grade Rootera against its own assumption.
+TRUTH_WEATHER_WEIGHT = .6
+REF_ET0 = 3.5
+
+
+def climate_series(name: str) -> list[float] | None:
+    """Daily ET0 for a named climate. The three months were fetched once from Open-Meteo's
+    archive and are kept in app/data/climates.json, so the lab never depends on the network
+    (a failed download once ran "winter" silently without its weather)."""
+    if name not in CLIMATES:
+        return None
+    if not _climates:
+        import json
+        from pathlib import Path
+        data = json.loads((Path(__file__).parent / 'data' / 'climates.json').read_text(encoding='utf-8'))
+        _climates.update({k: [v for v in c['et0'] if v is not None] for k, c in data.items()})
+    return _climates.get(name)
+
+
+def speeds(series: list[float] | None, days: int) -> list[float]:
+    """How fast the virtual pot dries each day, against a mild day (1.0)."""
+    if not series:
+        return [1.0] * (days + 2)
+    out = [min(1.6, max(.6, 1 + TRUTH_WEATHER_WEIGHT * (v / REF_ET0 - 1))) for v in series]
+    return (out + [out[-1]] * (days + 2))[:days + 2]
+
+
+def effective(t0: float, t1: float, speed: list[float]) -> float:
+    """Drying progress between two moments (in days), day by day at each day's speed."""
+    total, t = 0.0, t0
+    while t < t1:
+        day = int(t)
+        nxt = min(t1, day + 1)
+        total += (nxt - t) * speed[min(day, len(speed) - 1)]
+        t = nxt
+    return total
 # Not simulated yet. When a weather source is connected, hot and dry days will shorten the
 # drying times (and cool, humid ones lengthen them); photos will record the leaves.
 WEATHER = None
@@ -88,6 +132,7 @@ class LabRun:
     pace: float = 1.0               # this plant vs a typical one (<1 dries faster)
     overrides: dict[int, DayInput] = field(default_factory=dict)
     lang: str = 'en'
+    weather: list[float] | None = None   # daily ET0 (mm), from day 0
 
 
 def layer_days(kind: str, plant: dict, pace: float) -> dict:
@@ -123,10 +168,16 @@ def simulate(run: LabRun, start: datetime | None = None) -> dict:
     wet_streak = dry_streak = bottom_wet = 0
     leaves_state, last_note = 'great', -99
     guidance = None
+    speed = speeds(run.weather, min(run.days, MAX_DAYS))
+    real_cycles: list[float] = []   # how long each cycle really took to dry, under its weather
     for d in range(min(run.days, MAX_DAYS)):
         o = run.overrides.get(d, DayInput())
         at = lambda h, m=0: (start + timedelta(days=d, hours=h, minutes=m)).isoformat()
-        since = None if last_water is None else d + 9 / 24 - last_water
+        since = None if last_water is None else effective(last_water, d + 9 / 24, speed)
+        # What Rootera sees of the weather: the week around this day, and the days so far.
+        if run.weather:
+            week = run.weather[max(0, d - 7):d + 3]
+            plant['weather'] = {'et0': round(sum(week) / len(week), 2), 'daily': {(start + timedelta(days=i)).date().isoformat(): v for i, v in enumerate(run.weather[:d + 3])}}
         soil = layers_at(since, truth)
         events = []
         # The morning check: by the method, or forced; the answers come from the plant unless typed in.
@@ -154,9 +205,11 @@ def simulate(run: LabRun, start: datetime | None = None) -> dict:
             early = early + 1 if since is not None and since < dry_after * EARLY_SHARE else 0
             evidence.append(Evidence(f'lab-w{d}', 'USER', 'Watered', {'note': '', 'amount_ml': None}, at(9, 30), .65))
             events.append({'type': 'water'})
+            if last_water is not None and since is not None and since >= dry_after:
+                real_cycles.append(_dried_at(last_water, dry_after, speed) - last_water)
             last_water = d + 9.5 / 24
         # How the plant is doing at the end of the day.
-        since_eve = None if last_water is None else d + 20 / 24 - last_water
+        since_eve = None if last_water is None else effective(last_water, d + 20 / 24, speed)
         eve = layers_at(since_eve, truth)
         bottom_wet = bottom_wet + 1 if eve['bottom'] != 'dry' else 0
         soggy = early >= SOGGY_WATERINGS or (plant.get('drainage') == 'No' and bottom_wet > SOGGY_BOTTOM_DAYS)
@@ -187,7 +240,7 @@ def simulate(run: LabRun, start: datetime | None = None) -> dict:
     learned = last.get('baseline_days')
     return {
         'plant': {'name': 'MVP Shipaton', 'kind': kind, 'dryness': dryness, 'decisive': list(decisive)},
-        'truth': {'layer_days': truth, 'dry_after_days': round(dry_after, 1)},
+        'truth': {'layer_days': truth, 'dry_after_days': round(dry_after, 1), 'real_cycle_days': [round(x, 1) for x in real_cycles]},
         'days': out_days,
         'summary': {
             'waterings': sum(1 for x in out_days for e in x['events'] if e['type'] == 'water'),
@@ -197,8 +250,23 @@ def simulate(run: LabRun, start: datetime | None = None) -> dict:
             'unwell_days': sum(1 for x in out_days if x['leaves'] == 'unwell'),
             'learned_days': learned, 'window': [window.get('low_days'), window.get('high_days')] if window else None,
             'window_source': window.get('source'), 'cycles': last.get('completed_cycles', 0),
-            'error_days': round(abs(learned - dry_after), 1) if learned is not None else None,
+            # Against how long the cycles really took (with the weather), not the mild-day figure.
+            'error_days': round(abs(learned - (sum(real_cycles[-6:]) / len(real_cycles[-6:]) if real_cycles else dry_after)), 1) if learned is not None else None,
         },
         'integrations': {'weather': WEATHER is not None, 'photos': PHOTOS is not None},
     }
 
+
+
+def _dried_at(t0: float, target: float, speed: list[float]) -> float:
+    """The moment (in days) when drying progress since t0 reaches `target`."""
+    t, done = t0, 0.0
+    while done < target and t < len(speed):
+        day = int(t)
+        step = min(1.0, day + 1 - t)
+        rate = speed[min(day, len(speed) - 1)]
+        if done + step * rate >= target:
+            return t + (target - done) / rate
+        done += step * rate
+        t += step
+    return t

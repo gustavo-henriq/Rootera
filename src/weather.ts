@@ -4,8 +4,10 @@
  * phone; the server fetches the weather (Open-Meteo) and adjusts the drying windows.
  * Nothing runs in the background.
  */
+import { Alert } from 'react-native';
 import * as Location from 'expo-location';
 import { api } from './api';
+import { t } from './i18n';
 
 export type WeatherOutcome = 'on' | 'denied' | 'unavailable';
 
@@ -27,6 +29,14 @@ export async function enableLocalWeather(): Promise<WeatherOutcome> {
   } catch {
     return 'unavailable';
   }
+}
+
+/** Turn the weather on and say plainly why when it can't be. */
+export async function askForLocalWeather(): Promise<boolean> {
+  const r = await enableLocalWeather();
+  if (r === 'denied') Alert.alert(t('Location is off'), t('Allow location for Rootera in Settings to use the local weather.'));
+  else if (r === 'unavailable') Alert.alert(t('Weather unavailable'), t('Your location couldn’t be read. Try again later.'));
+  return r === 'on';
 }
 
 export async function disableLocalWeather() {

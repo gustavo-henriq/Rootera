@@ -47,6 +47,7 @@ PT = {
     'Last soil check: {ago}. A new one keeps this current.': 'Última checagem: {ago}. Uma nova mantém isto atualizado.',
     'No check since the last watering. A quick one shows how it’s drying.': 'Sem checagem desde a última rega. Uma rápida mostra como está secando.',
     'Pattern found': 'Padrão encontrado',
+    'Photo identification limit reached for today. Search by name instead.': 'Limite de identificações por foto atingido hoje. Busque pelo nome.',
     'Still analyzing your plant': 'Ainda estamos analisando sua planta',
     'Getting specific to your plant': 'Ficando específico para a sua planta',
     'Typical time until dry, from your checks.': 'Tempo típico até secar, pelas suas checagens.',

@@ -1,6 +1,6 @@
 """Local weather from Open-Meteo (https://open-meteo.com), no key needed.
 
-The server asks for the last 7 days and the next 3 at the caregiver's approximate place
+The server asks for the last 92 days and the next 3 at the caregiver's approximate place
 (coordinates rounded to 0.1°, about 10 km, before they are ever stored) and keeps:
 - et0: reference evapotranspiration (mm/day), how much water the air pulls from wet soil,
   the one number that best says "the soil dries faster this week";
@@ -27,6 +27,17 @@ def place(lat: float, lon: float) -> tuple[float, float]:
     return round(lat, 1), round(lon, 1)
 
 
+def summarize(daily: dict) -> dict | None:
+    """The week (the last 10 values: 7 past days and 3 forecast) and, by date, the ET0 of
+    every day received, so learned cycles can be compared with the weather they had."""
+    week = lambda name: [v for v in (daily.get(name) or [])[-10:] if v is not None]
+    et0, tmax, rh = week('et0_fao_evapotranspiration'), week('temperature_2m_max'), week('relative_humidity_2m_mean')
+    if not et0:
+        return None
+    history = {d: v for d, v in zip(daily.get('time') or [], daily.get('et0_fao_evapotranspiration') or []) if v is not None}
+    return {'et0': round(mean(et0), 2), 'tmax': round(mean(tmax), 1) if tmax else None, 'rh': round(mean(rh)) if rh else None, 'days': len(et0), 'daily': history}
+
+
 def recent(lat: float, lon: float, client: httpx.Client | None = None) -> dict | None:
     key = place(lat, lon)
     hit = _cache.get(key)
@@ -35,12 +46,10 @@ def recent(lat: float, lon: float, client: httpx.Client | None = None) -> dict |
     own = client is None
     client = client or httpx.Client(timeout=4)
     try:
-        response = client.get(API, params={'latitude': key[0], 'longitude': key[1], 'past_days': 7, 'forecast_days': 3, 'timezone': 'auto',
+        response = client.get(API, params={'latitude': key[0], 'longitude': key[1], 'past_days': 92, 'forecast_days': 3, 'timezone': 'auto',
                                            'daily': 'et0_fao_evapotranspiration,temperature_2m_max,relative_humidity_2m_mean'})
         daily = response.json().get('daily', {}) if response.status_code == 200 else {}
-        clean = lambda name: [v for v in daily.get(name) or [] if v is not None]
-        et0, tmax, rh = clean('et0_fao_evapotranspiration'), clean('temperature_2m_max'), clean('relative_humidity_2m_mean')
-        out = {'et0': round(mean(et0), 2), 'tmax': round(mean(tmax), 1) if tmax else None, 'rh': round(mean(rh)) if rh else None, 'days': len(et0)} if et0 else None
+        out = summarize(daily)
     except (httpx.HTTPError, ValueError):
         out = None
     finally:

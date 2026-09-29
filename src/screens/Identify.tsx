@@ -20,7 +20,8 @@ import { t } from '../i18n';
 export const MAX_ATTEMPTS = 3;
 /** Pl@ntNet scores (0-1) under this are guesses, not identifications. */
 export const CONFIDENT = .2;
-export type IdState = 'idle' | 'loading' | 'off' | 'error';
+/** `limit`: the day's photo identifications are used up; the name is asked for at once. */
+export type IdState = 'idle' | 'loading' | 'off' | 'error' | 'limit';
 const TIPS = [
   'Try again with one leaf up close, in good light.',
   'Try the whole plant, or a flower, against a plain background.',
@@ -39,6 +40,7 @@ export function IdentifyResult({ state, matches, attempt, onRetry, onPick, selec
   const guesses = (matches ?? []).filter(m => m.score < CONFIDENT);
   if (state === 'loading') return <T v="subhead" tone="ink2">{t('Looking for matches with Pl@ntNet…')}</T>;
   if (state === 'off') return <T v="subhead" tone="ink2">{t('Photo ID is off in this preview. Pick the plant below.')}</T>;
+  if (state === 'limit') return <T v="subhead">{t('That’s all the photo identifications for today. Write the name below, even a rough one.')}</T>;
   if (sure.length) return <View style={{ gap: space[2] }}>
     <T v="footnote" tone="ink2">{sure.length === 1 ? t('It looks like:') : t('It looks like one of these:')}</T>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>

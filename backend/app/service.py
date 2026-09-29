@@ -63,7 +63,8 @@ class GardenService:
             data['location'] = {'lat': rlat, 'lon': rlon, 'place': (name or '').strip() or None}
         p.data = data
         self._weather = None
-        return {'location': data.get('location'), 'weather': self.weather()}
+        w = self.weather()
+        return {'location': data.get('location'), 'weather': {k: v for k, v in w.items() if k != 'daily'} if w else None}
 
     def weather(self) -> dict | None:
         """This week's weather at the caregiver's place, once per request (cached by place)."""
@@ -355,7 +356,8 @@ class GardenService:
         mine = [o for o in observations if o.plant_id in ids]
         view = self.profile_view(profile.data)
         capacity = PLAN_CAPACITY[view['plan']]
-        view['weather'] = self.weather()
+        w = self.weather()
+        view['weather'] = {k: v for k, v in w.items() if k != 'daily'} if w else None
         return {'version': 1, 'user_id': self.owner, **view, 'plan_capacity': capacity, 'plan_used': sum(not is_example(p) for p in plants),
                 'plants': [p.data for p in plants],
                 'events': [self.event_view(o) for o in mine[-EVENT_WINDOW:]], 'events_complete': len(mine) <= EVENT_WINDOW,

@@ -87,7 +87,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
     if (!garden.integrations.identification || !data) { setIdState('off'); setMatches(null); return; }
     let live = true;
     setIdState('loading');
-    api.identify(data).then(r => { if (live) { setMatches(r.results); setIdState('idle'); } }).catch(() => live && setIdState('error'));
+    api.identify(data).then(r => { if (live) { setMatches(r.results); setIdState('idle'); } }).catch(e => live && setIdState(e instanceof ApiError && e.status === 429 ? 'limit' : 'error'));
     return () => { live = false; };
   }, [photo]);
 

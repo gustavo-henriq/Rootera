@@ -1,8 +1,7 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { disableLocalWeather, enableLocalWeather } from '../weather';
+import { askForLocalWeather, disableLocalWeather } from '../weather';
 import { billingEnabled, manageInStore, presentCustomerCenter } from '../billing';
 import { Image, Platform, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
-import { Alert } from 'react-native';
 import { BottomTabScreenProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { CompositeScreenProps, useScrollToTop } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -334,11 +333,7 @@ const EventRow = memo(function EventRow({ event, plant, onPress, onLongPress }: 
 /** Local weather on (asks for the approximate position) or off (the place is forgotten). */
 async function toggleWeather(on: boolean, refresh: () => Promise<unknown> | void) {
   if (on) await disableLocalWeather().catch(() => undefined);
-  else {
-    const r = await enableLocalWeather();
-    if (r === 'denied') Alert.alert(t('Location is off'), t('Allow location for Rootera in Settings to use the local weather.'));
-    else if (r === 'unavailable') Alert.alert(t('Weather unavailable'), t('Your location couldn’t be read. Try again later.'));
-  }
+  else await askForLocalWeather();
   await refresh();
 }
 
