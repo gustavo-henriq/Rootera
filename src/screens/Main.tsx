@@ -1,4 +1,5 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { billingEnabled, manageInStore, presentCustomerCenter } from '../billing';
 import { Image, Platform, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { BottomTabScreenProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { CompositeScreenProps, useScrollToTop } from '@react-navigation/native';
@@ -326,6 +327,11 @@ const EventRow = memo(function EventRow({ event, plant, onPress, onLongPress }: 
   return onPress && plant ? <Tap label={`${describeEvent(event)}, ${plant.name}`} onPress={onPress} onLongPress={onLongPress} longPressLabel={t("Delete this record")} scaleTo={.99} ring={radius.inner}>{body}</Tap> : body;
 });
 
+/** RevenueCat's Customer Center; the store's own page when it can't open (Expo Go, web). */
+async function manageSubscription(userId: string) {
+  if (!(await presentCustomerCenter(userId))) await manageInStore(userId).catch(() => undefined);
+}
+
 function dayLabel(iso: string) {
   const d = new Date(iso), now = new Date();
   const diff = Math.round((new Date(now.toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 86400000);
@@ -447,6 +453,7 @@ function You({ navigation }: TabProps<'You'>) {
       <Row title={t("Nudges")} detail={`${nudgeText}. ${detail === 'Guided' ? t('Walk me through it') : t('Just tell me')}`} onPress={() => navigation.navigate('Nudges')} />
     </Group>
     <Group header={t("Plan")}>
+      {garden.plan === 'Plus' && garden.plan_source !== 'demo' && billingEnabled && <Row title={t('Manage subscription')} detail={t('Change plan, cancel or get help')} onPress={() => void manageSubscription(garden.user_id)} />}
       <Row title={garden.plan === 'Plus' ? 'Rootera+' : t('Rootera Free')} detail={garden.plan === 'Plus' ? `${t('Unlimited plants and rooms')}${garden.plan_source === 'demo' ? t(', preview activation') : ''}` : t('{n} of {max} plants used', { n: planUsed(garden), max: garden.plan_capacity ?? '' })} onPress={() => navigation.navigate('Plans')} />
     </Group>
     <Group header={t('Language')}>

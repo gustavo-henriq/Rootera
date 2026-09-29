@@ -3,7 +3,7 @@ import { Image, View } from 'react-native';
 import { Props } from '../navigation';
 import { useStore } from '../store';
 import { ApiError } from '../api';
-import { billingEnabled, loadOffers, Offer, purchase, restore } from '../billing';
+import { billingEnabled, loadOffers, Offer, Period, presentPaywall, purchase, restore } from '../billing';
 import { useTheme } from '../ds/theme';
 import { fonts, radius, space } from '../ds/tokens';
 import { Btn, T, Tap, Toast } from '../ds/components';
@@ -26,10 +26,12 @@ const benefits: { icon: GlyphName; title: string; text: string }[] = [
   { icon: 'camera', title: 'Growth diary', text: 'A dated photo timeline for each plant, on your phone.' },
 ];
 // Only when no store is connected, so the preview can still be walked through.
-const previewAmounts = { monthly: 12.9, annual: 89.9 };
+const previewAmounts: Record<Period, number> = { monthly: 12.9, annual: 89.9, lifetime: 249.9 };
+const PERIODS: Period[] = ['annual', 'monthly', 'lifetime'];
+const periodLabel: Record<Period, string> = { annual: 'Yearly', monthly: 'Monthly', lifetime: 'Lifetime' };
 // Formatted at render time, so the language chosen in You applies.
 const money = (n: number) => new Intl.NumberFormat(locale(), { style: 'currency', currency: 'BRL' }).format(n);
-const previewPrice = (p: 'monthly' | 'annual') => p === 'monthly' ? t('{price} a month', { price: money(previewAmounts.monthly) }) : t('{price} a year', { price: money(previewAmounts.annual) });
+const previewPrice = (p: Period) => p === 'monthly' ? t('{price} a month', { price: money(previewAmounts.monthly) }) : p === 'annual' ? t('{price} a year', { price: money(previewAmounts.annual) }) : t('{price} once', { price: money(previewAmounts.lifetime) });
 
 function Shelf() {
   return <View style={{ alignItems: 'center' }}>
@@ -45,7 +47,9 @@ export function Plans({ navigation, route }: Props<'Plans'>) {
   const { c } = useTheme();
   const reason = route.params?.reason ?? 'default';
   const head = heads[reason];
-  const [period, setPeriod] = useState<'annual' | 'monthly'>('annual');
+  const [period, setPeriod] = useState<Period>('annual');
+  // The RevenueCat paywall is used when it can open; otherwise this screen's own picker.
+  const [picker, setPicker] = useState(!billingEnabled);
   const [offers, setOffers] = useState<Offer[] | null>(null);
   const [loading, setLoading] = useState(billingEnabled);
   const [busy, setBusy] = useState(false);
@@ -65,6 +69,25 @@ export function Plans({ navigation, route }: Props<'Plans'>) {
   const saving = monthly && annual ? Math.round((1 - annual / (monthly * 12)) * 100) : 0;
   const price = billingEnabled ? offer?.price : previewPrice(period);
 
+  // The server decides who is Plus (it asks RevenueCat with its secret key).
+  const confirm = async () => {
+    try { await syncBilling(); }
+    catch (e) {
+      if (e instanceof ApiError && e.status === 503) throw new Error(t('Purchase complete. The server confirms it once its RevenueCat key is set.'));
+      throw e;
+    }
+    setDone(true);
+  };
+  const openPaywall = async () => {
+    if (busy) return;
+    setBusy(true); setError('');
+    try {
+      const outcome = await presentPaywall(garden.user_id);
+      if (outcome === 'unlocked' || outcome === 'already') await confirm();
+      else if (outcome === 'unavailable') setPicker(true);
+    } catch (e) { setError(e instanceof Error ? e.message : t('Something went wrong.')); }
+    finally { setBusy(false); }
+  };
   const buy = async () => {
     if (busy) return;
     setBusy(true); setError('');
@@ -72,19 +95,14 @@ export function Plans({ navigation, route }: Props<'Plans'>) {
       if (billingEnabled) {
         if (!offer) throw new Error(t('This plan isn’t available in the store yet.'));
         if (!(await purchase(offer))) return;
-        try { await syncBilling(); }
-        catch (e) {
-          if (e instanceof ApiError && e.status === 503) throw new Error(t('Purchase complete. The server confirms it once its RevenueCat key is set.'));
-          throw e;
-        }
-      } else await setDemoPlan('Plus', period === 'annual');
-      setDone(true);
+        await confirm();
+      } else { await setDemoPlan('Plus', period === 'annual'); setDone(true); }
     } catch (e) { setError(e instanceof Error ? e.message : t('Something went wrong.')); }
     finally { setBusy(false); }
   };
   const doRestore = async () => {
     setBusy(true); setError('');
-    try { await restore(garden.user_id); await syncBilling(); setDone(true); }
+    try { await restore(garden.user_id); await confirm(); }
     catch (e) { setError(e instanceof Error ? e.message : t('Nothing to restore.')); }
     finally { setBusy(false); }
   };
@@ -105,7 +123,9 @@ export function Plans({ navigation, route }: Props<'Plans'>) {
   return <Page close={navigation.goBack} gap={space[6]}
     footer={<>
       {!!error && <Toast tone="error" title={t("Not completed")} text={error} onClose={() => setError('')} />}
-      <Btn title={billingEnabled ? t('Continue, {price}', { price: price ?? '…' }) : t('Activate the preview, no charge')} busy={busy || loading} disabled={billingEnabled ? !offer : !garden.integrations.demo} onPress={() => void buy()} />
+      {billingEnabled && !picker
+        ? <Btn title={t('See plans')} busy={busy} onPress={() => void openPaywall()} />
+        : <Btn title={billingEnabled ? t('Continue, {price}', { price: price ?? '…' }) : t('Activate the preview, no charge')} busy={busy || loading} disabled={billingEnabled ? !offer : !garden.integrations.demo} onPress={() => void buy()} />}
       <View style={{ flexDirection: 'row', justifyContent: 'center', gap: space[6] }}>
         <Btn kind="plain" size="regular" title={t("Not now")} onPress={navigation.goBack} />
         {billingEnabled && <Btn kind="plain" size="regular" title={t("Restore purchases")} onPress={() => void doRestore()} />}
@@ -122,20 +142,20 @@ export function Plans({ navigation, route }: Props<'Plans'>) {
         <View style={{ flex: 1 }}><T v="headline">{t(b.title)}</T><T v="subhead" tone="ink2">{t(b.text)}</T></View>
       </Stagger>)}
     </View>
-    <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: space[3] }}>
-      {(['annual', 'monthly'] as const).map(p => {
+    {picker && <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[3] }}>
+      {PERIODS.filter(p => !billingEnabled || offers?.some(o => o.period === p) || loading).map(p => {
         const on = p === period;
         const label = billingEnabled ? offers?.find(o => o.period === p)?.price ?? (loading ? '…' : t('Unavailable')) : previewPrice(p);
-        return <Tap key={p} role="radio" selected={on} label={`${p === 'annual' ? t('Yearly') : t('Monthly')}, ${label}${p === 'annual' && saving > 0 ? `, ${t('save {n}%', { n: saving })}` : ''}`} onPress={() => setPeriod(p)} ring={radius.control}
-          style={{ flex: 1, padding: space[4], borderRadius: radius.control, borderWidth: on ? 1.5 : 1, borderColor: on ? c.ink : c.hairline, backgroundColor: on ? c.raised : 'transparent', gap: 4 }}>
+        return <Tap key={p} role="radio" selected={on} label={`${t(periodLabel[p])}, ${label}${p === 'annual' && saving > 0 ? `, ${t('save {n}%', { n: saving })}` : ''}`} onPress={() => setPeriod(p)} ring={radius.control}
+          style={{ flexGrow: 1, flexBasis: '45%', padding: space[4], borderRadius: radius.control, borderWidth: on ? 1.5 : 1, borderColor: on ? c.ink : c.hairline, backgroundColor: on ? c.raised : 'transparent', gap: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2] }}>
-            <T v="footnote" tone="ink2" style={{ fontFamily: fonts.medium }}>{p === 'annual' ? t('Yearly') : t('Monthly')}</T>
+            <T v="footnote" tone="ink2" style={{ fontFamily: fonts.medium }}>{t(periodLabel[p])}</T>
             {p === 'annual' && saving > 0 && <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.inner, backgroundColor: c.successSoft }}><T v="caption" tone="leafText">{t('Save {n}%', { n: saving })}</T></View>}
           </View>
           <T v="headline">{label}</T>
         </Tap>;
       })}
-    </View>
+    </View>}
     <T v="footnote" tone="ink2">{t("Guidance, photo ID and nudges come with every plan.")}</T>
     <T v="footnote" tone="ink2">{billingEnabled ? t('Billed by the App Store or Google Play. Cancel any time.') : t('Store payments aren’t connected in this preview. Prices are examples.')}</T>
   </Page>;

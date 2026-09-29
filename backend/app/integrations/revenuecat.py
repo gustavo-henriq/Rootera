@@ -32,6 +32,9 @@ def active_entitlement(app_user_id: str, secret_key: str, entitlement: str, clie
     ent = response.json().get('subscriber', {}).get('entitlements', {}).get(entitlement)
     if not ent:
         return {'active': False, 'annual': False}
+    # A lifetime purchase has no expiry date: active for good.
     expires = ent.get('expires_date')
     active = expires is None or datetime.fromisoformat(expires.replace('Z', '+00:00')) > datetime.now(timezone.utc)
-    return {'active': active, 'annual': 'annual' in (ent.get('product_identifier') or ''), 'product': ent.get('product_identifier'), 'expires_at': expires}
+    product = (ent.get('product_identifier') or '').lower()
+    return {'active': active, 'annual': 'annual' in product or 'yearly' in product, 'lifetime': expires is None and active,
+            'product': ent.get('product_identifier'), 'expires_at': expires}

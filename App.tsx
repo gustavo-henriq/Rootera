@@ -29,6 +29,7 @@ import { TodaySkeleton, Unreachable } from './src/ds/states';
 import { scheduleNudges } from './src/nudges';
 import { ProfileInvite } from './src/screens/ProfileInvite';
 import { Lab } from './src/screens/Lab';
+import { watchCustomerInfo } from './src/billing';
 import * as SplashScreen from 'expo-splash-screen';
 import { lang, loadLang, onLangChange, t } from './src/i18n';
 
@@ -57,6 +58,11 @@ function Navigator() {
   // server's guidance in that language and reopens on You, where the choice was made.
   const [langKey, setLangKey] = React.useState(lang());
   React.useEffect(() => onLangChange(() => { setLangKey(lang()); void refresh(); }), [refresh]);
+  // Renewals, expirations and purchases made elsewhere: when RevenueCat reports a change in the
+  // "rootera" entitlement, the server checks it again (it alone decides the plan).
+  const { syncBilling } = useStore();
+  const plus = garden.plan === 'Plus';
+  React.useEffect(() => watchCustomerInfo(garden.user_id, entitled => { if (entitled !== plus) void syncBilling().catch(() => undefined); }), [garden.user_id, plus]);
   React.useEffect(() => { if (source === 'server' && garden.onboarded) void scheduleNudges(garden); },
     [source, garden.onboarded, garden.reminders, garden.nudges?.time, garden.nudges?.kinds.join(), garden.plants.length, twinKey, garden.caregiver?.detail, langKey]);
   const firstLang = React.useRef(langKey).current;

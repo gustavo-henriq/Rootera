@@ -22,7 +22,7 @@ class Settings:
     # Every account gets the example plant once (see example.py).
     seed_example: bool = True
     revenuecat_secret_key: str = ''
-    revenuecat_entitlement: str = 'plus'
+    revenuecat_entitlement: str = 'rootera'
     revenuecat_webhook_auth: str = ''
     plantnet_api_key: str = ''
 
@@ -44,7 +44,7 @@ class Settings:
             seed_demo=_flag('ROOTERA_SEED_DEMO', 'false'),
             seed_example=_flag('ROOTERA_SEED_EXAMPLE', 'true'),
             revenuecat_secret_key=os.getenv('REVENUECAT_SECRET_KEY', ''),
-            revenuecat_entitlement=os.getenv('REVENUECAT_ENTITLEMENT', 'plus'),
+            revenuecat_entitlement=os.getenv('REVENUECAT_ENTITLEMENT', 'rootera'),
             revenuecat_webhook_auth=os.getenv('REVENUECAT_WEBHOOK_AUTH', ''),
             plantnet_api_key=os.getenv('PLANTNET_API_KEY', ''),
         )

@@ -47,7 +47,7 @@ const TABLES = {
   'src/screens/Care.tsx': ['visualHints', 'AMOUNTS', 'STAGES', 'stageHints'],
   'src/screens/Plant.tsx': ['statusSpeech'],
   'src/screens/Main.tsx': ['tabs', 'CHECK_IN', 'nudgeNames'],
-  'src/screens/Plans.tsx': ['heads', 'benefits'],
+  'src/screens/Plans.tsx': ['heads', 'benefits', 'periodLabel'],
   'src/screens/Profile.tsx': ['layers', 'text'],
   'src/screens/PlantForm.tsx': ['LOCATIONS', 'LIGHT', 'YES_NO', 'POT', 'MATERIAL', 'SUBSTRATE', 'lightLabels'],
   'src/screens/onboarding/FirstPlant.tsx': ['LIGHT', 'POTS', 'STAGES', 'WATERED', 'SOILS', 'QUESTION', 'LABEL'],

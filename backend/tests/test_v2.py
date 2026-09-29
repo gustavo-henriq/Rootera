@@ -124,3 +124,15 @@ def test_product_events_are_recorded_and_validated(client):
     nested = client.post('/v1/events', json={'events': [{'name': 'x_y', 'at': 'x', 'props': {'a': {'b': 1}}}]}, headers=ALICE)
     assert nested.status_code == 422
     assert client.get('/v1/events/funnel', headers=ALICE).status_code == 403  # demo only
+
+
+def test_yearly_and_lifetime_products_are_read_right():
+    def entitlement(product, expires):
+        def handler(request):
+            return httpx.Response(200, json={'subscriber': {'entitlements': {'rootera': {'product_identifier': product, 'expires_date': expires}}}})
+        return revenuecat.active_entitlement('alice', 'sk_test', 'rootera', httpx.Client(transport=httpx.MockTransport(handler)))
+    later = '2099-01-01T00:00:00Z'
+    assert entitlement('yearly', later) == {'active': True, 'annual': True, 'lifetime': False, 'product': 'yearly', 'expires_at': later}
+    assert entitlement('monthly', later)['annual'] is False
+    life = entitlement('lifetime', None)
+    assert life['active'] and life['lifetime'] and not life['annual']
