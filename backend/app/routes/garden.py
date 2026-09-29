@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from ..db import DomainEvent, SensorObservation, UserObservation
@@ -28,8 +30,9 @@ def update_plant(plant_id: str, payload: PlantUpdate, s=Depends(service)):
 
 
 @router.delete('/plants/{plant_id}')
-def archive_plant(plant_id: str, s=Depends(service)):
-    return s.archive_plant(plant_id)
+def archive_plant(plant_id: str, reason: Literal['died', 'given', 'left', 'removed'] = 'removed', s=Depends(service)):
+    """A plant leaves the garden; `reason` says why (it died, was given away, was left behind)."""
+    return s.archive_plant(plant_id, reason)
 
 
 @router.post('/plants/{plant_id}/user-observations', status_code=201)

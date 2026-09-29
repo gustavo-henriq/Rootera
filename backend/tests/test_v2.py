@@ -20,7 +20,7 @@ def test_free_plan_limit_and_archive_frees_a_slot_without_losing_history(client)
         assert client.post('/v1/plants', json=plant_payload(f'p{i}'), headers=ALICE).status_code == 201
     client.post('/v1/plants/p0/user-observations', json={'id': 'w', 'type': 'Watered', 'observed_at': now()}, headers=ALICE)
     assert client.post('/v1/plants', json=plant_payload('p3'), headers=ALICE).status_code == 409
-    assert client.delete('/v1/plants/p0', headers=ALICE).json() == {'archived': True}
+    assert client.delete('/v1/plants/p0', headers=ALICE).json() == {'archived': True, 'reason': 'removed'}
     garden = client.get('/v1/garden', headers=ALICE).json()
     assert [p['id'] for p in garden['plants']] == ['p1', 'p2'] and garden['events'] == []
     with client.app.state.factory() as db:

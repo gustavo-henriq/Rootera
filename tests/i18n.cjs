@@ -41,6 +41,7 @@ const TABLES = {
   'src/ds/WhySheet.tsx': ['GROUPS'],
   'src/ds/DepthRuler.tsx': ['DEPTH'],
   'src/ds/DryWindow.tsx': ['factorLabel'],
+  'src/screens/Farewell.tsx': ['CHOICES', 'WORDS'],
   'src/screens/Care.tsx': ['soilHints', 'visualHints', 'AMOUNTS', 'STAGES', 'stageHints'],
   'src/screens/Plant.tsx': ['statusSpeech'],
   'src/screens/Main.tsx': ['tabs', 'CHECK_IN', 'nudgeNames'],

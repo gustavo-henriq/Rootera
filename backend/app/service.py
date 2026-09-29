@@ -107,11 +107,11 @@ class GardenService:
         self.rebuild(plant_id)
         return p.data
 
-    def archive_plant(self, plant_id: str):
+    def archive_plant(self, plant_id: str, reason: str = 'removed'):
         # History is preserved; the plant leaves the garden and frees plan capacity.
         p = self.plant(plant_id, lock=True)
-        p.data = {**p.data, 'archived': True, 'archived_at': utcnow().isoformat()}
-        return {'archived': True}
+        p.data = {**p.data, 'archived': True, 'archived_at': utcnow().isoformat(), 'archived_reason': reason}
+        return {'archived': True, 'reason': reason}
 
     # ---- evidence and twin -------------------------------------------------
     def evidence(self, plant_id: str):

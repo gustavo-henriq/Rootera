@@ -61,7 +61,7 @@ export const api = {
   profile: (changes: Partial<{ name: string; onboarded: boolean; reminders: boolean; caregiver: Caregiver; nudges: Nudges }>) => request('/v1/profile', 'PATCH', changes),
   addPlant: (plant: Plant) => request<Plant>('/v1/plants', 'POST', plant),
   updatePlant: (id: string, changes: Partial<Plant>) => request<Plant>(`/v1/plants/${encodeURIComponent(id)}`, 'PATCH', changes),
-  archivePlant: (id: string) => request(`/v1/plants/${encodeURIComponent(id)}`, 'DELETE'),
+  archivePlant: (id: string, reason: 'died' | 'given' | 'left' | 'removed' = 'removed') => request(`/v1/plants/${encodeURIComponent(id)}?reason=${reason}`, 'DELETE'),
   logCare: (e: CareEvent) => request<CareResult>(`/v1/plants/${encodeURIComponent(e.plantId)}/user-observations`, 'POST', {
     id: e.id, type: e.type, note: e.note, observed_at: e.at,
     soil: e.soil ?? null, amount_ml: e.amount_ml ?? null, ...(e.visual ? { visual: e.visual } : {}), ...(e.approximate ? { approximate: true } : {}),

@@ -55,3 +55,10 @@ def test_plantnet_answers_in_the_app_language():
     client = httpx.Client(transport=httpx.MockTransport(handler))
     plantnet.identify(base64.b64encode(b'jpeg' * 60).decode(), 'auto', 'key', client, lang='pt')
     assert seen['lang'] == 'pt'
+
+
+def test_a_plant_leaves_with_its_reason(planted):
+    r = planted.delete('/v1/plants/aloe-1?reason=died', headers=ALICE)
+    assert r.status_code == 200 and r.json() == {'archived': True, 'reason': 'died'}
+    assert planted.get('/v1/garden', headers=ALICE).json()['plants'] == []
+    assert planted.delete('/v1/plants/aloe-1?reason=eaten', headers=ALICE).status_code == 422

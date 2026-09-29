@@ -16,6 +16,7 @@ import { ActionSheet } from '../ds/ActionSheet';
 import { SeedDrop } from '../ds/SeedDrop';
 import { announce, haptic } from '../ds/feedback';
 import { WhySheet } from '../ds/WhySheet';
+import { Farewell, FarewellSheet } from './Farewell';
 import { CareCalendar } from '../ds/CareCalendar';
 import { DryWindow } from '../ds/DryWindow';
 import Svg, { Circle } from 'react-native-svg';
@@ -213,6 +214,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
     if (m && shownMilestone.current !== route.params.saved?.title + m) { shownMilestone.current = route.params.saved?.title + m; setMilestone(m); }
   }, [route.params.saved?.milestone]);
   const [confirm, setConfirm] = useState(false);
+  const leaving = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const scroll = useRef<ScrollView>(null);
@@ -252,6 +254,8 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
     return () => { live = false; };
   }, [route.params.id, garden.events_complete, garden.events.length]);
 
+  // Just said goodbye: the page is on its way back to Today, not a missing plant.
+  if (!plant && leaving.current) return <View style={{ flex: 1, backgroundColor: c.canvas }} />;
   if (!plant) {
     return <Page back={navigation.goBack}>
       <T v="title">{t("This plant isn’t in your garden")}</T>
@@ -283,16 +287,17 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
     } catch (e) { setError(e instanceof Error ? e.message : t('Could not undo.')); }
     finally { setBusy(false); }
   };
-  const remove = async () => {
-    setBusy(true);
-    try { await archivePlant(plant.id); navigation.navigate('Main', { tab: 'Plants' }); }
-    catch (e) { setError(e instanceof Error ? e.message : t('Could not remove.')); setBusy(false); }
+  // Leaving through the farewell: the plant is archived with its reason, then Today.
+  const leave = async (reason: Farewell) => {
+    leaving.current = true;
+    try { await archivePlant(plant.id, reason); }
+    catch (e) { leaving.current = false; throw e; }
+    navigation.navigate('Main', { tab: 'Today' });
   };
 
   return <View style={{ flex: 1 }}>
     <Page back={navigation.goBack} scrollRef={scroll} titleInBar={plant.name} gap={space[6]}
       actions={[{ icon: 'more', label: t('Plant options'), onPress: () => { setMenu(true); setConfirm(false); } }]}>
-      {confirm && <Toast tone="error" title={t('Remove {name}?', { name: plant.name })} text={t("It leaves your garden and frees a plan spot. Its care history is kept.")} action={{ title: busy ? t('Removing…') : t('Remove'), onPress: () => void remove() }} onClose={() => setConfirm(false)} />}
       {!!saved && <Animated.View key={saved.title + (saved.to ?? '')} entering={FadeIn.duration(240)}>
         <Toast title={saved.title} onClose={() => navigation.setParams({ saved: undefined })}
           text={saved.to ? t('Next step changed: {v}.', { v: t(saved.to).toLowerCase() }) : saved.title !== t('Details updated') && saved.title !== t('Check-in undone') ? t('The next step stays the same. It’s in the plant’s history.') : undefined}
@@ -365,6 +370,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
       </Group>
     </Page>
 
+    <FarewellSheet plant={plant} visible={confirm} onClose={() => setConfirm(false)} onConfirm={leave} />
     {!!milestone && <Milestone plant={plant} stage={milestone} onDone={() => setMilestone(null)} />}
     {flight === 'flying' && flyFrom && landing && <Flight kind={plant.kind} photo={plant.photo} from={flyFrom} to={landing} onDone={() => setFlight('done')} />}
     <WhySheet visible={why} onClose={() => setWhy(false)} title={g?.title ?? ''} reason={g?.reason ?? ''} basis={g?.basis ?? []} />

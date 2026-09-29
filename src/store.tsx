@@ -17,7 +17,8 @@ interface Store {
   saveProfile: (changes: Partial<{ name: string; onboarded: boolean; reminders: boolean; caregiver: Caregiver; nudges: Nudges }>) => Promise<void>;
   addPlant: (plant: Plant) => Promise<void>;
   updatePlant: (id: string, changes: Partial<Plant>) => Promise<void>;
-  archivePlant: (id: string) => Promise<void>;
+  /** A plant leaves the garden; `reason` says why (see screens/Farewell). */
+  archivePlant: (id: string, reason?: 'died' | 'given' | 'left' | 'removed') => Promise<void>;
   logCare: (event: CareEvent) => Promise<CareResult>;
   /** Undo a care record (it leaves the plant's history; the server keeps an audit entry). */
   removeCare: (plantId: string, id: string) => Promise<void>;
@@ -91,7 +92,7 @@ export function StoreProvider({ children }: React.PropsWithChildren) {
     saveProfile: changes => write(() => api.profile(changes)).then(() => undefined),
     addPlant: plant => write(() => api.addPlant(plant)).then(() => undefined),
     updatePlant: (id, changes) => write(() => api.updatePlant(id, changes)).then(() => undefined),
-    archivePlant: id => write(() => api.archivePlant(id)).then(() => undefined),
+    archivePlant: (id, reason) => write(() => api.archivePlant(id, reason)).then(() => undefined),
     logCare: event => write(() => api.logCare(event)),
     removeCare: (plantId, id) => write(() => api.removeCare(plantId, id)).then(() => undefined),
     setDemoPlan: (plan, annual) => write(() => api.demoPlan(plan, annual)).then(() => undefined),
