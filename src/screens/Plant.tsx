@@ -242,7 +242,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
       actions={[{ icon: 'more', label: t('Plant options'), onPress: () => { setMenu(true); setConfirm(false); } }]}>
       {!!saved && <Animated.View key={saved.title + (saved.to ?? '')} entering={FadeIn.duration(240)}>
         <Toast title={saved.title} onClose={() => navigation.setParams({ saved: undefined })}
-          text={saved.to ? t('Next step changed: {v}.', { v: t(saved.to).toLowerCase() }) : saved.title !== t('Details updated') && saved.title !== t('Check-in undone') ? t('The next step stays the same. It’s in the plant’s history.') : undefined}
+          text={saved.to ? t('Next step changed: {v}.', { v: t(saved.to).toLowerCase() }) : saved.title !== t('Details updated') && saved.title !== t('Check-in undone') ? t('Next step unchanged. Saved to its history.') : undefined}
           action={saved.undo?.ids.length ? { title: busy ? t('Undoing…') : t('Undo'), onPress: () => void undo() } : undefined} />
       </Animated.View>}
 
@@ -252,7 +252,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
         <LeafBurst run={burst} />
         {!!width && <Hero plant={plant} drops={drops} artRef={flyFrom ? artRef : undefined} arriving={flyFrom ? flight !== 'done' : undefined} />}
         <View style={{ alignItems: 'center', gap: 2 }}>
-          <T v="display" center lines={3} style={titleStyle}>{plant.name}</T>
+          <T v="display" center lines={3} fit style={titleStyle}>{plant.name}</T>
           <T v="latin" tone="ink2" center>{plant.species}</T>
         </View>
       </View>

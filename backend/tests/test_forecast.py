@@ -65,7 +65,7 @@ def test_window_spares_checks_until_it_opens():
     # Monstera, nothing declared: window 7 to 14 days, first check on day 4. Three days after watering: wait.
     plain = project([e('w', 'Watered', {}, 72)], {'kind': 'monstera'})
     assert (plain['title'], plain['action']) == ('Probably not dry yet', 'wait')
-    assert plain['basis'] == ['Your watering record', 'Species reference'] and 'general estimate' in plain['reason']
+    assert plain['basis'] == ['Your watering record', 'Species reference'] and 'Estimate for this species' in plain['reason']
     # A small pot in direct sun dries sooner: on the same third day a check is due.
     fast = project([e('w', 'Watered', {}, 72)], {'kind': 'monstera', 'pot': 'Small pot', 'light': 'Direct sun'})
     assert (fast['title'], fast['action']) == ('Worth an early check', 'check_soil')

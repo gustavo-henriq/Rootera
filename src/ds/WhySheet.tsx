@@ -62,7 +62,7 @@ export function WhySheet({ visible, onClose, title, reason, basis }: { visible: 
               </View>
             </Animated.View>
           </View>
-          <T v="footnote" tone="ink2">{t("Rootera never mixes these sources: what you observed stays yours, species notes stay general, and each suggestion says which it used.")}</T>
+          <T v="footnote" tone="ink2">{t("These sources never mix. Each suggestion says which it used.")}</T>
         </ScrollView>
       </Animated.View>
     </View>

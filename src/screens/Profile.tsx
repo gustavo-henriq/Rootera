@@ -58,7 +58,7 @@ function PhonePermission() {
     try { const N = await import('expo-notifications'); const p = await N.getPermissionsAsync(); setState(p.granted ? 'granted' : p.canAskAgain ? 'undetermined' : 'denied'); } catch { setState('web'); }
   };
   useEffect(() => { void read(); }, []);
-  const text = { granted: 'Notifications are on. Nudges arrive on this phone at the time below.', denied: 'Notifications are off for Rootera in your phone’s settings, so nudges only show inside the app.', undetermined: 'Rootera hasn’t asked to send notifications yet. Until you allow them, nudges only show inside the app.', web: 'This preview runs in a browser, so nudges only show inside the app.' }[state];
+  const text = { granted: 'Notifications are on. Nudges arrive at the time below.', denied: 'Notifications are off in your phone’s settings. Nudges show only in the app.', undetermined: 'Notifications aren’t allowed yet. Until then, nudges show only in the app.', web: 'In the browser, nudges show only in the app.' }[state];
   return <View style={{ flexDirection: 'row', gap: space[3], padding: space[4], borderRadius: radius.control, backgroundColor: c.sunken, alignItems: 'flex-start' }}>
     <Glyph name={state === 'granted' ? 'check' : 'info'} size={18} tone={state === 'granted' ? c.leafText : c.ink2} />
     <View style={{ flex: 1, gap: space[2] }}>
@@ -94,18 +94,18 @@ export function Nudges({ navigation }: Props<'Nudges'>) {
 }
 
 const layers: { kind: Source; title: string; text: string }[] = [
-  { kind: 'observed', title: 'What you observe', text: 'Soil checks, watering and notes about the leaves. A soil check is kept exactly as you described it (dry, moist…). Rootera never turns it into a percentage.' },
-  { kind: 'told', title: 'What you tell us', text: 'Where the plant lives, its light, pot and soil. Optional, and editable any time.' },
-  { kind: 'species', title: 'General species notes', text: 'How the species usually likes its soil. Useful at the start. It describes the species, not your plant.' },
-  { kind: 'suggested', title: 'What Rootera suggests', text: 'Rules that combine the three sources above. Each suggestion lists what it was based on. After three watering cycles that end with a dry check, Rootera shows how long your plant usually takes to get there. That depends on how often you check, so it is not a watering schedule.' },
-  { kind: 'off', title: 'Not connected yet', text: 'Soil sensors, local weather and automatic photo identification. When they arrive they will appear as their own sources, never mixed with what you observed.' },
+  { kind: 'observed', title: 'What you observe', text: 'Soil checks, waterings and leaf notes, kept as you described them. Never turned into percentages.' },
+  { kind: 'told', title: 'What you tell us', text: 'Its spot, light, pot and soil. Optional.' },
+  { kind: 'species', title: 'General species notes', text: 'What the species usually likes. A start, not a rule for your plant.' },
+  { kind: 'suggested', title: 'What Rootera suggests', text: 'Rules that combine the three sources. After three cycles, Rootera shows how long your plant takes to dry. It’s not a watering schedule.' },
+  { kind: 'off', title: 'Not connected yet', text: 'Soil sensors, local weather and photo ID. Each will be its own source.' },
 ];
 
 export function About({ navigation }: Props<'About'>) {
   return <Page back={navigation.goBack} titleInBar={t("How Rootera learns")}>
     <View style={{ gap: space[2] }}>
       <T v="hero">{t("How Rootera learns")}</T>
-      <T v="callout" tone="ink2">{t("Each plant has a Plant Twin: a record of this plant, its spot and your care, kept in separate layers so you always know where a suggestion comes from.")}</T>
+      <T v="callout" tone="ink2">{t("Each plant has a Plant Twin: its spot and your care, kept apart so every suggestion shows its source.")}</T>
     </View>
     {layers.map(l => <View key={l.title} style={{ gap: space[2] }}>
       <SourceLabel kind={l.kind} />

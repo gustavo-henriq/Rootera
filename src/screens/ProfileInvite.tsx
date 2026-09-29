@@ -78,7 +78,7 @@ export function ProfileInvite() {
         style={{ width: '100%', maxWidth: 440, backgroundColor: c.raised, borderTopLeftRadius: radius.chrome, borderTopRightRadius: radius.chrome, padding: space.gutter, paddingBottom: insets.bottom + space[5], gap: space[4] }}>
         <View style={{ gap: space[1] }}>
           <T v="title2" accessibilityRole="header">{required ? t('One last thing: your name') : t('What should we call you?')}</T>
-          <T v="subhead" tone="ink2">{required ? t('Create your profile to keep looking after your plants.') : t('You have started caring with Rootera. Create your profile to keep it yours.')}</T>
+          <T v="subhead" tone="ink2">{required ? t('Create your profile to keep looking after your plants.') : t('Create your profile to keep your garden.')}</T>
         </View>
         <Field label={t('Your name')} value={name} onChangeText={setName} maxLength={40} autoFocus onSubmitEditing={() => void save()} />
         {!!error && <T v="footnote" tone="danger">{error}</T>}

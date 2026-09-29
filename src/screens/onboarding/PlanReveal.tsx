@@ -47,7 +47,7 @@ export function PlanReveal({ kind, name, photo, rows, twin, onContinue }: { kind
       <Animated.View entering={enter(2)} style={{ padding: space[4], gap: space[2], borderRadius: radius.card, backgroundColor: c.successSoft }}>
         <SourceLabel kind="suggested" />
         <T v="title2">{g?.title ?? t('Start with a soil check')}</T>
-        <T v="body" tone="ink2">{g?.reason ?? t('A first soil check tells Rootera where this plant is starting from. Every later check is compared with it.')}</T>
+        <T v="body" tone="ink2">{g?.reason ?? t('A first soil check shows where this plant starts.')}</T>
         {!!g?.basis?.length && <T v="footnote" tone="ink2">{t('From: {v}.', { v: g.basis.map(b => t(b)).join(', ').toLowerCase() })}</T>}
       </Animated.View>
 
@@ -57,7 +57,7 @@ export function PlanReveal({ kind, name, photo, rows, twin, onContinue }: { kind
       </Animated.View>}
 
       <Animated.View entering={enter(4)}>
-        <T v="subhead" tone="ink2">{t("Every check you add makes this more about your plant and less about the species in general.")}</T>
+        <T v="subhead" tone="ink2">{t("Each check makes this more about your plant, less about the species.")}</T>
       </Animated.View>
     </ScrollView>
     <Animated.View entering={enter(5)} style={{ paddingHorizontal: space.gutter, paddingBottom: insets.bottom + space[4], paddingTop: space[3], backgroundColor: c.canvas }}>

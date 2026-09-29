@@ -100,7 +100,7 @@ function CheckIn({ navigation, route }: Props<'Care'>) {
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space[4] }}>
       <View style={{ flex: 1, gap: space[2] }}>
         <T v="footnote" tone="ink2">{t("Check in")}</T>
-        <T v="title">{plant.name}</T>
+        <T v="title" lines={2} fit>{plant.name}</T>
       </View>
       <PlantArt kind={plant.kind} photo={plant.photo} size={72} />
     </View>
@@ -190,7 +190,7 @@ function SingleCare({ navigation, route }: Props<'Care'>) {
   };
 
   const titles = { soil: t('How does the soil feel?'), visual: t('How do the leaves look?'), water: t('Record watering') };
-  const subtitle = mode === 'soil' ? undefined : mode === 'water' ? t('Saved as now. Amount and a note are optional.') : t('What you notice matters more than a perfect answer. This isn’t a diagnosis.');
+  const subtitle = mode === 'soil' ? undefined : mode === 'water' ? t('Saved as now. Amount and note are optional.') : t('What you notice is enough. Not a diagnosis.');
 
   return <Page close={() => !busy && navigation.goBack()} titleInBar={plant.name} gap={space[5]}
     footer={<>

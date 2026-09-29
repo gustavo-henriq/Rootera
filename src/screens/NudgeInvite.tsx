@@ -72,7 +72,7 @@ export function NudgeInvite() {
           <Glyph name="bell" size={24} tone={c.leafText} />
           <View style={{ flex: 1, gap: space[1] }}>
             <T v="title2" accessibilityRole="header">{t('Want a nudge when your {name} needs you?', { name: first.name })}</T>
-            <T v="subhead" tone="ink2">{t('Only when a soil check would help. Each one comes from what you record.')}</T>
+            <T v="subhead" tone="ink2">{t('Only when a soil check would help.')}</T>
           </View>
         </View>
         <View style={{ gap: space[2] }}>

@@ -114,7 +114,7 @@ export default function App() {
   const ready = (loaded || !!error) && images;
   React.useEffect(() => { if (ready) SplashScreen.hideAsync().catch(() => undefined); }, [ready]);
   if (!ready) return <View style={{ flex: 1 }} />;
-  if (error) return <Text style={{ padding: 40 }}>{t("Rootera couldn’t load its fonts. Please restart the app.")}</Text>;
+  if (error) return <Text style={{ padding: 40 }}>{t("Fonts didn’t load. Restart the app.")}</Text>;
   return <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <ThemeProvider>

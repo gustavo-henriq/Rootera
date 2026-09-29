@@ -141,28 +141,28 @@ class SensorlessGuidance:
 
         if not events:
             title, action = _('Start with a soil check'), 'check_soil'
-            reason = _('A first soil check tells Rootera where this plant is starting from. Every later check is compared with it.')
+            reason = _('A first soil check shows where this plant starts.')
             basis = ['Species reference']
             tip = notes['check_tip']
         elif visual in ('different', 'unwell') and not fresh and not unsure and not (last_water and parse_time(last_water.at) >= parse_time(recent_visual.at)):
             title, action = _('Check the soil next'), 'check_soil'
-            reason = _('You noticed a change in how it looks. The soil adds context before you change anything in your routine.')
+            reason = _('You noticed a change. Check the soil before changing your routine.')
             basis = ['Your appearance check']
             tip = notes['check_tip']
         elif visual in ('different', 'unwell') and not fresh and last_water and parse_time(last_water.at) >= parse_time(recent_visual.at):
             title, action = _('Look at the leaves in a day or two'), 'observe'
-            reason = _('You watered after noticing a change. Give it a day or two and look at the leaves again before adding more water.')
+            reason = _('You watered after a change. Look at the leaves in a day or two before watering again.')
             basis = ['Your appearance check', 'Your watering record']
         elif fresh and visual in ('different', 'unwell'):
             title, action = _('Look at the leaves again tomorrow'), 'observe'
-            reason = _('You found the soil {soil} and noticed a change in the leaves. See whether the change continues before adjusting care.', soil=_(SOIL_WORDS[condition]))
+            reason = _('Soil {soil}, and the leaves changed. See if it continues before changing care.', soil=_(SOIL_WORDS[condition]))
             if condition == 'dry' and notes['thirst_sign']:
                 reason += f" {notes['thirst_sign']}"
             reason = ' '.join([reason, *context[:1]])
             basis = ['Your soil check', 'Your appearance check', 'Species reference']
         elif pooling(layers):
             title, action = _('The bottom is still wet'), 'wait'
-            reason = _('The surface is dry, but the bottom of the pot is still wet. Water now would sit around the roots, so wait until the bottom dries too.')
+            reason = _('The surface is dry, but the bottom is still wet. Wait until it dries too.')
             if no_drainage:
                 reason += ' ' + _('With no drainage hole, excess water has nowhere to go.')
             basis = ['Your soil check'] + (['Pot details you added'] if no_drainage else [])
@@ -171,39 +171,39 @@ class SensorlessGuidance:
             reason = ' '.join([notes['when_dry'], *context])
             basis = ['Your soil check', 'Species reference'] + (['Pot details you added'] if context else [])
             if not no_drainage:
-                tip = _('If you water, pour slowly until a little drains out, then empty the saucer. Record it here so Rootera can follow the next cycle.')
+                tip = _('Pour slowly until a little drains out, then empty the saucer.')
             else:
-                tip = _('If you water, use a small amount and record it so Rootera can follow the next cycle.')
+                tip = _('If you water, use a small amount.')
         elif condition == 'slightly_moist':
             title, action = _('Nearly dry'), 'wait'
-            reason = _('There is still some moisture below the surface. Another check tomorrow will show whether it has dried through.')
+            reason = _('Still some moisture below. Check again tomorrow.')
             if notes['dryness'] == 'top':
-                reason = _('The soil is close to dry. This species usually prefers water around this point, so a check tomorrow is worthwhile.')
+                reason = _('Nearly dry. This species likes water around now; check tomorrow.')
             if unreached(layers) and notes['dryness'] == 'full':
-                reason = _('Dry as deep as you could check. This species likes to dry all the way through, so the bottom decides.')
-                tip = _('A wooden skewer pushed to the bottom of the pot and left a minute shows it: it comes out clean and dry when the bottom is dry.')
+                reason = _('Dry as deep as you reached. This species dries all the way, so the bottom decides.')
+                tip = _('A wooden skewer to the bottom for a minute: it comes out dry when the bottom is dry.')
             basis = ['Your soil check', 'Species reference']
         elif condition in ('moist', 'wet'):
             title, action = _('Still moist' if condition == 'moist' else 'The soil is wet'), 'wait'
-            reason = _('Your check found moisture below the surface. Holding off on water for now keeps the roots from sitting wet.')
+            reason = _('There’s moisture below the surface. Waiting keeps the roots from sitting wet.')
             if condition == 'wet' and no_drainage:
                 reason += ' ' + _('With no drainage hole, excess water has nowhere to go.')
             basis = ['Your soil check'] + (['Pot details you added'] if condition == 'wet' and no_drainage else [])
         elif unsure:
             title, action = _('No clear answer yet'), 'wait'
-            reason = _('That is fine. Soil can be hard to read at first. Next time, try a little deeper or compare with how it felt right after watering.')
+            reason = _('That’s fine. Soil is hard to read at first; next time, try a little deeper.')
             basis = ['Your soil check']
         elif stale_dry:
             title, action = _('Check the soil today'), 'check_soil'
-            reason = _('Your last check, {ago}, found the soil dry. If you watered since, record it; if not, a quick check confirms it before you water.', ago=_ago(age(last_soil), lang))
+            reason = _('Your last check, {ago}, found it dry. Watered since? Record it. If not, check before watering.', ago=_ago(age(last_soil), lang))
             basis = ['Your soil check']
             tip = notes['check_tip']
         elif last_water and since_water < 1:
             title, action = _('Watering recorded'), 'wait'
-            reason = _('Give it time to soak in. A soil check in a day or two shows how quickly this pot dries.')
+            reason = _('Let it soak in. Check in a day or two to see how fast it dries.')
             basis = ['Your watering record']
         elif baseline is not None and last_water:
-            reason = _('In your last {n} cycles, the soil dried about {baseline} after watering, judging by your checks. It has been {since}.', n=len(recent), baseline=_days(baseline, lang), since=_days(since_water, lang))
+            reason = _('Last {n} cycles: dry about {baseline} after watering. It has been {since}.', n=len(recent), baseline=_days(baseline, lang), since=_days(since_water, lang))
             # The same threshold the app draws: the window opens on its first day.
             opens = window['check_after_days'] if window else baseline * .75
             if since_water < opens:
@@ -217,15 +217,15 @@ class SensorlessGuidance:
             # cycles) spares daily checks right after a watering. See forecast.py.
             span = dict(low=window['low_days'], high=window['high_days'], since=_days(since_water, lang))
             if window['source'] == 'estimate':
-                reason = _('A general estimate for this species and pot is about {low} to {high} days after watering. It has been {since}. Your own checks will replace it.', **span)
+                reason = _('Estimate for this species and pot: {low} to {high} days after watering. It has been {since}.', **span)
             else:
-                reason = _('Your first cycles suggest about {low} to {high} days after watering. It has been {since}.', **span)
+                reason = _('Your first cycles: about {low} to {high} days after watering. It has been {since}.', **span)
             if since_water < window['check_after_days']:
                 title, action = _('Probably not dry yet'), 'wait'
             elif since_water < window['low_days']:
                 # Still before the estimated window: a check now tests the estimate early.
                 title, action = _('Worth an early check'), 'check_soil'
-                reason += ' ' + _('An early check shows whether this pot dries sooner than the estimate.')
+                reason += ' ' + _('An early check shows if it dries sooner.')
                 tip = notes['check_tip']
             else:
                 title, action = _('Around when it usually dries'), 'check_soil'
@@ -235,9 +235,9 @@ class SensorlessGuidance:
         else:
             title, action = _('Check the soil today'), 'check_soil'
             if last_soil:
-                reason = _('Your last soil check was {ago}. Soil changes day to day, so a new check keeps the picture current.', ago=_ago(age(last_soil), lang))
+                reason = _('Last soil check: {ago}. A new one keeps this current.', ago=_ago(age(last_soil), lang))
             else:
-                reason = _('There is no soil check since the last watering. A quick check shows how this pot is drying.')
+                reason = _('No check since the last watering. A quick one shows how it’s drying.')
             basis = ['Your care history']
             tip = notes['check_tip']
 
@@ -260,7 +260,7 @@ class SensorlessGuidance:
             # When the soil dried in each recent cycle (days after watering), oldest first.
             'cycle_days': [round(h / 24, 1) for h in dried[-RECENT_CYCLES:]],
             'forecast': window,
-            'baseline_note': _('Typical time until the soil dries after watering, judging by your checks. How often you check affects this number.'),
+            'baseline_note': _('Typical time until dry, from your checks.'),
             'soil': condition, 'soil_layers': layers, 'soil_checked_at': last_soil.at if recent_soil else None,
             'visual': visual,
             'last_watered_at': last_water.at if last_water else None,

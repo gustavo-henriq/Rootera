@@ -31,11 +31,11 @@ const CHOICES: { key: Farewell; label: string; hint?: string }[] = [
 const WORDS: Record<Exclude<Farewell, 'removed'>, { title: string; body: string }> = {
   died: {
     title: 'I’m sorry about your {name}.',
-    body: 'Plants die even with careful, attentive care. It says nothing bad about you. Everything you recorded is kept, and it helps the next plant.',
+    body: 'Plants die even with attentive care. It says nothing bad about you. Its history stays and helps the next plant.',
   },
   given: {
     title: '{name} gets to keep growing.',
-    body: 'A plant passed on is a plant that goes on. Its history stays here.',
+    body: 'A plant passed on keeps growing. Its history stays here.',
   },
   left: {
     title: 'Sometimes life changes places.',
@@ -68,7 +68,7 @@ export function FarewellSheet({ plant, visible, onClose, onConfirm }: { plant: P
         ? <ScrollView contentContainerStyle={{ gap: space[5], paddingTop: space[4] }}>
             <View style={{ gap: space[2] }}>
               <T v="hero" accessibilityRole="header">{t('{name} is leaving your garden?', { name: plant.name })}</T>
-              <T v="callout" tone="ink2">{t('Tell Rootera what happened. Its history is kept either way.')}</T>
+              <T v="callout" tone="ink2">{t('What happened? Its history is kept either way.')}</T>
             </View>
             <View accessibilityRole="radiogroup" style={{ borderTopWidth: 1, borderColor: c.leafMark }}>
               {CHOICES.map(o => <Tap key={o.key} role="radio" label={o.hint ? `${t(o.label)}. ${t(o.hint)}` : t(o.label)} onPress={() => pick(o.key)} scaleTo={.99} ring={radius.inner}

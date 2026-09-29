@@ -41,7 +41,7 @@ export async function request<T>(path: string, method = 'GET', body?: unknown, t
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError(t('Can’t reach Rootera right now. Nothing was saved. Check your connection and try again.'), 0, true);
+    throw new ApiError(t('No connection. Nothing was saved. Try again.'), 0, true);
   } finally {
     clearTimeout(timer);
   }

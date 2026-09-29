@@ -60,6 +60,6 @@ export function DryWindow({ forecast: f, lastWatered, now = Date.now(), compact 
     </View>
     <T v="subhead" tone="ink2" style={{ marginTop: space[2] }}>{next}</T>
     {!compact && !!f.factors.length && <T v="footnote" tone="ink2">{t('Adjusted for: {list}.', { list: f.factors.map(k => t(factorLabel[k] ?? k)).join(', ') })}</T>}
-    {!compact && !own && <T v="footnote" tone="ink2">{t('Your own checks replace this estimate after three watering cycles.')}</T>}
+    {!compact && !own && <T v="footnote" tone="ink2">{t('Your checks replace this after three cycles.')}</T>}
   </View>;
 }

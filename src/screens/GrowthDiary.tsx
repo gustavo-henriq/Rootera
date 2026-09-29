@@ -33,7 +33,7 @@ export function GrowthDiary({ plantId, plantName, plus, onUpgrade }: { plantId: 
     try {
       if (camera) {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
-        if (!perm.granted) { setError(t('Camera access is off for Rootera. You can still choose a photo.')); return; }
+        if (!perm.granted) { setError(t('Camera access is off. You can still pick a photo.')); return; }
       }
       const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: .7, allowsEditing: true, aspect: [4, 5] };
       const r = camera ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
@@ -52,7 +52,7 @@ export function GrowthDiary({ plantId, plantName, plus, onUpgrade }: { plantId: 
         <Glyph name="camera" size={22} tone={c.ink3} />
       </View>)}
     </View>
-    <T v="subhead" tone="ink2">{t('A dated photo now and then shows how {name} grows. The growth diary is part of Rootera+; photos stay on this phone.', { name: plantName })}</T>
+    <T v="subhead" tone="ink2">{t('Dated photos show how {name} grows. Part of Rootera+; photos stay on this phone.', { name: plantName })}</T>
     <Btn kind="outline" size="regular" title={t("See Rootera+")} onPress={onUpgrade} style={{ alignSelf: 'flex-start' }} />
   </View>;
 
@@ -76,7 +76,7 @@ export function GrowthDiary({ plantId, plantName, plus, onUpgrade }: { plantId: 
         </View>
       </Tap>
     </ScrollView>
-    {!entries.length && <T v="subhead" tone="ink2">{t("Take a photo from the same spot every few weeks. Side by side, slow changes become easy to see.")}</T>}
+    {!entries.length && <T v="subhead" tone="ink2">{t("Take a photo from the same spot every few weeks to see slow changes.")}</T>}
     <ActionSheet visible={choose} title={t("Growth diary")} onClose={() => setChoose(false)} actions={[
       { label: t('Take a photo'), icon: 'camera', onPress: () => void pick(true) },
       { label: t('Choose from your photos'), icon: 'leaf', onPress: () => void pick(false) },

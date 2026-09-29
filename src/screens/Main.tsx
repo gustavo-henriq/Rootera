@@ -49,7 +49,7 @@ export function Main({ route }: Props<'Main'>) {
 
 function Offline() {
   const { offline, refresh } = useStore();
-  return offline ? <Toast tone="info" title={t("Showing your last saved garden")} text={t("Rootera’s server can’t be reached. New records won’t save until it’s back.")} action={{ title: t('Try again'), onPress: () => void refresh() }} /> : null;
+  return offline ? <Toast tone="info" title={t("Showing your last saved garden")} text={t("Server unreachable. New records save once it’s back.")} action={{ title: t('Try again'), onPress: () => void refresh() }} /> : null;
 }
 
 // One entry point for care: the check-in asks about soil, watering and leaves in one go.
@@ -96,7 +96,7 @@ function EmptyShelf({ onAdd }: { onAdd: () => void }) {
     })}</View>
     <Ground width={240} style={{ marginTop: -18 }} />
     <T v="title2" center>{t("Your shelf is empty")}</T>
-    <T v="callout" tone="ink2" center>{t("Add a plant and do a first soil check. Rootera starts learning from there.")}</T>
+    <T v="callout" tone="ink2" center>{t("Add a plant and check its soil. Rootera learns from there.")}</T>
     <Btn title={t("Add a plant")} icon="plus" onPress={onAdd} style={{ alignSelf: 'stretch' }} />
   </View>;
 }
@@ -202,7 +202,7 @@ function Today({ navigation }: TabProps<'Today'>) {
         </Tap>;
         return <View style={{ flexDirection: 'row', gap: space[3], alignItems: 'center', paddingVertical: space[4], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
           <Glyph name="leaf" tone={c.leafMark} />
-          <T v="callout" style={{ flex: 1 }}>{t("Nothing needs you right now. A plant shows up here when a check would help.")}</T>
+          <T v="callout" style={{ flex: 1 }}>{t("Nothing needs you now.")}</T>
         </View>;
       },
     }}>
@@ -402,7 +402,7 @@ function Journal({ navigation, route }: TabProps<'Journal'>) {
           </Tap>
         : <EventRow event={i.event} plant={index.get(i.event.plantId)} onPress={() => navigation.navigate('Plant', { id: i.event.plantId })} onLongPress={() => setMenuFor(i.event)} />,
       footer: loading ? <T v="subhead" tone="ink2">{t("Loading older records…")}</T>
-        : !items.length ? <View style={{ gap: space[2] }}><T v="title2">{t("Nothing recorded yet")}</T><T v="callout" tone="ink2">{t("Soil checks, watering and notes about the leaves appear here, newest first.")}</T></View>
+        : !items.length ? <View style={{ gap: space[2] }}><T v="title2">{t("Nothing recorded yet")}</T><T v="callout" tone="ink2">{t("Checks, waterings and leaf notes show up here.")}</T></View>
         : undefined,
     }}>
     <SourceLabel kind="observed" text={t("Everything here was recorded by you")} />
@@ -452,7 +452,7 @@ function You({ navigation }: TabProps<'You'>) {
     <Group header={t('Language')}>
       <Row title={t('App language')} detail={langNames[langChoice()]} onPress={() => setLangSheet(true)} />
     </Group>
-    <Group header={t("About")} footer={t("In this preview your garden is kept on the Rootera preview server. Photos stay on this device.")}>
+    <Group header={t("About")} footer={t("In this preview, your garden lives on a test server. Photos stay on this device.")}>
       <Row title={t("How Rootera learns")} onPress={() => navigation.navigate('About')} />
       <Row title={t("Preview onboarding")} detail={t("Plays it again. Nothing is saved.")} onPress={() => navigation.navigate('Welcome', { preview: true })} />
     </Group>

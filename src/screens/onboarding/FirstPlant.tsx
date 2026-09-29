@@ -109,7 +109,7 @@ function Finder({ q, setQ, choice, onChoose, photo, idState, matches, onCamera }
     <Tap key={key} role="radio" selected={on} label={a11y} onPress={onPress} ring={radius.control}
       style={{ width: tileW, alignItems: 'center', gap: 4, paddingVertical: 6, borderRadius: radius.control, backgroundColor: on ? c.raised : 'transparent', borderWidth: 1.5, borderColor: on ? c.ink : 'transparent' }}>
       {art}
-      <T v="caption" tone={on ? 'ink' : 'ink2'} lines={2} center>{label}</T>
+      <T v="caption" tone={on ? 'ink' : 'ink2'} lines={2} fit center>{label}</T>
     </Tap>;
   return <View style={{ gap: space[3] }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], borderBottomWidth: 1, borderColor: c.ink3 }}>
@@ -125,7 +125,7 @@ function Finder({ q, setQ, choice, onChoose, photo, idState, matches, onCamera }
       <Image source={{ uri: photo }} accessibilityLabel={t("Your photo")} style={{ width: 52, height: 64, borderRadius: radius.input }} />
       <View style={{ flex: 1, gap: space[1] }}>
         {idState === 'loading' && <T v="subhead" tone="ink2">{t("Looking for matches…")}</T>}
-        {idState === 'off' && <T v="footnote" tone="ink2">{t('Photo identification isn’t connected in this preview. Your photo will be its picture; choose the plant below.')}</T>}
+        {idState === 'off' && <T v="footnote" tone="ink2">{t('Photo ID is off in this preview. Pick the plant below.')}</T>}
         {idState === 'error' && <T v="footnote" tone="danger">{t("Identification didn’t work. Choose the plant below.")}</T>}
         {matches && !matches.length && <T v="footnote" tone="ink2">{t("No confident match. Choose the plant below.")}</T>}
         {!!matches?.length && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
@@ -139,9 +139,9 @@ function Finder({ q, setQ, choice, onChoose, photo, idState, matches, onCamera }
         <Image source={plantArt[s.kind]} style={{ width: 56, height: 56 }} resizeMode="contain" />, t(s.name)))}
       {!!needle && tile('custom', choice?.via === 'custom', t('Add “{name}”', { name: q.trim() }), () => onChoose({ kind: 'other', name: q.trim(), latin: q.trim(), via: 'custom' }),
         <View style={{ width: 56, height: 56, borderRadius: radius.control, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.ink3, alignItems: 'center', justifyContent: 'center' }}><Glyph name="plus" size={22} tone={c.ink2} /></View>,
-        t('Add {name} as your plant. Guidance will rely on your own checks.', { name: q.trim() }))}
+        t('Add {name}. Guidance will come from your checks.', { name: q.trim() }))}
     </ScrollView>
-    {!!needle && !list.length && <T v="footnote" tone="ink2">{t("Not in the list yet. Add it by name: Rootera will learn it from your own checks.")}</T>}
+    {!!needle && !list.length && <T v="footnote" tone="ink2">{t("Not in the list. Add it by name; Rootera learns from your checks.")}</T>}
   </View>;
 }
 
@@ -215,8 +215,8 @@ export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing
     {complete && <Animated.View entering={FadeInDown.delay(180).duration(420)} style={{ gap: space[1] }}>
       <T v="headline">{!SOILS[answers.soil!].checked ? t('Its first soil check can wait.') : t('This is your first observation.')}</T>
       <T v="subhead" tone="ink2">{!SOILS[answers.soil!].checked
-        ? t('Rootera will ask for one soon. Every later check is compared with it.')
-        : t('Rootera compares every later check with it. Tap any note to change it.')}</T>
+        ? t('Rootera will ask for one soon.')
+        : t('Later checks are compared with it. Tap a note to change it.')}</T>
     </Animated.View>}
   </View>;
 }

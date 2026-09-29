@@ -14,16 +14,16 @@ import { LeafBurst, Pop, Stagger } from '../ds/motion';
 import { locale, t } from '../i18n';
 
 const heads = {
-  first: { title: 'Room to grow', text: 'Rootera Free keeps up to 3 plants. Rootera+ is for a growing collection.' },
+  first: { title: 'Room to grow', text: 'Free keeps 3 plants. Rootera+ has no limit.' },
   limit: { title: 'Make room for more plants', text: 'Your free shelf holds 3 plants. Rootera+ removes the limit.' },
   rooms: { title: 'Organize plants by room', text: 'Group plants by living room, kitchen or balcony, and filter your shelf.' },
-  diary: { title: 'Watch every plant grow', text: 'The growth diary keeps a dated photo timeline for each plant, on your phone.' },
+  diary: { title: 'Watch every plant grow', text: 'A dated photo timeline for each plant, on your phone.' },
   default: { title: 'Rootera+', text: 'For people whose plant collection keeps growing.' },
 };
 const benefits: { icon: GlyphName; title: string; text: string }[] = [
   { icon: 'infinite', title: 'Unlimited plants', text: 'Free keeps 3 at a time.' },
   { icon: 'rooms', title: 'Rooms', text: 'Group plants by where they live and filter your shelf.' },
-  { icon: 'camera', title: 'Growth diary', text: 'A photo timeline for every plant, kept on your phone.' },
+  { icon: 'camera', title: 'Growth diary', text: 'A dated photo timeline for each plant, on your phone.' },
 ];
 // Only when no store is connected, so the preview can still be walked through.
 const previewAmounts = { monthly: 12.9, annual: 89.9 };
@@ -74,7 +74,7 @@ export function Plans({ navigation, route }: Props<'Plans'>) {
         if (!(await purchase(offer))) return;
         try { await syncBilling(); }
         catch (e) {
-          if (e instanceof ApiError && e.status === 503) throw new Error(t('Purchase complete, but the Rootera server can’t confirm it yet. It will update once the server’s RevenueCat key is set.'));
+          if (e instanceof ApiError && e.status === 503) throw new Error(t('Purchase complete. The server confirms it once its RevenueCat key is set.'));
           throw e;
         }
       } else await setDemoPlan('Plus', period === 'annual');
@@ -136,7 +136,7 @@ export function Plans({ navigation, route }: Props<'Plans'>) {
         </Tap>;
       })}
     </View>
-    <T v="footnote" tone="ink2">{t("Guidance, photo identification and nudges are the same on every plan.")}</T>
-    <T v="footnote" tone="ink2">{billingEnabled ? t('Billed through your App Store or Google Play account. Cancel any time in your store settings.') : t('Store payments aren’t connected in this preview. Prices are examples; the App Store or Google Play sets the real ones.')}</T>
+    <T v="footnote" tone="ink2">{t("Guidance, photo ID and nudges come with every plan.")}</T>
+    <T v="footnote" tone="ink2">{billingEnabled ? t('Billed by the App Store or Google Play. Cancel any time.') : t('Store payments aren’t connected in this preview. Prices are examples.')}</T>
   </Page>;
 }

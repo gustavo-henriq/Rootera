@@ -64,7 +64,7 @@ export async function scheduleNudges(garden: Garden) {
           content: {
             title: t('Worth a soil check: {name}', { name: first.name }),
             body: detail === 'Guided'
-              ? `${t('{title}. Push a finger into the soil and tell Rootera how it feels.', { title: g?.title ?? t('Check the soil') })}${others ? ` ${tn(others, '{n} more plant needs you today.', '{n} more plants need you today.')}` : ''}`
+              ? `${t('{title}. Check the soil at three depths.', { title: g?.title ?? t('Check the soil') })}${others ? ` ${tn(others, '{n} more plant needs you today.', '{n} more plants need you today.')}` : ''}`
               : `${g?.title ?? t('Check the soil')}.${others ? ` ${t('+{n} more.', { n: others })}` : ''}`,
             categoryIdentifier: CATEGORY, data: { plantId: first.id },
           },
@@ -74,7 +74,7 @@ export async function scheduleNudges(garden: Garden) {
     }
     if (garden.nudges.kinds.includes('leaves') && garden.plants.some(p => !p.example)) {
       await N.scheduleNotificationAsync({
-        content: { title: t('How do the leaves look?'), body: detail === 'Guided' ? t('A quick look now and then helps spot changes early. Note anything new in Rootera.') : t('Take a quick look at the leaves.') },
+        content: { title: t('How do the leaves look?'), body: detail === 'Guided' ? t('A quick look helps spot changes early.') : t('Take a quick look at the leaves.') },
         trigger: { type: N.SchedulableTriggerInputTypes.WEEKLY, weekday: 1, hour, minute },
       });
     }

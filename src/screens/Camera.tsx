@@ -63,10 +63,10 @@ export function Camera({ navigation, route }: Props<'Camera'>) {
         <Ground width={140} style={{ marginTop: -14 }} />
         <T v="title" center>{unavailable ? t('No camera here') : t('Start from a photo')}</T>
         <T v="callout" tone="ink2" center>{unavailable
-          ? t('This device has no camera available. You can still use a photo from your library.')
+          ? t('No camera on this device. Pick a photo instead.')
           : permission.canAskAgain
-            ? t('Rootera uses the camera only while this screen is open. The photo becomes your plant’s picture.')
-            : t('Camera access is off for Rootera. Turn it on in Settings, or use a photo from your library.')}</T>
+            ? t('The camera is used only on this screen.')
+            : t('Camera access is off. Turn it on in Settings or pick a photo.')}</T>
         {!!error && <T v="subhead" tone="danger" center>{error}</T>}
       </View>
     </Page>;

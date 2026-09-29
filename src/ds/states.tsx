@@ -63,7 +63,7 @@ export function Unreachable({ onRetry }: { onRetry: () => Promise<void> }) {
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: space[3] }}>
       <Image source={require('../../assets/flower/0-empty.webp')} resizeMode="contain" accessibilityIgnoresInvertColors style={{ width: 170, height: 190 }} />
       <T v="title" center accessibilityRole="header">{t("Can’t reach Rootera")}</T>
-      <T v="callout" tone="ink2" center style={{ maxWidth: 320 }}>{t("Your garden is kept on the Rootera server, so the first start needs a connection. Check your Wi-Fi or mobile data and try again.")}</T>
+      <T v="callout" tone="ink2" center style={{ maxWidth: 320 }}>{t("The first start needs a connection. Check your Wi-Fi or data and try again.")}</T>
     </View>
     <Btn title={t("Try again")} busy={busy} onPress={() => void retry()} />
   </View>;

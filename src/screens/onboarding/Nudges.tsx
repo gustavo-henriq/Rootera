@@ -33,10 +33,10 @@ export async function requestNudgePermission(): Promise<boolean> {
 }
 
 const nudgeCopy: Record<NudgeKind, { label: string; title: string; guided: string; concise: string }> = {
-  soil_check: { label: 'When a soil check would help', title: 'Worth a soil check', guided: 'Last watered 5 days ago. Last time the soil was dry around day 6. Push a finger in and tell me what you feel.', concise: 'Last watered 5 days ago. Check the soil.' },
-  pattern: { label: 'When a pattern appears', title: 'A pattern is forming', guided: 'Across 3 cycles, the soil was first dry about 6 days after watering. That depends on how often you check.', concise: 'Usually dry about 6 days after watering.' },
-  leaves: { label: 'A reminder to look at the leaves', title: 'How do the leaves look?', guided: 'A quick look now and then helps spot changes early. Note anything new.', concise: 'Take a quick look at the leaves.' },
-  weekly: { label: 'A weekly recap', title: 'Your week', guided: '4 soil checks and 2 waterings across your plants. The monstera dried a little faster than usual.', concise: '4 checks, 2 waterings this week.' },
+  soil_check: { label: 'When a soil check would help', title: 'Worth a soil check', guided: 'Watered 5 days ago. Last time it dried around day 6. Worth a soil check.', concise: 'Last watered 5 days ago. Check the soil.' },
+  pattern: { label: 'When a pattern appears', title: 'A pattern is forming', guided: 'Over 3 cycles, the soil dried about 6 days after watering.', concise: 'Usually dry about 6 days after watering.' },
+  leaves: { label: 'A reminder to look at the leaves', title: 'How do the leaves look?', guided: 'A quick look helps spot changes early.', concise: 'Take a quick look at the leaves.' },
+  weekly: { label: 'A weekly recap', title: 'Your week', guided: '4 checks and 2 waterings. The monstera dried a bit faster than usual.', concise: '4 checks, 2 waterings this week.' },
 };
 const kinds = Object.keys(nudgeCopy) as NudgeKind[];
 
@@ -137,7 +137,7 @@ export function NudgePicker({ selected, onToggle, detail, onDetail, time, onTime
       </View>
       {late && <Animated.View entering={FadeIn.duration(240)} style={{ flexDirection: 'row', gap: space[2], alignItems: 'center' }}>
         <Glyph name="light" size={18} tone={c.amber} />
-        <T v="subhead" style={{ flex: 1 }}>{t("Watering is best in the morning, so the soil can dry during the day. An earlier time may suit watering nudges better.")}</T>
+        <T v="subhead" style={{ flex: 1 }}>{t("Morning is best for watering: the soil dries during the day.")}</T>
       </Animated.View>}
     </View>
   </View>;

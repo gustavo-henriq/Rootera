@@ -61,7 +61,7 @@ export function AddPlant({ navigation, route }: Props<'AddPlant'>) {
         <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>{(['pothos', 'monstera', 'zz'] as const).map((k, i) => <Image key={k} source={plantArt[k]} resizeMode="contain" style={{ width: i === 1 ? 124 : 92, height: i === 1 ? 124 : 92, marginHorizontal: -8 }} />)}</View>
         <Ground width={240} style={{ marginTop: -18 }} />
         <T v="title" center>{t("Your shelf is full")}</T>
-        <T v="callout" tone="ink2" center>{t('The free plan keeps {n} plants. Rootera+ removes the limit and lets you group plants by room. Removing a plant also frees a spot, and its history is kept.', { n: garden.plan_capacity })}</T>
+        <T v="callout" tone="ink2" center>{t('The free plan keeps {n} plants. Rootera+ has no limit. Removing a plant frees a spot.', { n: garden.plan_capacity })}</T>
       </View>
     </Page>;
   }
@@ -76,7 +76,7 @@ export function AddPlant({ navigation, route }: Props<'AddPlant'>) {
       <Image source={{ uri: photo }} style={{ width: 88, height: 110, borderRadius: radius.control }} />
       <View style={{ flex: 1, gap: space[2] }}>
         {idState === 'loading' && <T v="subhead" tone="ink2">{t("Looking for matches with Pl@ntNet…")}</T>}
-        {idState === 'off' && <T v="subhead" tone="ink2">{t("Automatic identification isn’t connected in this version. The photo will still be your plant’s picture.")}</T>}
+        {idState === 'off' && <T v="subhead" tone="ink2">{t("Photo ID is off in this version. The photo stays as your plant’s picture.")}</T>}
         {idState === 'error' && <T v="subhead" tone="danger">{t("Identification failed. Choose the plant below instead.")}</T>}
         {matches && !matches.length && <T v="subhead" tone="ink2">{t("No confident match. Choose the plant below.")}</T>}
         {matches?.map(m => <Tap key={m.scientific_name} label={`${m.common_name}, ${m.scientific_name}`} onPress={() => choose({ kind: m.kind, name: m.common_name, latin: m.scientific_name })} ring={radius.inner} style={{ paddingVertical: 4 }}>

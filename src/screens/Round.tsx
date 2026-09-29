@@ -116,7 +116,7 @@ export function Round({ navigation }: Props<'Round'>) {
           <T v="hero" center accessibilityRole="header">{queue.length ? t('Round done') : t('Nothing needs you')}</T>
           <T v="callout" tone="ink2" center>{queue.length
             ? `${tn(checked, '{n} plant checked', '{n} plants checked')}${wateredCount ? t(', {n} watered', { n: wateredCount }) : ''}. ${t('Rootera updated each plant’s next step.')}`
-            : t('Every plant is resting. Come back when one shows up in Needs you.')}</T>
+            : t('Every plant is resting.')}</T>
         </View>
       : <Animated.View key={plant.id + (askWater ? '-w' : '')} entering={reduceMotion ? undefined : askWater ? FadeIn.duration(200) : SlideInRight.springify().damping(24).stiffness(220)} exiting={reduceMotion ? undefined : SlideOutLeft.duration(180)}
           style={{ flex: 1, justifyContent: 'center', gap: space[4] }}>
@@ -125,7 +125,7 @@ export function Round({ navigation }: Props<'Round'>) {
             <Ground width={150} style={{ marginTop: -14 }} />
           </View>
           <View style={{ alignItems: 'center', gap: 2 }}>
-            <T v="title" center lines={2}>{plant.name}</T>
+            <T v="title" center lines={2} fit>{plant.name}</T>
             <T v="subhead" tone="ink2" center lines={2}>{g?.title ?? t('Start with a soil check')}</T>
           </View>
           {askWater

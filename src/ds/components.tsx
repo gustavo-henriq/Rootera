@@ -11,11 +11,22 @@ import { t } from '../i18n';
 type Tone = 'ink' | 'ink2' | 'ink3' | 'leafText' | 'clayText' | 'danger' | 'onAction' | 'water';
 const noOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null;
 
-export function T({ v = 'body', tone = 'ink', center, lines, style, children, ...rest }: React.PropsWithChildren<{ v?: TypeName; tone?: Tone; center?: boolean; lines?: number; style?: StyleProp<TextStyle> } & Omit<React.ComponentProps<typeof Text>, 'style'>>) {
+/**
+ * Compound words keep together: Portuguese plant names (Costela-de-adão, Espada-de-são-jorge)
+ * used to break at a hyphen in narrow places. A hyphen between two letters becomes a
+ * non-breaking hyphen (U+2011); the line breaks at spaces instead.
+ */
+const HYPHEN = /(\p{L})-(?=\p{L})/gu;
+export const keepWords = (s: string) => s.replace(HYPHEN, '$1‑');
+const unbreak = (node: React.ReactNode): React.ReactNode => typeof node === 'string' ? keepWords(node) : Array.isArray(node) ? node.map(unbreak) : node;
+
+/** `fit`: shrink the text (down to 70%) to fit its lines instead of breaking inside a word. */
+export function T({ v = 'body', tone = 'ink', center, lines, fit, style, children, ...rest }: React.PropsWithChildren<{ v?: TypeName; tone?: Tone; center?: boolean; lines?: number; fit?: boolean; style?: StyleProp<TextStyle> } & Omit<React.ComponentProps<typeof Text>, 'style'>>) {
   const { c } = useTheme();
   const heading = v === 'display' || v === 'hero' || v === 'largeTitle' || v === 'title' || v === 'section';
   return <Text accessibilityRole={heading ? 'header' : undefined} numberOfLines={lines} maxFontSizeMultiplier={1.7}
-    style={[type[v], { color: c[tone] }, center && { textAlign: 'center' }, style]} {...rest}>{children}</Text>;
+    adjustsFontSizeToFit={fit} minimumFontScale={fit ? .7 : undefined}
+    style={[type[v], { color: c[tone] }, center && { textAlign: 'center' }, style]} {...rest}>{unbreak(children)}</Text>;
 }
 
 /**
