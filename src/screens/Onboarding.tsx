@@ -12,7 +12,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { BackHandler, Pressable, ScrollView, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeOutUp, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Props } from '../navigation';
 import { useStore } from '../store';
@@ -201,8 +201,9 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
     </View>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: space.gutter, paddingBottom: space[6], flexGrow: 1 }}>
       <Pressable accessible={false} disabled={step !== 1 || storyDone} onPress={() => setStoryTap(n => n + 1)} style={{ flexGrow: 1, gap: space[5] }}>
-      {/* The title steps away once its job is done, so what follows can rise into its place. */}
-      {!hideTitle && <Animated.View key={step} exiting={reduceMotion ? undefined : FadeOutUp.duration(160)} style={{ gap: space[2], paddingTop: space[4] }}>
+      {/* The title steps away once its job is done, so what follows can rise into its place.
+          No exit animation: a leaving title lingered over the next step's title and cards. */}
+      {!hideTitle && <Animated.View key={'title-' + step} style={{ gap: space[2], paddingTop: space[4] }}>
         {step === 1
           ? <><TextReveal text={titles[step][0]} v="hero" delay={titleDelay} />
               {!!titles[step][1] && <TextReveal text={titles[step][1]} v="callout" tone="ink2" delay={titleTime - 300} perWord={30} />}</>
@@ -214,7 +215,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
       {/* Content rises only once the title has gone, so the two never overlap. */}
       {/* Keyed by step: a new step's content mounts in place (a layout transition carried over
           from the last step slid it up over the new title). */}
-      <Animated.View key={step} layout={reduceMotion ? undefined : LinearTransition.delay(140).duration(380)} onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ paddingTop: hideTitle ? space[3] : 0 }}>
+      <Animated.View key={'content-' + step} layout={reduceMotion ? undefined : LinearTransition.delay(140).duration(380)} onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ paddingTop: hideTitle ? space[3] : 0 }}>
         {!!width && step === 1 && <Story width={width} start={titleTime} advance={storyTap} onComplete={() => setStoryDone(true)} />}
         {step === 2 && <Animated.View entering={reduceMotion ? undefined : FadeInDown.delay(140).duration(320)} style={{ gap: space[3] }}>
           <View style={{ flexDirection: 'row', gap: space[3] }}>

@@ -17,6 +17,7 @@ import { Glyph } from '../ds/icons';
 import { requestNudgePermission } from './onboarding/Nudges';
 import { scheduleNudges } from '../nudges';
 import { track } from '../analytics';
+import { useProfileAsking } from './ProfileInvite';
 import { t } from '../i18n';
 
 const ASKED = 'rootera:nudge-invite:asked';
@@ -31,6 +32,8 @@ export function NudgeInvite() {
   const [busy, setBusy] = useState(false);
   const first = garden.plants.find(p => !p.example);
   const off = !garden.reminders || !garden.nudges?.kinds.length;
+  // One sheet at a time: the profile comes first.
+  const profileAsking = useProfileAsking();
 
   useEffect(() => {
     if (!garden.onboarded || !first || !off) return;
@@ -42,7 +45,7 @@ export function NudgeInvite() {
     return () => { live = false; };
   }, [garden.onboarded, !!first, off]);
 
-  if (!open || !first) return null;
+  if (!open || !first || profileAsking) return null;
   const done = () => { setOpen(false); AsyncStorage.setItem(ASKED, '1').catch(() => undefined); };
   const turnOn = async () => {
     if (busy) return;

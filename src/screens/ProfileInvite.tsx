@@ -6,7 +6,7 @@
  * Shipaton scope: the profile is only a name, and the sheet says so. Full accounts (email,
  * Sign in with Apple) come after, and would plug in here.
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +19,14 @@ import { track } from '../analytics';
 import { t } from '../i18n';
 
 const SUGGESTED = 'rootera:profile-invite:suggested';
+
+/** Whether the profile sheet is up, so other sheets (the nudge invite) wait their turn. */
+let asking = false;
+const listeners = new Set<() => void>();
+function setAsking(v: boolean) { if (v !== asking) { asking = v; listeners.forEach(l => l()); } }
+export function useProfileAsking() {
+  return useSyncExternalStore(l => { listeners.add(l); return () => { listeners.delete(l); }; }, () => asking);
+}
 
 export function ProfileInvite() {
   const { garden, saveProfile } = useStore();
@@ -40,7 +48,9 @@ export function ProfileInvite() {
   const needed = garden.onboarded && !garden.name.trim();
   const required = needed && waterings >= 2;
   const suggested = needed && waterings === 1 && suggestedBefore === false && !dismissed;
-  if (!required && !suggested) return null;
+  const showing = required || suggested;
+  useEffect(() => { setAsking(showing); return () => setAsking(false); }, [showing]);
+  if (!showing) return null;
 
   const later = () => {
     setDismissed(true);

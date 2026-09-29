@@ -131,7 +131,7 @@ function Specimen({ plant, twin, width, drops, events, arriving, artRef }: { pla
               <StatusMark status={k.status} /><T v="caption" tone="ink2">{k.label}</T>
             </View>
             {has
-              ? <T lines={2} style={{ fontFamily: fonts.serif, fontSize: narrow ? 17 : 21, lineHeight: narrow ? 19 : 23, textAlign: k.side, color: k.current ? c.ink : c.ink2 }}>{k.value}</T>
+              ? <T lines={3} style={{ fontFamily: fonts.serif, fontSize: narrow ? 17 : 21, lineHeight: narrow ? 19 : 23, textAlign: k.side, color: k.current ? c.ink : c.ink2 }}>{k.value}</T>
               : <View accessibilityElementsHidden style={{ width: 18, height: 1.5, backgroundColor: c.ink3, marginVertical: narrow ? 9 : 11 }} />}
             {expanded && <Animated.View entering={FadeIn.duration(180)}><T v="caption" tone="ink2" style={{ textAlign: k.side, fontFamily: fonts.regular }}>{k.detail}</T></Animated.View>}
           </Tap>
