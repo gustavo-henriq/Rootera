@@ -114,3 +114,39 @@ Nenhuma traz o que o Rootera usa: a profundidade que decide a rega, as notas por
   1. Mapear o `watering` da Kindwise direto para a profundidade (seca → vaso inteiro, média → meio, úmida → superfície), sem IA.
   2. Usar o Gemini Flash-Lite só para redigir as notas, validado e em cache.
   3. Evitar o DeepSeek enquanto o Rootera guardar dados de usuários fora do Brasil.
+
+## 6. Clima e validação de 3 meses (revisão de 29/09)
+
+**Fonte:** Open-Meteo (sem chave). O servidor pede os últimos 92 dias e os próximos 3 da região aproximada (coordenadas arredondadas para cerca de 10 km). O número que importa é a evapotranspiração de referência (ET0, em mm/dia), que mede quanto de água o ar "puxa".
+
+**Como ajusta:**
+- **A estimativa da espécie:** compara a semana com um dia ameno (3,5 mm/dia).
+- **Os ciclos aprendidos:** compara a semana com o clima que esses ciclos tiveram de fato. Eles já carregam aquele clima; comparar com o dia ameno contaria o clima duas vezes. Esse foi o defeito corrigido nesta revisão.
+- **Intensidade:** 30% dentro de casa (a casa amortece) e 90% ao ar livre, sempre entre 0,8× e 1,25×.
+- **Nome na tela:** aparece como "semana quente e seca" ou "semana fresca e úmida".
+
+**Validação com clima real:** 16 espécies × 3 climas × 91 dias, cuidador seguindo o Rootera (`backend/tests/season_check.py`). Os climas são o histórico real do Open-Meteo, guardado em `backend/app/data/climates.json`:
+- sem clima;
+- primavera em São Paulo (set–nov/2025, ET0 média de 3,9);
+- inverno em Porto Alegre (jun–ago/2025, ET0 média de 1,8).
+
+| Grupo | Sem clima | Primavera SP | Inverno POA | Fontes |
+|---|---|---|---|---|
+| Superfície (lírio-da-paz, samambaia…) | a cada 6 d | 6 d | 8,8 d | ~semanal; menos no inverno (7–12) |
+| Meio (costela, jiboia, ficus…) | 9,7 d | 9,2 d | 12,6 d | 7–14; 10–18 no inverno |
+| Vaso inteiro (suculentas, espada…) | 16,8 d | 15,4 d | 24 d | 2–3 semanas; ~mensal no inverno (18–32) |
+
+- **48 de 48** simulações dentro dos intervalos das fontes.
+- **Erro médio do aprendido:** 0,52 dia em relação ao tempo real que os ciclos levaram.
+- **Zero** dias encharcada ou com sede.
+- **Robustez:** o resultado se mantém com a planta virtual sentindo 40%, 60% ou 80% do clima de fora.
+- **Troca de estação** (45 dias de primavera e depois inverno): o ajuste por clima economiza 8% das checagens depois da troca, sem estresse. Um ajuste mais forte (50%) não trouxe ganho, então fica em 30%.
+
+**Identificação por foto:**
+- Limite de 30 por pessoa por dia, porque a cota grátis de 500/dia do Pl@ntNet é compartilhada.
+- Até 3 fotos por planta. Depois, ou ao atingir o limite, o app pede o nome.
+- A foto não vira a imagem da planta.
+
+**Limites:**
+- A planta virtual usa 60% do clima de fora como suposição, calibrada pela orientação de "regar menos no inverno". Não há medição de umidade dentro de casa.
+- A licença grátis do Open-Meteo é para uso não comercial.
