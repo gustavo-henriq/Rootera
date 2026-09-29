@@ -29,6 +29,12 @@
     "plugins": [
       "expo-font",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Rootera uses your approximate area once to adjust watering to the local weather."
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Allow Rootera to use a photo for your plant profile.",

@@ -1,6 +1,8 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { disableLocalWeather, enableLocalWeather } from '../weather';
 import { billingEnabled, manageInStore, presentCustomerCenter } from '../billing';
 import { Image, Platform, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { Alert } from 'react-native';
 import { BottomTabScreenProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { CompositeScreenProps, useScrollToTop } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -329,6 +331,17 @@ const EventRow = memo(function EventRow({ event, plant, onPress, onLongPress }: 
 });
 
 /** RevenueCat's Customer Center; the store's own page when it can't open (Expo Go, web). */
+/** Local weather on (asks for the approximate position) or off (the place is forgotten). */
+async function toggleWeather(on: boolean, refresh: () => Promise<unknown> | void) {
+  if (on) await disableLocalWeather().catch(() => undefined);
+  else {
+    const r = await enableLocalWeather();
+    if (r === 'denied') Alert.alert(t('Location is off'), t('Allow location for Rootera in Settings to use the local weather.'));
+    else if (r === 'unavailable') Alert.alert(t('Weather unavailable'), t('Your location couldn’t be read. Try again later.'));
+  }
+  await refresh();
+}
+
 async function manageSubscription(userId: string) {
   if (!(await presentCustomerCenter(userId))) await manageInStore(userId).catch(() => undefined);
 }
@@ -438,7 +451,7 @@ function Journal({ navigation, route }: TabProps<'Journal'>) {
 const nudgeNames: Record<string, string> = { soil_check: 'soil checks', pattern: 'patterns', leaves: 'leaf reminders', weekly: 'a weekly recap' };
 
 function You({ navigation }: TabProps<'You'>) {
-  const { garden } = useStore();
+  const { garden, refresh } = useStore();
   const ref = useRef<ScrollView>(null); useScrollToTop(ref);
   const detail = garden.caregiver?.detail ?? 'Guided';
   const nudges = garden.nudges;
@@ -462,6 +475,8 @@ function You({ navigation }: TabProps<'You'>) {
     </Group>
     <Group header={t("About")} footer={t("In this preview, your garden lives on a test server. Photos stay on this device.")}>
       <Row title={t("How Rootera learns")} onPress={() => navigation.navigate('About')} />
+      <Row title={t('Local weather')} detail={garden.weather ? t('On{place}. Adjusts the drying windows.', { place: garden.location?.place ? ` · ${garden.location.place}` : '' }) : t('Off. Turn on to adjust watering to your weather.')}
+        onPress={() => void toggleWeather(!!garden.weather, refresh)} />
       <Row title={t('Shipaton lab')} detail={t('Simulate MVP Shipaton and watch Rootera adapt.')} onPress={() => navigation.navigate('Lab')} />
       <Row title={t("Preview onboarding")} detail={t("Plays it again. Nothing is saved.")} onPress={() => navigation.navigate('Welcome', { preview: true })} />
     </Group>

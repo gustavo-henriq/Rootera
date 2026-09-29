@@ -13,6 +13,7 @@ from .guidance import SensorlessGuidance
 from .soil import summarize
 from .species import notes_for
 from .integrations.plantnet import kind_for
+from .integrations import weather as weather_api
 from .schemas import PLAN_CAPACITY, CaregiverProfile, NudgePrefs, CalibrationIn, PlantIn, PlantUpdate, SensorIn, UserObservationIn, normalize_plan
 
 # The garden snapshot carries the most recent care records; older ones are paged by journal().
@@ -53,6 +54,23 @@ class GardenService:
         p = self.profile()
         p.data = {**p.data, **changes}
         return self.profile_view(p.data)
+
+    def set_location(self, lat: float | None, lon: float | None, name: str | None) -> dict:
+        p = self.profile()
+        data = {k: v for k, v in p.data.items() if k != 'location'}
+        if lat is not None and lon is not None:
+            rlat, rlon = weather_api.place(lat, lon)
+            data['location'] = {'lat': rlat, 'lon': rlon, 'place': (name or '').strip() or None}
+        p.data = data
+        self._weather = None
+        return {'location': data.get('location'), 'weather': self.weather()}
+
+    def weather(self) -> dict | None:
+        """This week's weather at the caregiver's place, once per request (cached by place)."""
+        if getattr(self, '_weather', None) is None:
+            loc = (self.profile().data or {}).get('location')
+            self._weather = (weather_api.recent(loc['lat'], loc['lon']) or False) if loc else False
+        return self._weather or None
 
     def set_plan(self, plan: str, annual: bool, source: str) -> dict:
         p = self.profile()
@@ -137,13 +155,14 @@ class GardenService:
         state = self.engine.project(plant_id, evidence)
         if caregiver is None:
             caregiver = self.db.get(Profile, self.owner).data.get('caregiver') or {}
-        state['guidance'] = SensorlessGuidance().project(plant.data, caregiver, evidence, lang=lang)
+        w = self.weather()
+        state['guidance'] = SensorlessGuidance().project({**plant.data, 'weather': w} if w else plant.data, caregiver, evidence, lang=lang)
         if real_devices is None:
             real_devices = self.db.scalars(select(Device).where(Device.plant_id == plant_id, Device.active == True, Device.demo == False)).all()
         state['sources'] = {
             'user': {'observations': sum(e.source == 'USER' for e in evidence)},
             'sensor': {'connected': bool(real_devices), 'readings': sum(e.source == 'SENSOR' and not e.demo for e in evidence)},
-            'external': {'weather': False, 'identification': bool(self.integrations.get('identification'))},
+            'external': {'weather': bool(w), 'identification': bool(self.integrations.get('identification'))},
             'reference': {'species_notes': plant.data.get('kind') != 'other'},
         }
         return state
@@ -336,6 +355,7 @@ class GardenService:
         mine = [o for o in observations if o.plant_id in ids]
         view = self.profile_view(profile.data)
         capacity = PLAN_CAPACITY[view['plan']]
+        view['weather'] = self.weather()
         return {'version': 1, 'user_id': self.owner, **view, 'plan_capacity': capacity, 'plan_used': sum(not is_example(p) for p in plants),
                 'plants': [p.data for p in plants],
                 'events': [self.event_view(o) for o in mine[-EVENT_WINDOW:]], 'events_complete': len(mine) <= EVENT_WINDOW,

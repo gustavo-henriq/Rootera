@@ -180,6 +180,13 @@ class ProfileIn(StrictModel):
     nudges: NudgePrefs | None = None
 
 
+class LocationIn(StrictModel):
+    """The phone's approximate position; stored rounded to 0.1° (about 10 km)."""
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    place: str | None = Field(default=None, max_length=80)
+
+
 class DemoPlanIn(StrictModel):
     plan: Plan
     annual: bool = False

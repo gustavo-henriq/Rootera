@@ -58,6 +58,9 @@ export type NudgeKind = 'soil_check' | 'pattern' | 'leaves' | 'weekly';
 export interface Nudges { kinds: NudgeKind[]; time: string }
 export interface Integrations { billing: boolean; identification: boolean; weather: boolean; demo: boolean }
 export interface Garden {
+  /** This week's local weather (server, Open-Meteo), when the caregiver turned it on. */
+  weather?: { et0: number; tmax: number | null; rh: number | null; days: number } | null;
+  location?: { lat: number; lon: number; place: string | null };
   user_id: string; name: string; onboarded: boolean; reminders: boolean; caregiver?: Caregiver; nudges?: Nudges;
   plan: Plan; annual: boolean; plan_source?: string; plan_capacity: number | null;
   /** Plants that count toward the plan (the example plant does not). */

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from ..db import DomainEvent, SensorObservation, UserObservation
 from ..deps import service
-from ..schemas import PlantIn, PlantUpdate, ProfileIn, UserObservationIn
+from ..schemas import LocationIn, PlantIn, PlantUpdate, ProfileIn, UserObservationIn
 
 router = APIRouter(prefix='/v1')
 
@@ -17,6 +17,18 @@ def garden(s=Depends(service)):
 @router.patch('/profile')
 def profile(payload: ProfileIn, s=Depends(service)):
     return s.update_profile(payload.model_dump(exclude_unset=True, exclude_none=True))
+
+
+@router.put('/profile/location')
+def set_location(payload: LocationIn, s=Depends(service)):
+    """Local weather on: the approximate place (rounded before it is stored)."""
+    return s.set_location(payload.lat, payload.lon, payload.place)
+
+
+@router.delete('/profile/location')
+def clear_location(s=Depends(service)):
+    """Local weather off: the place is forgotten."""
+    return s.set_location(None, None, None)
 
 
 @router.post('/plants', status_code=201)

@@ -10,6 +10,7 @@ import { fonts, radius, space } from '../ds/tokens';
 import { Btn, Group, Row, Segmented, T, Tap, Toast } from '../ds/components';
 import { Page } from '../ds/Page';
 import { Glyph } from '../ds/icons';
+import { enableLocalWeather } from '../weather';
 import { Ground, PlantArt } from '../ds/plant';
 import { LeafBurst, pivot, Pop, Settle, WaterDrops } from '../ds/motion';
 import { ActionSheet } from '../ds/ActionSheet';
@@ -161,7 +162,7 @@ function Milestone({ plant, stage, onDone }: { plant: PlantT; stage: string; onD
 }
 
 export function Plant({ navigation, route }: Props<'Plant'>) {
-  const { garden, archivePlant, removeCare, updatePlant } = useStore();
+  const { garden, archivePlant, removeCare, updatePlant, refresh } = useStore();
   const { c } = useTheme();
   const plant = garden.plants.find(p => p.id === route.params.id);
   const twin = garden.twins[route.params.id];
@@ -298,6 +299,16 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
 
         {tab === 'rhythm' && <Animated.View key="rhythm" entering={reduceMotion ? undefined : FadeIn.duration(200)} style={{ gap: space[6] }}>
           {g?.forecast ? <DryWindow forecast={g.forecast} lastWatered={g.last_watered_at} /> : <CycleRing done={Math.min(g?.completed_cycles ?? 0, 3)} />}
+          {garden.weather
+            ? <T v="footnote" tone="ink2">{t('This week{place}: highs around {t} °C, {rh}% humidity.', { place: garden.location?.place ? ` (${garden.location.place})` : '', t: Math.round(garden.weather.tmax ?? 0), rh: garden.weather.rh ?? '–' })}</T>
+            : !!g?.forecast && <Tap label={t('Adjust to your local weather')} onPress={() => void enableLocalWeather().then(refresh)} ring={radius.control}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], padding: space[3], borderRadius: radius.control, borderWidth: 1, borderColor: c.hairline }}>
+                <Glyph name="plus" size={18} tone={c.leafText} />
+                <View style={{ flex: 1 }}>
+                  <T v="subhead" style={{ fontFamily: fonts.medium }}>{t('Adjust to your local weather')}</T>
+                  <T v="caption" tone="ink2">{t('Hot, dry weeks dry the soil sooner. Uses your approximate area.')}</T>
+                </View>
+              </Tap>}
           {!!g?.cycle_days?.length && <CycleBars days={g.cycle_days} since={g.last_watered_at ? Math.max(0, (Date.now() - new Date(g.last_watered_at).getTime()) / 86400000) : null} />}
           <CareCalendar events={events} />
         </Animated.View>}

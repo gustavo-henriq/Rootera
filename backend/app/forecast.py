@@ -50,6 +50,28 @@ FACTORS = {
     'low_light': ('light', 'Low light', 1.25),
     'outdoors': ('location', 'Outdoors', .85),
 }
+# The week's weather (integrations/weather.py): evapotranspiration against a mild growing-
+# season day (FAO-56 reference, about 3.5 mm/day in temperate summers). Outdoors a pot follows
+# the weather almost fully; indoors the effect is damped (the house buffers heat and
+# humidity). The adjustment is named, like every factor, and bounded.
+WEATHER_REF_ET0 = 3.5
+WEATHER_WEIGHT = {'indoors': .3, 'outdoors': .9}
+WEATHER_BOUNDS = (.8, 1.25)
+
+
+def weather_factor(plant: dict) -> tuple[str | None, float]:
+    w = plant.get('weather')
+    if not w or not w.get('et0'):
+        return None, 1.0
+    outdoors = (plant.get('environment') or {}).get('location') == 'Outdoors'
+    ratio = WEATHER_REF_ET0 / max(.5, w['et0'])
+    mult = 1 + WEATHER_WEIGHT['outdoors' if outdoors else 'indoors'] * (ratio - 1)
+    mult = min(WEATHER_BOUNDS[1], max(WEATHER_BOUNDS[0], mult))
+    if abs(mult - 1) < .05:
+        return None, 1.0
+    return ('warm_dry_week' if mult < 1 else 'cool_humid_week'), mult
+
+
 # However many factors stack up, the estimate stays within these bounds of the start window.
 MIN_SCALE, MAX_SCALE = .6, 1.6
 FULL_TRUST_CYCLES = 3
@@ -137,6 +159,11 @@ def drying_window(plant: dict, dryness: str | None, cycle_hours: list[float], la
         source, factors = 'estimate', prior[2]
     else:
         return None
+    # This week's weather, when the caregiver turned it on.
+    key, mult = weather_factor(plant)
+    if key:
+        low, high = low * mult, high * mult
+        factors = [*factors, key]
     # Whole days, to the nearest: 4.96 days reads as 5, not 4.
     low_days = max(1, _round(low))
     # Checks come a day apart at best, so a window is never narrower than a day ("4-4 days"

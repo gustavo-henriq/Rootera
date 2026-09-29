@@ -18,6 +18,7 @@ const factorLabel: Record<string, string> = {
   small_pot: 'small pot', large_pot: 'large pot', terracotta: 'terracotta pot', no_drainage: 'no drainage hole',
   chunky_mix: 'chunky soil', dense_mix: 'dense soil', direct_sun: 'direct sun', bright_light: 'bright light',
   low_light: 'low light', outdoors: 'outdoors',
+  warm_dry_week: 'a warm, dry week', cool_humid_week: 'a cool, humid week',
 };
 const DAY = 86400000;
 

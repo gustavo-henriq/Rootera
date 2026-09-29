@@ -27,7 +27,7 @@ def session(request: Request):
 
 
 def integrations(config: Settings) -> dict:
-    return {'billing': config.billing_configured, 'identification': config.identification_configured, 'weather': False, 'demo': config.demo}
+    return {'billing': config.billing_configured, 'identification': config.identification_configured, 'weather': True, 'demo': config.demo}
 
 
 def service(request: Request, user: str = Depends(owner), db=Depends(session)) -> GardenService:

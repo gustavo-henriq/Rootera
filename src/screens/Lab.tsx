@@ -518,7 +518,7 @@ export function Lab({ navigation }: Props<'Lab'>) {
             </Animated.View>}
           </View>}
           {!!error && <T v="subhead" style={{ color: L.bad }}>{t('Couldn’t simulate. {why}', { why: error })}</T>}
-          <T v="footnote" style={{ color: L.faint }}>{t('Coming next: weather and photos.')}</T>
+          <T v="footnote" style={{ color: L.faint }}>{t('Coming next: photos.')}</T>
         </>}
       </Animated.View>
     </ScrollView>

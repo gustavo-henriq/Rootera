@@ -75,6 +75,8 @@ export interface LabOut {
 }
 
 export const api = {
+  setLocation: (loc: { lat: number; lon: number; place?: string }) => request('/v1/profile/location', 'PUT', loc),
+  clearLocation: () => request('/v1/profile/location', 'DELETE'),
   labSimulate: (body: LabIn) => request<LabOut>('/v1/lab/simulate', 'POST', body, 20000),
   garden: () => request<Garden>('/v1/garden'),
   profile: (changes: Partial<{ name: string; onboarded: boolean; reminders: boolean; caregiver: Caregiver; nudges: Nudges }>) => request('/v1/profile', 'PATCH', changes),
