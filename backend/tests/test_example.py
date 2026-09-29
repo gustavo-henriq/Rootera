@@ -23,7 +23,7 @@ def example(garden):
 def test_added_once_with_a_ready_pattern(seeded):
     garden = seeded.get('/v1/garden', headers=PT).json()
     [plant] = example(garden)
-    assert plant['name'] == 'Costela-de-adão' and plant['kind'] == 'monstera'
+    assert plant['name'] == 'MVP Shipaton' and plant['kind'] == 'monstera'
     g = garden['twins'][plant['id']]['guidance']
     assert g['state'] == 'PATTERN' and g['completed_cycles'] == 3
     assert g['action'] == 'wait' and g['title'] == 'Provavelmente ainda não secou'
@@ -55,3 +55,15 @@ def test_each_account_gets_its_own(seeded):
     a = example(seeded.get('/v1/garden', headers=ALICE).json())[0]['id']
     b = example(seeded.get('/v1/garden', headers={'Authorization': 'Bearer bob-token'}).json())[0]['id']
     assert a != b
+
+
+def test_an_old_example_becomes_the_mvp_but_a_chosen_name_stays(seeded):
+    [plant] = example(seeded.get('/v1/garden', headers=PT).json())
+    # An example seeded before Shipaton carried the species name.
+    assert seeded.patch(f"/v1/plants/{plant['id']}", json={'name': 'Costela-de-adão'}, headers=PT).status_code == 200
+    [plant] = example(seeded.get('/v1/garden', headers=PT).json())
+    assert plant['name'] == 'MVP Shipaton'
+    # A name the caregiver chose is theirs.
+    seeded.patch(f"/v1/plants/{plant['id']}", json={'name': 'Monstrinha'}, headers=PT)
+    [plant] = example(seeded.get('/v1/garden', headers=PT).json())
+    assert plant['name'] == 'Monstrinha'

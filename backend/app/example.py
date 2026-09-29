@@ -13,7 +13,11 @@ from .db import DomainEvent, Plant, UserObservation
 from .domain import utcnow
 from .soil import summarize
 
-NAMES = {'en': 'Monstera', 'pt': 'Costela-de-adão'}
+# During Shipaton the example plant is the MVP: the same name in every language. The names
+# it had before are renamed once (a name the caregiver chose is left alone).
+NAME = 'MVP Shipaton'
+OLD_NAMES = ('Monstera', 'Costela-de-adão')
+NAMES = {'en': NAME, 'pt': NAME}
 EVENT_TYPES = {'Watered': 'PlantWatered', 'Soil check': 'SoilConditionReported', 'Observation': 'PlantObserved'}
 
 # (days before now, kind, value). Three cycles: dry about 5, 6 and 5 days after watering,

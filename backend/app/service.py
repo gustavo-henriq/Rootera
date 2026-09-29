@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from .db import Calibration, Device, DomainEvent, Plant, Profile, SensorObservation, TwinSnapshot, UserObservation
 from .domain import Evidence, PlantTwinEngine, normalize_adc, utcnow
-from .example import example_id, is_example, seed_example
+from .example import NAME as EXAMPLE_NAME, OLD_NAMES, example_id, is_example, seed_example
 from .guidance import SensorlessGuidance
 from .soil import summarize
 from .species import notes_for
@@ -268,7 +268,10 @@ class GardenService:
         """Add the example plant once. Its row (kept when archived) is the record that it was
         added, so removing it never brings it back and the profile is never rewritten here.
         Two first loads at once: the second insert hits the same id and is dropped."""
-        if profile.data.get('example_seeded') or self.db.get(Plant, example_id(self.owner)) is not None:
+        existing = self.db.get(Plant, example_id(self.owner))
+        if existing is not None and existing.data.get('name') in OLD_NAMES:
+            existing.data = {**existing.data, 'name': EXAMPLE_NAME}
+        if profile.data.get('example_seeded') or existing is not None:
             return
         try:
             with self.db.begin_nested():

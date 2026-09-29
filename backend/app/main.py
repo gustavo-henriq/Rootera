@@ -14,7 +14,7 @@ from .config import Settings
 from .db import Base, Profile, make_database
 from .deps import integrations
 from .i18n import lang_from, tr
-from .routes import analytics, devices, garden, integrations as integration_routes
+from .routes import analytics, devices, garden, integrations as integration_routes, lab as lab_routes
 from .schemas import PlantIn
 from .service import GardenService
 
@@ -64,6 +64,7 @@ def create_app(database_url=None, demo=None, tokens=None, **overrides):
     app.include_router(integration_routes.router)
     app.include_router(devices.router)
     app.include_router(analytics.router)
+    app.include_router(lab_routes.router)
     return app
 
 
