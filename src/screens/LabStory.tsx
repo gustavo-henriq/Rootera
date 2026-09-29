@@ -13,7 +13,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { cancelAnimation, Easing, SharedValue, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
 import { pivot } from '../ds/motion';
 import { PlantArt } from '../ds/plant';
@@ -27,51 +27,76 @@ export const STAGE = { text: '#F4F6F2', dim: 'rgba(244,246,242,.64)', faint: 'rg
 
 /* ------------------------------------------------------------------ scene 1: the watering */
 
-function Drop({ x, delay, run }: { x: number; delay: number; run: boolean }) {
-  const y = useSharedValue(0);
-  useEffect(() => {
-    if (!run) { y.value = 0; return; }
-    y.value = withDelay(delay, withRepeat(withTiming(1, { duration: 620, easing: Easing.in(Easing.quad) }), -1, false));
-    return () => cancelAnimation(y);
-  }, [run]);
-  const style = useAnimatedStyle(() => ({ opacity: run ? (y.value < .85 ? 1 : (1 - y.value) / .15) : 0, transform: [{ translateY: y.value * 70 }] }));
-  return <Animated.View style={[{ position: 'absolute', left: x, top: 58, width: 6, height: 10, borderRadius: 3, backgroundColor: STAGE.water }, style]} />;
+// One timeline drives everything, so the can and the water can't drift apart. A loop of
+// 3.6 s: the can tilts (0-.2), pours (.2-.7), straightens (.7-.85), rests (.85-1).
+const LOOP = 3600;
+const TILT = 38; // degrees, clockwise: the spout goes down
+// The can is drawn in a 110 x 70 box, placed at CAN; it turns around its body (PIVOT).
+const CAN = { x: 14, y: 18, w: 110, h: 70 };
+const PIVOT = { x: 36, y: 42 };
+const TIP = { x: 105, y: 17 }; // the spout's mouth, in the can's box
+const SOIL_Y = 166; // where the water meets the soil, in the scene
+const DROPS = 5;
+
+/** The can's tilt (0-1) at a point of the loop. */
+function tiltAt(p: number) {
+  'worklet';
+  if (p < .2) return p / .2;
+  if (p < .7) return 1;
+  if (p < .85) return 1 - (p - .7) / .15;
+  return 0;
+}
+
+function Drop({ p, k }: { p: SharedValue<number>; k: number }) {
+  const style = useAnimatedStyle(() => {
+    const tilt = tiltAt(p.value);
+    // The spout's mouth, turned with the can.
+    const a = (tilt * TILT * Math.PI) / 180;
+    const vx = TIP.x - PIVOT.x, vy = TIP.y - PIVOT.y;
+    const x = CAN.x + PIVOT.x + vx * Math.cos(a) - vy * Math.sin(a);
+    const y = CAN.y + PIVOT.y + vx * Math.sin(a) + vy * Math.cos(a);
+    // Each drop falls from the mouth to the soil, staggered; only while the can pours.
+    const pouring = p.value > .22 && p.value < .72;
+    const f = ((p.value * 9 + k / DROPS) % 1);
+    return {
+      opacity: pouring ? 1 - f * .3 : 0,
+      transform: [{ translateX: x - 3 + f * 3 }, { translateY: y + f * (SOIL_Y - y) }],
+    };
+  });
+  return <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: 6, height: 11, borderRadius: 3, backgroundColor: STAGE.water }, style]} />;
 }
 
 export function WateringScene() {
   const { reduceMotion } = useTheme();
-  const tilt = useSharedValue(reduceMotion ? 1 : 0);
-  const wet = useSharedValue(reduceMotion ? 1 : 0);
-  const drink = useSharedValue(1);
-  const [pouring, setPouring] = useState(false);
+  const p = useSharedValue(reduceMotion ? .5 : 0);
   useEffect(() => {
     if (reduceMotion) return;
-    tilt.value = withDelay(300, withTiming(1, { duration: 700, easing: Easing.inOut(Easing.cubic) }));
-    const start = setTimeout(() => setPouring(true), 900);
-    wet.value = withDelay(1300, withTiming(1, { duration: 1600 }));
-    drink.value = withDelay(2600, withSequence(withTiming(.94, { duration: 220 }), withTiming(1.04, { duration: 240 }), withTiming(1, { duration: 300 })));
-    const stop = setTimeout(() => setPouring(false), 3200);
-    return () => { clearTimeout(start); clearTimeout(stop); };
+    p.value = withRepeat(withTiming(1, { duration: LOOP, easing: Easing.linear }), -1, false);
+    return () => cancelAnimation(p);
   }, []);
-  const can = useAnimatedStyle(() => ({ transform: [{ translateX: -10 + 10 * tilt.value }, { rotate: `${-32 * tilt.value}deg` }] }));
-  const soil = useAnimatedStyle(() => ({ opacity: .35 + .65 * wet.value }));
-  // Squashes from the bottom of the pot (pivot, not transformOrigin, which iOS ignored).
-  const plant = useAnimatedStyle(() => ({ transform: pivot(150, 150, .5, 1, [{ scaleY: drink.value }]) }));
+  const can = useAnimatedStyle(() => ({ transform: pivot(CAN.w, CAN.h, PIVOT.x / CAN.w, PIVOT.y / CAN.h, [{ rotate: `${tiltAt(p.value) * TILT}deg` }]) }));
+  // The soil darkens while the water goes in, and dries back a little during the rest.
+  const soil = useAnimatedStyle(() => ({ opacity: p.value < .25 ? .35 : p.value < .75 ? .35 + .65 * ((p.value - .25) / .5) : 1 - .65 * ((p.value - .75) / .25) }));
+  // The plant drinks: a small squash from the pot's base as the pouring ends.
+  const plant = useAnimatedStyle(() => {
+    const d = p.value > .7 && p.value < .85 ? Math.sin(((p.value - .7) / .15) * Math.PI) : 0;
+    return { transform: pivot(150, 150, .5, 1, [{ scaleY: 1 - .05 * d }, { scaleX: 1 + .02 * d }]) };
+  });
   return <View accessible accessibilityRole="image" accessibilityLabel={t('A watering can pours water on the plant')} style={{ width: 240, height: 230, alignSelf: 'center' }}>
-    {/* The can, drawn as a body, a spout and a handle. */}
-    <Animated.View style={[{ position: 'absolute', left: 4, top: 6, width: 110, height: 70 }, can]}>
-      <Svg width={110} height={70} viewBox="0 0 110 70">
+    <Animated.View style={[{ position: 'absolute', left: 60, top: 60, width: 150, height: 150 }, plant]}>
+      <PlantArt kind="monstera" size={150} />
+    </Animated.View>
+    {/* The soil at the top of the pot darkens as it takes the water. */}
+    <Animated.View style={[{ position: 'absolute', left: 104, top: SOIL_Y - 4, width: 62, height: 8, borderRadius: 4, backgroundColor: STAGE.soil.wet }, soil]} />
+    {Array.from({ length: DROPS }, (_, k) => <Drop key={k} p={p} k={k} />)}
+    {/* The can: a body, a spout and a handle. */}
+    <Animated.View style={[{ position: 'absolute', left: CAN.x, top: CAN.y, width: CAN.w, height: CAN.h }, can]}>
+      <Svg width={CAN.w} height={CAN.h} viewBox="0 0 110 70">
         <Rect x={10} y={22} width={52} height={40} rx={8} fill={STAGE.leaf} />
         <Path d="M60 34 L104 14 L106 20 L62 44 Z" fill={STAGE.leaf} />
         <Path d="M20 22 C20 6 52 6 52 22" stroke={STAGE.leaf} strokeWidth={5} fill="none" />
       </Svg>
     </Animated.View>
-    {[0, 1, 2, 3].map(i => <Drop key={i} x={112 + (i % 2) * 8} delay={i * 150} run={pouring} />)}
-    <Animated.View style={[{ position: 'absolute', left: 60, top: 70, width: 150, height: 150 }, plant]}>
-      <PlantArt kind="monstera" size={150} />
-    </Animated.View>
-    {/* The soil darkens as the water goes in. */}
-    <Animated.View style={[{ position: 'absolute', left: 95, top: 212, width: 80, height: 10, borderRadius: 4, backgroundColor: STAGE.soil.wet }, soil]} />
   </View>;
 }
 
