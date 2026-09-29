@@ -5,7 +5,7 @@
  * shakes, and the O snaps back to its normal shape.
  * `full` is the first-launch version; `short` runs on every later launch (< 1 s).
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useTheme } from './theme';
@@ -26,17 +26,28 @@ const STEM_BASE_Y = 95 / 215; // where the sprout meets the O
 const FULL = [{ stretch: 1.07, thorn: .2 }, { stretch: 1.12, thorn: .3 }, { stretch: 1.18, thorn: .42 }];
 const SHORT = [{ stretch: 1.14, thorn: .34 }];
 
-export function LogoSprout({ width = 260, run, variant = 'full', onDone }: { width?: number; run: number; variant?: 'full' | 'short'; onDone?: () => void }) {
+export function LogoSprout({ width = 260, run, variant = 'full', skip, onDone }: { width?: number; run: number; variant?: 'full' | 'short'; skip?: boolean; onDone?: () => void }) {
   const { reduceMotion } = useTheme();
   const h = width * RATIO;
   const oHeight = (O_BOTTOM - O_TOP) * h;
   const letters = useSharedValue(0);
   const stretch = useSharedValue(1);
   const sprout = useSharedValue(0), shake = useSharedValue(0);
+  // onDone fires once, whether the animation ends or a tap skips it.
+  const finished = useRef(false);
+  const finish = () => { if (finished.current) return; finished.current = true; onDone?.(); };
+
+  useEffect(() => {
+    if (!skip) return;
+    [letters, stretch, sprout, shake].forEach(cancelAnimation);
+    letters.value = 1; stretch.value = 1; sprout.value = 1; shake.value = 0;
+    finish();
+  }, [skip]);
 
   useEffect(() => {
     if (!run) return;
-    if (reduceMotion) { letters.value = 1; stretch.value = 1; sprout.value = 1; onDone?.(); return; }
+    if (skip) return;
+    if (reduceMotion) { letters.value = 1; stretch.value = 1; sprout.value = 1; finish(); return; }
     letters.value = 0; stretch.value = 1; sprout.value = 0; shake.value = 0;
     letters.value = withTiming(1, { duration: 500 });
     const tugs = variant === 'full' ? FULL : SHORT;
@@ -58,7 +69,7 @@ export function LogoSprout({ width = 260, run, variant = 'full', onDone }: { wid
     sprout.value = withDelay(start, withSequence(...thorn, withSpring(1, { damping: 9, stiffness: 200 })));
     shake.value = withDelay(burst + 140, withSequence(withTiming(-12, { duration: 110 }), withTiming(9, { duration: 140 }), withTiming(-5, { duration: 130 }), withSpring(0, { damping: 6, stiffness: 160 })));
     // Finish on a timer: spring callbacks inside sequences are not reliable on every platform.
-    const timer = setTimeout(() => onDone?.(), burst + 140 + 800);
+    const timer = setTimeout(finish, burst + 140 + 800);
     return () => { clearTimeout(timer); [letters, stretch, sprout, shake].forEach(cancelAnimation); };
   }, [run]);
 

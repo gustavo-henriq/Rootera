@@ -7,7 +7,7 @@
  * "Not sure" is always an answer. When all notes are in, the question steps away and
  * the plate is ready to plant. Tapping a note reopens its question.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Image, Platform, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, FadeOut, FadeOutUp, LinearTransition, SharedValue, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { catalog, matchesSpecies, PlantKind, Soil } from '../../model';
@@ -153,6 +153,12 @@ export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing
   const compact = useCompact();
   const slot = kind ? currentSlot(answers, editing) : null;
   const complete = !!kind && slot === null;
+  // A question waits for the plant to settle the first time it appears: after the species is
+  // chosen (the title leaves and the plant grows) and after the first answer (the plate opens
+  // and the plant grows larger). Shown at once, it slid over the plant while that moved.
+  const asked = useRef(new Set<Slot>());
+  const questionDelay = !slot || reduceMotion || asked.current.has(slot) ? 0 : slot === 'light' ? 460 : slot === 'pot' ? 560 : 0;
+  useEffect(() => { if (slot) asked.current.add(slot); }, [slot]);
   // The plate takes over once the first answer is in: the strip leaves and the plant grows.
   const plate = !!kind && answers.light !== undefined;
   const small = Math.min(210, width * .54), big = Math.min(320, width * .84);
@@ -189,7 +195,7 @@ export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing
       </Tap>)}
     </View>}
 
-    {slot && <Animated.View key={slot} layout={reduceMotion ? undefined : LinearTransition.duration(420)} entering={FadeIn.duration(240)} exiting={FadeOut.duration(140)} style={{ gap: space[3] }}>
+    {slot && <Animated.View key={slot} entering={reduceMotion ? undefined : FadeIn.delay(questionDelay).duration(240)} exiting={reduceMotion ? undefined : FadeOut.duration(140)} style={{ gap: space[3] }}>
       <T v="headline">{t(QUESTION[slot])}</T>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
         {options(slot).map((o, i) => <Chip key={o} label={o} selected={answers[slot] === i} onPress={() => onAnswer(slot, i)} />)}

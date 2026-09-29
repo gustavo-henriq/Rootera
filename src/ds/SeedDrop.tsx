@@ -8,7 +8,7 @@
  * is scaled from zero: on iOS a zero scale is a degenerate transform and the layer
  * flickers or vanishes for a few frames.
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Image, View } from 'react-native';
 import Animated, {
   cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming,
@@ -41,7 +41,7 @@ function Speck({ dx, delay, run, colour }: { dx: number; delay: number; run: num
   return <Animated.View style={[{ position: 'absolute', width: 6, height: 6, borderRadius: 3, backgroundColor: colour }, style]} />;
 }
 
-export function SeedDrop({ size = 240, run, kind, onImpact, onDone, from = 'left' }: { size?: number; run: number; kind?: PlantKind; onImpact?: () => void; onDone?: () => void; from?: 'left' | 'right' }) {
+export function SeedDrop({ size = 240, run, kind, skip, onImpact, onDone, from = 'left' }: { size?: number; run: number; kind?: PlantKind; skip?: boolean; onImpact?: () => void; onDone?: () => void; from?: 'left' | 'right' }) {
   const { c, reduceMotion } = useTheme();
   const w = size * RATIO;
   const seedW = w * SEED_W, seedH = seedW * 62 / 97;
@@ -51,13 +51,25 @@ export function SeedDrop({ size = 240, run, kind, onImpact, onDone, from = 'left
   const spin = useSharedValue(0), seedO = useSharedValue(0);
   const pot = useSharedValue(1);
   const seeded = useSharedValue(0), sprouted = useSharedValue(0), push = useSharedValue(1), bloom = useSharedValue(0);
+  // Impact and done are reported once each, whether the animation plays out or a tap skips it.
+  const impacted = useRef(false), finished = useRef(false);
+  const impact = () => { if (!impacted.current) { impacted.current = true; onImpact?.(); } };
+  const finish = () => { if (!finished.current) { finished.current = true; onDone?.(); } };
 
   useEffect(() => {
-    if (!run) return;
+    if (!skip) return;
+    [x, y, spin, seedO, pot, seeded, sprouted, push, bloom].forEach(cancelAnimation);
+    x.value = 0; y.value = 0; seedO.value = 0; pot.value = 1; push.value = 1;
+    seeded.value = 1; sprouted.value = kind ? 0 : 1; bloom.value = kind ? 1 : 0;
+    impact(); finish();
+  }, [skip]);
+
+  useEffect(() => {
+    if (!run || skip) return;
     const t = SEED_TIMING;
     if (reduceMotion) {
       seedO.value = 0; seeded.value = 1; sprouted.value = kind ? 0 : 1; bloom.value = kind ? 1 : 0;
-      onImpact?.(); onDone?.();
+      impact(); finish();
       return;
     }
     x.value = side * size * 1.1; y.value = -size * .45; spin.value = side * 300; seedO.value = 1;
@@ -75,9 +87,9 @@ export function SeedDrop({ size = 240, run, kind, onImpact, onDone, from = 'left
     sprouted.value = withDelay(t.sprout, withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) }));
     push.value = withDelay(t.sprout, withSequence(withTiming(.94, { duration: 1 }), withSpring(1, { damping: 9, stiffness: 120 })));
     if (kind) bloom.value = withDelay(t.bloom, withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) }));
-    const impact = setTimeout(() => onImpact?.(), t.impact);
-    const done = setTimeout(() => onDone?.(), kind ? t.done : t.settled + 400);
-    return () => { clearTimeout(impact); clearTimeout(done); [x, y, spin, seedO, pot, seeded, sprouted, push, bloom].forEach(cancelAnimation); };
+    const impactTimer = setTimeout(impact, t.impact);
+    const doneTimer = setTimeout(finish, kind ? t.done : t.settled + 400);
+    return () => { clearTimeout(impactTimer); clearTimeout(doneTimer); [x, y, spin, seedO, pot, seeded, sprouted, push, bloom].forEach(cancelAnimation); };
   }, [run]);
 
   const seedStyle = useAnimatedStyle(() => ({ opacity: seedO.value, transform: [{ translateX: x.value }, { translateY: y.value }, { rotate: `${spin.value}deg` }] }));

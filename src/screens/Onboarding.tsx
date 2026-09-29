@@ -5,7 +5,7 @@
  *  2. How Rootera learns (a plant that grows as you tap) and your experience.
  *  3. Your first plant, one note at a time; it is planted and celebrated.
  *  4. The payoff: what Rootera now knows and its first suggestion.
- *  5. Nudges, asked only now that their value is obvious, with the phone permission.
+ * Nudges are not a step: Today offers them once, after this first plant (NudgeInvite).
  * No name and no account here: both are asked later, once the garden has value.
  * Every step answers a touch; progress is a seed filling up. Nothing here is a paywall,
  * and identifying a plant from a photo is free.
@@ -18,9 +18,8 @@ import { Props } from '../navigation';
 import { useStore } from '../store';
 import { api, ApiError, Candidate } from '../api';
 import { track } from '../analytics';
-import { scheduleNudges } from '../nudges';
 import { photoData } from './Camera';
-import { Experience, experienceHint, experienceLabel, newId, NudgeKind, Plant } from '../model';
+import { Experience, experienceHint, experienceLabel, newId, Plant } from '../model';
 import { useTheme } from '../ds/theme';
 import { radius, space } from '../ds/tokens';
 import { Btn, T, Tap, Toast } from '../ds/components';
@@ -30,16 +29,16 @@ import { revealDuration, TextReveal } from '../ds/TextReveal';
 import { Opening } from './onboarding/Opening';
 import { SoilReveal } from './onboarding/Soil';
 import { Story } from './onboarding/Story';
-import { NudgePicker, requestNudgePermission } from './onboarding/Nudges';
 import { Answers, Choice, currentSlot, FirstPlant, IdState, LIGHT, POTS, Slot, SOILS, STAGES, WATERED } from './onboarding/FirstPlant';
 import { KnownRow, PlanReveal } from './onboarding/PlanReveal';
 import { Atmosphere, experiences, GlassChoice, SeedProgress } from './onboarding/shared';
 import { t } from '../i18n';
 
 
-const TOTAL = 4;
+// Nudges are no longer a step: they are offered once on Today, after the first plant (NudgeInvite).
+const TOTAL = 3;
 const SOIL_LIFT = 800; // the soil from the opening lifts away before the story starts
-const STEP_NAMES = ['opening', 'story', 'experience', 'plant', 'nudges'];
+const STEP_NAMES = ['opening', 'story', 'experience', 'plant'];
 
 export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   // Preview replays the whole flow from You; it saves nothing and returns there.
@@ -56,10 +55,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   // A tap anywhere on the story step moves the story on (not only on its cards).
   const [storyTap, setStoryTap] = useState(0);
   const [experience, setExperience] = useState<Experience | ''>(garden.caregiver?.experience ?? '');
-  // Only the essential nudge starts on, marked as recommended; everything else is opt-in.
-  const [nudges, setNudges] = useState<NudgeKind[]>(['soil_check']);
   const [detail, setDetail] = useState<'Guided' | 'Concise'>(garden.caregiver?.detail ?? 'Guided');
-  const [time, setTime] = useState(garden.nudges?.time ?? '08:00');
   const [choice, setChoice] = useState<Choice | null>(null);
   const [answers, setAnswers] = useState<Answers>({});
   const [editing, setEditing] = useState<Slot | null>(null);
@@ -91,7 +87,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
     return () => { live = false; };
   }, [photo]);
 
-  // Experience sets the default tone; the person can still change it on the nudges step.
+  // Experience sets the default tone; it can be changed later in You > Nudges.
   const chooseExperience = (e: Experience) => { setExperience(e); setDetail(e === 'many' ? 'Concise' : 'Guided'); };
   const answer = (s: Slot, i: number) => { setAnswers(a => ({ ...a, [s]: i })); setEditing(null); };
   const kind = choice?.kind ?? null;
@@ -117,7 +113,8 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
     if (preview) { setPhase('celebrate'); return; }
     setBusy(true); setError('');
     try {
-      await saveProfile({ name: garden.name, onboarded: true, reminders: true, caregiver: { experience: experience || 'first', detail }, nudges: { kinds: nudges, time } });
+      // Nudges start off; Today offers them once the plant is in (see NudgeInvite).
+      await saveProfile({ name: garden.name, onboarded: true, reminders: false, caregiver: { experience: experience || 'first', detail }, nudges: { kinds: ['soil_check'], time: garden.nudges?.time ?? '08:00' } });
       const light = answers.light !== undefined ? LIGHT[answers.light].value : 'Not sure';
       const pot = answers.pot !== undefined ? POTS[answers.pot] : POTS[3];
       const p: Plant = { id: ids.current.plant, kind: choice.kind, species: choice.latin, name: choice.name, photo: photo ?? null, room: 'Not sure', pot: 'Not sure', light, stage: answers.stage !== undefined ? STAGES[answers.stage].value : 'Not sure', drainage: pot.drainage, self_watering: pot.self, environment: { location: 'Indoors', near_window: 'Not sure' } };
@@ -139,26 +136,12 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
     } finally { setBusy(false); }
   };
 
-  /** Last step: nudges, then the phone's own permission prompt, in context (Apple HIG). */
-  const finish = async (on: boolean) => {
-    if (busy) return;
-    tr('onboarding_step_completed', { step: 'nudges', nudges_on: on, kinds: on ? nudges.length : 0, detail });
+  /** After the plan: straight to Today, where the nudges are offered once. */
+  const finish = () => {
+    tr('onboarding_step_completed', { step: 'plan' });
     tr('onboarding_finished', {});
     if (preview) { navigation.goBack(); return; }
-    setBusy(true); setError('');
-    try {
-      await saveProfile({ reminders: on && nudges.length > 0, caregiver: { experience: experience || 'first', detail }, nudges: { kinds: on ? nudges : [], time } });
-      if (on && nudges.length) {
-        const granted = await requestNudgePermission();
-        tr('notification_permission', { granted });
-        // Schedule right away; the garden refresh that follows keeps them current.
-        if (granted) void scheduleNudges({ ...garden, onboarded: true, reminders: true, nudges: { kinds: nudges, time }, caregiver: { experience: experience || 'first', detail } });
-      }
-      navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('Could not save. Please try again.'));
-      setBusy(false);
-    }
+    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
   };
 
   if (step === 0) return <Opening onContinue={() => { tr('onboarding_step_completed', { step: 'opening' }); setDived(true); setStep(1); }} />;
@@ -185,14 +168,16 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
       { label: t('Last watered'), value: val('watered', WATERED), source: 'observed' },
       { label: t('Soil today'), value: val('soil', SOILS), source: 'observed' },
     ];
-    return <PlanReveal kind={choice.kind} name={choice.name} photo={photo} rows={rows} twin={garden.twins[ids.current.plant]} onContinue={() => { tr('onboarding_step_completed', { step: 'plan' }); setPhase('steps'); setStep(4); }} />;
+    return <PlanReveal kind={choice.kind} name={choice.name} photo={photo} rows={rows} twin={garden.twins[ids.current.plant]} onContinue={finish} />;
   }
 
   const titles: Record<number, [string, string]> = {
     1: [t('Rootera learns this plant, not plants in general.'), ''],
     2: [t('How’s your plant life right now?'), t('This sets how much Rootera explains. You can change it any time.')],
-    3: [t('Which plant is yours?'), t('Start with the one you see most often.')],
-    4: [choice ? t('Want a nudge when your {name} needs you?', { name: choice.name }) : t('Want a nudge when your plant needs you?'), t('Each one comes from what you record. Change them any time in You.')],
+    // Someone with one plant is asked for it; someone with several, for one of them.
+    3: experience === 'first' || !experience
+      ? [t('Which plant is yours?'), t('Search by name, or start from a photo.')]
+      : [t('Tell me about one of your plants'), t('Start with the one you see most often.')],
   };
   const hideTitle = (step === 1 && storyDone) || (step === 3 && !!kind);
   const titleDelay = step === 1 && dived ? SOIL_LIFT : 0;
@@ -201,7 +186,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   const canNext = step === 2 ? !!experience : true;
   const glassy = step === 2;
   // After planting there is no going back into the setup: the plant already exists.
-  const canBack = step > 1 && step < 4;
+  const canBack = step > 1;
 
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
     {glassy && <Atmosphere />}
@@ -217,7 +202,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: space.gutter, paddingBottom: space[6], flexGrow: 1 }}>
       <Pressable accessible={false} disabled={step !== 1 || storyDone} onPress={() => setStoryTap(n => n + 1)} style={{ flexGrow: 1, gap: space[5] }}>
       {/* The title steps away once its job is done, so what follows can rise into its place. */}
-      {!hideTitle && <Animated.View key={step} exiting={reduceMotion ? undefined : FadeOutUp.duration(280)} style={{ gap: space[2], paddingTop: space[4] }}>
+      {!hideTitle && <Animated.View key={step} exiting={reduceMotion ? undefined : FadeOutUp.duration(160)} style={{ gap: space[2], paddingTop: space[4] }}>
         {step === 1
           ? <><TextReveal text={titles[step][0]} v="hero" delay={titleDelay} />
               {!!titles[step][1] && <TextReveal text={titles[step][1]} v="callout" tone="ink2" delay={titleTime - 300} perWord={30} />}</>
@@ -226,7 +211,8 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
               <T v="callout" tone="ink2">{titles[step][1]}</T>
             </Animated.View>}
       </Animated.View>}
-      <Animated.View layout={reduceMotion ? undefined : LinearTransition.duration(420)} onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ paddingTop: hideTitle ? space[3] : 0 }}>
+      {/* Content rises only once the title has gone, so the two never overlap. */}
+      <Animated.View layout={reduceMotion ? undefined : LinearTransition.delay(140).duration(380)} onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ paddingTop: hideTitle ? space[3] : 0 }}>
         {!!width && step === 1 && <Story width={width} start={titleTime} advance={storyTap} onComplete={() => setStoryDone(true)} />}
         {step === 2 && <View style={{ gap: space[3] }}>
           <View style={{ flexDirection: 'row', gap: space[3] }}>
@@ -236,20 +222,14 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
         </View>}
         {!!width && step === 3 && <FirstPlant width={width} choice={choice} onChoose={setChoice} answers={answers} onAnswer={answer} editing={editing} setEditing={setEditing}
           photo={photo} idState={idState} matches={matches} onCamera={() => navigation.navigate('Camera', { returnTo: 'Welcome' })} />}
-        {step === 4 && <NudgePicker selected={nudges} onToggle={k => setNudges(n => n.includes(k) ? n.filter(x => x !== k) : [...n, k])} detail={detail} onDetail={setDetail} time={time} onTime={setTime} />}
       </Animated.View>
       </Pressable>
     </ScrollView>
     {/* The action appears only once it can be taken: no disabled "Plant it" waiting at the bottom. */}
-    {showCta && <Animated.View key={step} entering={reduceMotion || step === 2 || step === 4 ? undefined : FadeInDown.duration(380)}
+    {showCta && <Animated.View key={step} entering={reduceMotion || step === 2 ? undefined : FadeInDown.duration(380)}
       style={{ paddingHorizontal: space.gutter, paddingBottom: insets.bottom + space[4], paddingTop: space[3], gap: space[2] }}>
       {!!error && <Toast tone="error" title={t("Not saved")} text={error} onClose={() => setError('')} />}
-      {step === 4
-        ? <>
-            <Btn title={nudges.length ? t('Turn on nudges') : t('Finish')} busy={busy} onPress={() => void finish(nudges.length > 0)} />
-            {!!nudges.length && <Btn kind="plain" title={t("Not now")} onPress={() => void finish(false)} style={{ alignSelf: 'center' }} />}
-          </>
-        : <Btn title={step === 3 ? t('Plant it') : t('Continue')} busy={busy} disabled={!canNext} hint={step === 2 ? t('Choose the one closest to you to continue.') : undefined} onPress={() => step === 3 ? void plant() : next()} />}
+      <Btn title={step === 3 ? t('Plant it') : t('Continue')} busy={busy} disabled={!canNext} hint={step === 2 ? t('Choose the one closest to you to continue.') : undefined} onPress={() => step === 3 ? void plant() : next()} />
     </Animated.View>}
     {step === 1 && dived && <SoilReveal />}
   </View>;

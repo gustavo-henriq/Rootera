@@ -19,6 +19,7 @@ import { PickerSheet } from '../ds/PickerSheet';
 import { ActionSheet } from '../ds/ActionSheet';
 import { measure, Rect } from '../ds/Flight';
 import { NameInvite } from './NameInvite';
+import { NudgeInvite } from './NudgeInvite';
 import { ROUND_SIZE } from './Round';
 import Swipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { haptic } from '../ds/feedback';
@@ -205,6 +206,7 @@ function Today({ navigation }: TabProps<'Today'>) {
     }}>
     <Offline />
     <NameInvite />
+    <NudgeInvite />
     {needs.length >= 3 && <RoundCard count={needs.length} onStart={() => navigation.navigate('Round')} />}
     {!garden.plants.length && <EmptyShelf onAdd={() => navigation.navigate('AddPlant', { first: true })} />}
   </Page>;

@@ -1,10 +1,14 @@
 /**
  * Opening: a seed is tossed into the pot, the wordmark sprouts, a short line of
  * text appears, then "Get started" dives the camera into the soil.
+ *
+ * A tap anywhere skips ahead: the seed lands, the wordmark finishes, the text and the
+ * button show at once. The text keeps its space from the start (hidden until its turn),
+ * so nothing on the screen jumps when it arrives.
  */
-import React, { useState } from 'react';
-import { View } from 'react-native';
-import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import React, { useRef, useState } from 'react';
+import { Pressable, View } from 'react-native';
+import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../ds/theme';
 import { space } from '../../ds/tokens';
@@ -20,27 +24,55 @@ const POT_H = 280;
 const POT_W = POT_H * SEED_RATIO;
 const LINE = 'Stop guessing what your plant needs.';
 const SUB = 'Rootera learns one plant at a time: its spot, its pot and the care you give it.';
+/** The wordmark starts this much lower and glides up as the text arrives under it. */
+const RISE = 64;
+const BUTTON_DELAY = 1900;
 
 export function Opening({ onContinue }: { onContinue: () => void }) {
   const { c, reduceMotion } = useTheme();
   const insets = useSafeAreaInsets();
   const [logoRun, setLogoRun] = useState(0);
   const [ready, setReady] = useState(false);
+  const [skipped, setSkipped] = useState(false);
+  // The button takes taps only once it can be seen; until then a tap skips ahead.
+  const [buttonOn, setButtonOn] = useState(false);
+  const buttonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [diving, setDiving] = useState(false);
   const [under, setUnder] = useState(false);
+  const skippedRef = useRef(false);
   const rise = useSharedValue(0);
   const zoom = useSharedValue(1);
   const fade = useSharedValue(1);
   const soil = useSharedValue(0);
+  // One opacity for the button (no entering animation on top of it: two animations on the
+  // same opacity made it appear, vanish and come back).
+  const button = useSharedValue(0);
 
-  const logoStyle = useAnimatedStyle(() => ({ opacity: fade.value, transform: [{ translateY: -rise.value * 64 }] }));
-  const fadeStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
+  const logoStyle = useAnimatedStyle(() => ({ opacity: fade.value, transform: [{ translateY: (1 - rise.value) * RISE }] }));
+  const buttonStyle = useAnimatedStyle(() => ({ opacity: button.value * fade.value }));
   // The pot grows around its soil line, so the camera ends up inside the soil.
   const potStyle = useAnimatedStyle(() => ({ transform: pivot(POT_W, POT_H, SEED_AT.x, SEED_AT.y, [{ scale: zoom.value }]) }));
 
   const whenLogoDone = () => {
+    const now = reduceMotion || skippedRef.current;
     // The wordmark glides up (no spring) to make room for the line below it.
-    rise.value = reduceMotion ? 1 : withTiming(1, { duration: 700, easing: Easing.inOut(Easing.cubic) });
+    rise.value = now ? 1 : withTiming(1, { duration: 700, easing: Easing.inOut(Easing.cubic) });
+    button.value = now ? 1 : withDelay(BUTTON_DELAY, withTiming(1, { duration: 400 }));
+    if (now) setButtonOn(true);
+    else buttonTimer.current = setTimeout(() => setButtonOn(true), BUTTON_DELAY);
+    setReady(true);
+  };
+
+  // A tap anywhere: everything that is still arriving arrives now.
+  const skip = () => {
+    if (diving || buttonOn) return;
+    skippedRef.current = true;
+    setSkipped(true);
+    setLogoRun(1);
+    [rise, button].forEach(cancelAnimation);
+    rise.value = 1; button.value = 1;
+    if (buttonTimer.current) clearTimeout(buttonTimer.current);
+    setButtonOn(true);
     setReady(true);
   };
 
@@ -57,22 +89,22 @@ export function Opening({ onContinue }: { onContinue: () => void }) {
     setTimeout(onContinue, SOIL_DIVE.soilIn + SOIL_DIVE.descend - 150);
   };
 
-  return <View style={{ flex: 1, backgroundColor: c.canvas, paddingTop: insets.top, paddingBottom: insets.bottom + space[6], paddingHorizontal: space.gutter, overflow: 'hidden' }}>
+  return <Pressable accessible={false} onPress={skip} style={{ flex: 1, backgroundColor: c.canvas, paddingTop: insets.top, paddingBottom: insets.bottom + space[6], paddingHorizontal: space.gutter, overflow: 'hidden' }}>
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Animated.View style={[{ alignItems: 'center', minHeight: 170 }, logoStyle]}>
-        <LogoSprout width={250} run={logoRun} variant="full" onDone={whenLogoDone} />
-        {ready && <View style={{ alignItems: 'center', gap: space[2], marginTop: space[5], maxWidth: 330 }}>
-          <TextReveal text={t(LINE)} v="hero" center delay={250} />
-          <TextReveal text={t(SUB)} v="callout" tone="ink2" center delay={revealDuration(t(LINE))} perWord={35} />
-        </View>}
+      <Animated.View style={[{ alignItems: 'center' }, logoStyle]}>
+        <LogoSprout width={250} run={logoRun} variant="full" skip={skipped} onDone={whenLogoDone} />
+        <View style={{ alignItems: 'center', gap: space[2], marginTop: space[5], maxWidth: 330 }}>
+          <TextReveal text={t(LINE)} v="hero" center delay={250} run={ready ? 1 : 0} skip={skipped} />
+          <TextReveal text={t(SUB)} v="callout" tone="ink2" center delay={revealDuration(t(LINE))} perWord={35} run={ready ? 1 : 0} skip={skipped} />
+        </View>
       </Animated.View>
       <Animated.View style={[{ marginTop: -space[4], width: POT_W, height: POT_H }, potStyle]}>
-        <SeedDrop size={POT_H} run={1} onImpact={() => setLogoRun(1)} />
+        <SeedDrop size={POT_H} run={1} skip={skipped} onImpact={() => setLogoRun(1)} />
       </Animated.View>
     </View>
-    {ready && <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(1900).duration(400)} style={fadeStyle}>
+    <Animated.View style={buttonStyle} pointerEvents={buttonOn ? 'auto' : 'none'}>
       <Btn title={t("Get started")} onPress={dive} />
-    </Animated.View>}
+    </Animated.View>
     {under && <SoilLayer grow opacity={soil} />}
-  </View>;
+  </Pressable>;
 }
