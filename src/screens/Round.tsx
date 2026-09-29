@@ -1,7 +1,7 @@
 /**
  * The check-in round: every plant that needs you, one card at a time, one tap each.
- * Built for people with many plants (Hick's law: one question per card, the same four
- * answers every time). Dry soil asks one follow-up (watered?); everything else moves on.
+ * Built for people with many plants: one card per plant, the same three-layer check every
+ * time. Dry (at the species' depth) asks one follow-up (watered?); everything else moves on.
  * The list is frozen when the round starts so cards never shuffle under your finger, and
  * the last card can always be undone.
  */
@@ -11,7 +11,8 @@ import Animated, { FadeIn, FadeInDown, SlideInRight, SlideOutLeft, ZoomIn } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Props } from '../navigation';
 import { useStore } from '../store';
-import { byUrgency, newId, Plant, Soil, soilLabel } from '../model';
+import { byUrgency, newId, Plant, Soil, SoilLayers, summarizeLayers } from '../model';
+import { layersComplete, SoilLayersInput } from '../ds/SoilLayers';
 import { useTheme } from '../ds/theme';
 import { fonts, radius, space } from '../ds/tokens';
 import { Btn, T, Tap, Toast } from '../ds/components';
@@ -21,7 +22,6 @@ import { LeafBurst } from '../ds/motion';
 import { haptic } from '../ds/feedback';
 import { t, tn } from '../i18n';
 
-const ANSWERS: Soil[] = ['dry', 'slightly_moist', 'moist', 'wet'];
 /** A round is a few minutes, not an hour: the most urgent plants first, then "next" if you want more. */
 export const ROUND_SIZE = 20;
 type Done = { plantId: string; ids: string[]; soil: Soil | 'skip'; watered: boolean };
@@ -42,6 +42,7 @@ export function Round({ navigation }: Props<'Round'>) {
   };
   const [i, setI] = useState(0);
   const [askWater, setAskWater] = useState(false);
+  const [layers, setLayers] = useState<Partial<SoilLayers>>({});
   const [done, setDone] = useState<Done[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -50,14 +51,15 @@ export function Round({ navigation }: Props<'Round'>) {
   const g = plant ? garden.twins[plant.id]?.guidance : undefined;
   const finished = i >= queue.length;
 
-  const next = (entry: Done) => { setDone(d => [...d, entry]); setAskWater(false); pending.current = null; setI(n => n + 1); };
+  const next = (entry: Done) => { setDone(d => [...d, entry]); setAskWater(false); setLayers({}); pending.current = null; setI(n => n + 1); };
 
-  const answer = async (soil: Soil) => {
+  const answer = async (l: SoilLayers) => {
     if (busy || !plant) return;
     setBusy(true); setError('');
     const soilId = newId('care'), at = new Date().toISOString();
+    const soil = summarizeLayers(l, plant.kind === 'other' ? 'unknown' : g?.reference.dryness);
     try {
-      await logCare({ id: soilId, plantId: plant.id, type: 'Soil check', soil, note: '', at, source: 'USER' });
+      await logCare({ id: soilId, plantId: plant.id, type: 'Soil check', layers: l, note: '', at, source: 'USER' });
       haptic.success();
       if (soil === 'dry') { pending.current = { soilId, at }; setAskWater(true); }
       else next({ plantId: plant.id, ids: [soilId], soil, watered: false });
@@ -93,6 +95,7 @@ export function Round({ navigation }: Props<'Round'>) {
 
   const checked = done.filter(d => d.soil !== 'skip').length;
   const wateredCount = done.filter(d => d.watered).length;
+  const nextCount = Math.min(ROUND_SIZE, remaining.length);
   const progress = queue.length ? Math.min(i, queue.length) / queue.length : 1;
 
   return <View style={{ flex: 1, backgroundColor: c.canvas, paddingTop: insets.top + space[2], paddingBottom: insets.bottom + space[4], paddingHorizontal: space.gutter }}>
@@ -130,7 +133,7 @@ export function Round({ navigation }: Props<'Round'>) {
           </View>
           {askWater
             ? <Animated.View entering={reduceMotion ? undefined : FadeInDown.duration(220)} style={{ gap: space[3] }}>
-                <T v="headline" center>{t("Dry. Did you water it?")}</T>
+                <T v="headline" center>{t("Dry at its depth. Did you water it?")}</T>
                 <View style={{ flexDirection: 'row', gap: space[3] }}>
                   <Btn title={t("Yes, watered")} icon="water" busy={busy} onPress={() => void watered(true)} style={{ flex: 1 }} />
                   <Btn title={t("Not now")} kind="outline" onPress={() => void watered(false)} style={{ flex: 1 }} />
@@ -138,19 +141,14 @@ export function Round({ navigation }: Props<'Round'>) {
               </Animated.View>
             : <View style={{ gap: space[3] }}>
                 <T v="headline" center>{t("How does the soil feel?")}</T>
-                <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-                  {ANSWERS.map((s, k) => <Tap key={s} role="radio" label={soilLabel[s]} onPress={() => void answer(s)} disabled={busy} ring={radius.control}
-                    style={{ flexBasis: '47%', flexGrow: 1, minHeight: 60, borderRadius: radius.control, borderWidth: 1, borderColor: c.ink3, flexDirection: 'row', alignItems: 'center', gap: space[3], paddingHorizontal: space[3] }}>
-                    <View style={{ width: 22, height: 22, borderRadius: radius.inner, backgroundColor: c.soil[k] }} />
-                    <T v="body" style={{ fontFamily: fonts.medium }}>{soilLabel[s]}</T>
-                  </Tap>)}
-                </View>
+                <SoilLayersInput value={layers} onChange={setLayers} />
+                {layersComplete(layers) && <Btn title={t('Save check')} busy={busy} onPress={() => void answer(layers as SoilLayers)} />}
                 <Tap label={t("Skip this plant")} onPress={skip} ring={radius.inner} style={{ alignSelf: 'center', minHeight: 44, justifyContent: 'center' }}><T v="subhead" tone="ink2">{t("Skip")}</T></Tap>
               </View>}
         </Animated.View>}
 
     {finished && <View style={{ gap: space[2] }}>
-      {remaining.length > 0 && <Btn title={`Next ${Math.min(ROUND_SIZE, remaining.length)} plants`} onPress={nextRound} />}
+      {remaining.length > 0 && <Btn title={tn(nextCount, 'Next plant', 'Next {n} plants')} onPress={nextRound} />}
       <Btn title={t("Back to Today")} kind={remaining.length ? 'outline' : 'filled'} onPress={() => navigation.goBack()} />
     </View>}
   </View>;

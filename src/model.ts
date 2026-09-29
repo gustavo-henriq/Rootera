@@ -94,6 +94,19 @@ function translated<K extends string>(table: Record<K, string>): Record<K, strin
   return new Proxy(table, { get: (o, k) => (typeof k === 'string' && k in o ? t((o as Record<string, string>)[k]) : (o as any)[k]) });
 }
 export const soilLabel = translated<Soil>({ dry: 'Dry', slightly_moist: 'Slightly moist', moist: 'Moist', wet: 'Very wet', not_sure: 'Not sure' });
+/** The layers that decide "dry" by species depth, and the single reading they add up to.
+ *  Mirrors backend/app/soil.py (the server stores its own summary; the app uses this only to
+ *  know, right after a check, whether to ask about watering). */
+const DECISIVE: Record<string, LayerKey[]> = { top: ['top'], half: ['top', 'middle'], full: ['top', 'middle', 'bottom'], unknown: ['top', 'middle'] };
+export function summarizeLayers(l: SoilLayers, dryness?: string): Soil {
+  const decisive = DECISIVE[dryness ?? 'unknown'] ?? DECISIVE.unknown;
+  const read = decisive.map(k => l[k]);
+  if (read.includes('wet')) return 'wet';
+  if (decisive.length === 1 && l.middle === 'wet') return 'slightly_moist';
+  if (read.every(v => v === 'dry')) return 'dry';
+  if (read.every(v => v === 'dry' || v === 'unreached')) return 'slightly_moist';
+  return l.top === 'dry' ? 'slightly_moist' : 'moist';
+}
 export const layerLabel = translated<Layer | 'unreached'>({ dry: 'Dry', moist: 'Moist', wet: 'Wet', unreached: 'Couldn’t reach' });
 export const visualLabel = translated<Visual>({ great: 'Looks good', different: 'Something changed', unwell: 'Not doing well', not_sure: 'Not sure' });
 export const experienceLabel = translated<Experience>({ first: 'My first plant', some: 'A few plants', many: 'Lots of plants' });
