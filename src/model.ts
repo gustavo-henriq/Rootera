@@ -91,8 +91,8 @@ function translated<K extends string>(table: Record<K, string>): Record<K, strin
 }
 export const soilLabel = translated<Soil>({ dry: 'Dry', slightly_moist: 'Slightly moist', moist: 'Moist', wet: 'Very wet', not_sure: 'Not sure' });
 export const visualLabel = translated<Visual>({ great: 'Looks good', different: 'Something changed', unwell: 'Not doing well', not_sure: 'Not sure' });
-export const experienceLabel = translated<Experience>({ first: 'My first plant', some: 'A few plants', many: 'Lots of plants, or a whole garden' });
-export const experienceHint = translated<Experience>({ first: 'Explains how to check and what to look for.', some: 'Short tips for each plant.', many: 'Straight to the point.' });
+export const experienceLabel = translated<Experience>({ first: 'My first plant', some: 'A few plants', many: 'Lots of plants' });
+export const experienceHint = translated<Experience>({ first: 'Step-by-step help.', some: 'Short tips.', many: 'Just the essentials.' });
 /** A species' common name in the current language (catalog names are English keys). */
 export const speciesName = (s: Pick<Species, 'name'>) => t(s.name);
 

@@ -94,6 +94,7 @@ const broken = [...keys.keys()].filter(k => k in PT && holes(k) !== holes(PT[k])
 const unused = Object.keys(PT).filter(k => !keys.has(k));
 
 if (process.argv.includes('--list')) { missing.forEach(k => console.log(k)); process.exit(0); }
+if (process.argv.includes('--unused')) { unused.forEach(k => console.log(JSON.stringify(k))); process.exit(0); }
 let fail = false;
 if (missing.length) { fail = true; console.error(`Missing Portuguese for ${missing.length} text(s):`); missing.forEach(k => console.error(`  ${JSON.stringify(k)}  (${keys.get(k)})`)); }
 if (broken.length) { fail = true; console.error('Placeholders differ:'); broken.forEach(k => console.error(`  ${JSON.stringify(k)} -> ${JSON.stringify(PT[k])}`)); }

@@ -62,7 +62,8 @@ export function LogoSprout({ width = 260, run, variant = 'full', skip, onDone }:
       withTiming(g.thorn, { duration: beat * .35, easing: Easing.out(Easing.cubic) }),
       withTiming(g.thorn * .7, { duration: beat * .65, easing: Easing.inOut(Easing.quad) }),
     ]);
-    const start = variant === 'full' ? 650 : 120;
+    // The tugs start once the wordmark has fully appeared; until then the O stays put.
+    const start = variant === 'full' ? 650 : 520;
     const burst = start + tugs.length * beat;
     // Release: the sprout breaks free and the O snaps back with a wobble.
     stretch.value = withDelay(start, withSequence(...pull, withTiming(1.22, { duration: 90, easing: Easing.out(Easing.quad) }), withSpring(1, { damping: 6, stiffness: 300 })));
@@ -73,11 +74,14 @@ export function LogoSprout({ width = 260, run, variant = 'full', skip, onDone }:
     return () => { clearTimeout(timer); [letters, stretch, sprout, shake].forEach(cancelAnimation); };
   }, [run]);
 
-  const lettersStyle = useAnimatedStyle(() => ({ opacity: letters.value, transform: [{ translateY: (1 - letters.value) * 6 }] }));
+  // The wordmark only fades in: no slide, so the O (a separate layer) never drifts against
+  // the other letters before its own animation starts.
+  const lettersStyle = useAnimatedStyle(() => ({ opacity: letters.value }));
   // The O stretches upward from its base and gets a little thinner, like something pulled.
+  // At rest it has no transform at all (an identity pivot still re-rasterises on iOS).
   const oStyle = useAnimatedStyle(() => ({
     opacity: letters.value,
-    transform: pivot(width, h, O_X, O_BOTTOM, [{ scaleY: stretch.value }, { scaleX: 1 - (stretch.value - 1) * .45 }]),
+    transform: stretch.value === 1 ? [] : pivot(width, h, O_X, O_BOTTOM, [{ scaleY: stretch.value }, { scaleX: 1 - (stretch.value - 1) * .45 }]),
   }));
   // The sprout rides on the O's top, which rises as the O stretches. Never scale to exactly
   // 0 (a degenerate transform flickers on iOS); it stays hidden until it starts to show.

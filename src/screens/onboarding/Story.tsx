@@ -26,9 +26,9 @@ export const flowerStages: number[] = [
 const RATIO = 994 / 1130;
 
 const SOURCES = [
-  { key: 'observed' as const, title: 'You observe', text: 'A soil check, a watering, how the leaves look. Kept exactly as you describe it.' },
-  { key: 'told' as const, title: 'You tell us', text: 'Its light, its pot, where it lives. Optional, and you can change it later.' },
-  { key: 'species' as const, title: 'Species notes', text: 'What the species usually likes. A starting point, never a rule for your plant.' },
+  { key: 'observed' as const, title: 'You observe', text: 'Soil checks, waterings, leaves.' },
+  { key: 'told' as const, title: 'You tell us', text: 'Its light, pot and spot.' },
+  { key: 'species' as const, title: 'Species notes', text: 'A starting point, not a rule.' },
 ];
 
 /* ------------------------------------------------------------------ the plant */
@@ -85,7 +85,7 @@ function Line({ on, from, to }: { on: boolean; from: { x: number; y: number }; t
 
 function Node({ source, waiting, focused, onPress, wrap }: { source: typeof SOURCES[number]; waiting: boolean; focused: boolean; onPress: () => void; wrap?: boolean }) {
   const { c } = useTheme();
-  return <Animated.View entering={FadeIn.duration(360)}>
+  return <Animated.View entering={FadeInDown.duration(220)}>
     <Glow on={waiting} />
     <Tap label={t(source.title)} selected={focused} onPress={onPress} ring={radius.control}
       style={{ minHeight: 44, paddingHorizontal: 10, paddingVertical: 10, borderRadius: radius.control, borderWidth: focused || waiting ? 1.5 : 1, borderColor: focused || waiting ? c.ink : c.ink3, backgroundColor: c.raised, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -110,8 +110,8 @@ export function Story({ width, start, advance = 0, onComplete }: { width: number
 
   useEffect(() => {
     // After the title has arrived, the seed sprouts by itself, then the first source appears.
-    later(() => setStage(1), start);
-    later(() => setShown(1), start + 700);
+    later(() => setStage(1), Math.max(0, start - 200));
+    later(() => setShown(1), start + 150);
     return () => timers.current.forEach(clearTimeout);
   }, []);
 
@@ -130,8 +130,8 @@ export function Story({ width, start, advance = 0, onComplete }: { width: number
     const next = done + 1;
     setDone(next);
     setStage(next + 1);
-    if (next < SOURCES.length) later(() => setShown(next + 1), 650);
-    else later(onComplete, 900);
+    if (next < SOURCES.length) later(() => setShown(next + 1), 280);
+    else later(onComplete, 650);
   };
 
   // Two sources above the plant, species notes below it, lines meeting at the plant.
@@ -158,7 +158,7 @@ export function Story({ width, start, advance = 0, onComplete }: { width: number
         </View>
       : <View style={{ width, height: H }}>
       <View style={{ position: 'absolute', left: (width - size * RATIO) / 2, top: plantTop }}><Flower stage={stage} size={size} /></View>
-      {bloomed && <Animated.View entering={FadeIn.delay(450).duration(420)} style={{ position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' }}>
+      {bloomed && <Animated.View entering={FadeIn.delay(250).duration(300)} style={{ position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.input, backgroundColor: c.successSoft }}>
           <SourceMark kind="suggested" /><T v="caption" tone="leafText">{t("Rootera suggests")}</T>
         </View>
@@ -170,13 +170,13 @@ export function Story({ width, start, advance = 0, onComplete }: { width: number
     </View>}
     <View style={{ minHeight: 100, gap: space[2] }} accessibilityLiveRegion="polite">
       {focus !== null
-        ? <Animated.View key={focus} entering={reduceMotion ? undefined : FadeInDown.duration(300)} style={{ gap: 4 }}>
+        ? <Animated.View key={focus} entering={reduceMotion ? undefined : FadeInDown.duration(220)} style={{ gap: 4 }}>
             <T v="headline">{t(SOURCES[focus].title)}</T>
             <T v="body" tone="ink2">{t(SOURCES[focus].text)}</T>
           </Animated.View>
         : null}
-      {bloomed && <Animated.View entering={FadeInDown.delay(450).duration(420)}>
-        <T v="subhead" tone="ink2">{t("Every suggestion shows which of these it came from.")}</T>
+      {bloomed && <Animated.View entering={FadeInDown.delay(250).duration(300)}>
+        <T v="subhead" tone="ink2">{t("Every suggestion shows its source.")}</T>
       </Animated.View>}
     </View>
   </View>;

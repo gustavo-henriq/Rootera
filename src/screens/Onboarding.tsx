@@ -27,7 +27,7 @@ import { Glyph } from '../ds/icons';
 import { SeedDrop } from '../ds/SeedDrop';
 import { revealDuration, TextReveal } from '../ds/TextReveal';
 import { Opening } from './onboarding/Opening';
-import { SoilReveal } from './onboarding/Soil';
+import { SOIL_OUT, SoilReveal } from './onboarding/Soil';
 import { Story } from './onboarding/Story';
 import { Answers, Choice, currentSlot, FirstPlant, IdState, LIGHT, POTS, Slot, SOILS, STAGES, WATERED } from './onboarding/FirstPlant';
 import { KnownRow, PlanReveal } from './onboarding/PlanReveal';
@@ -37,7 +37,7 @@ import { t } from '../i18n';
 
 // Nudges are no longer a step: they are offered once on Today, after the first plant (NudgeInvite).
 const TOTAL = 3;
-const SOIL_LIFT = 800; // the soil from the opening lifts away before the story starts
+const SOIL_LIFT = SOIL_OUT - 150; // the story's title starts as the soil clears
 const STEP_NAMES = ['opening', 'story', 'experience', 'plant'];
 
 export function Onboarding({ navigation, route }: Props<'Welcome'>) {
@@ -172,12 +172,12 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   }
 
   const titles: Record<number, [string, string]> = {
-    1: [t('Rootera learns this plant, not plants in general.'), ''],
-    2: [t('How’s your plant life right now?'), t('This sets how much Rootera explains. You can change it any time.')],
+    1: [t('Rootera learns your plant.'), ''],
+    2: [t('How’s your plant life right now?'), t('So Rootera explains just enough.')],
     // Someone with one plant is asked for it; someone with several, for one of them.
     3: experience === 'first' || !experience
-      ? [t('Which plant is yours?'), t('Search by name, or start from a photo.')]
-      : [t('Tell me about one of your plants'), t('Start with the one you see most often.')],
+      ? [t('Which plant is yours?'), t('Search by name or use a photo.')]
+      : [t('Tell me about one of your plants'), t('The one you see most often.')],
   };
   const hideTitle = (step === 1 && storyDone) || (step === 3 && !!kind);
   const titleDelay = step === 1 && dived ? SOIL_LIFT : 0;
@@ -212,14 +212,16 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
             </Animated.View>}
       </Animated.View>}
       {/* Content rises only once the title has gone, so the two never overlap. */}
-      <Animated.View layout={reduceMotion ? undefined : LinearTransition.delay(140).duration(380)} onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ paddingTop: hideTitle ? space[3] : 0 }}>
+      {/* Keyed by step: a new step's content mounts in place (a layout transition carried over
+          from the last step slid it up over the new title). */}
+      <Animated.View key={step} layout={reduceMotion ? undefined : LinearTransition.delay(140).duration(380)} onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ paddingTop: hideTitle ? space[3] : 0 }}>
         {!!width && step === 1 && <Story width={width} start={titleTime} advance={storyTap} onComplete={() => setStoryDone(true)} />}
-        {step === 2 && <View style={{ gap: space[3] }}>
+        {step === 2 && <Animated.View entering={reduceMotion ? undefined : FadeInDown.delay(140).duration(320)} style={{ gap: space[3] }}>
           <View style={{ flexDirection: 'row', gap: space[3] }}>
             {experiences.slice(0, 2).map(o => <GlassChoice key={o.value} on={experience === o.value} onPress={() => chooseExperience(o.value)} label={experienceLabel[o.value]} hint={experienceHint[o.value]} art={o.art} scene={o.scene} />)}
           </View>
           <GlassChoice wide on={experience === 'many'} onPress={() => chooseExperience('many')} label={experienceLabel.many} hint={experienceHint.many} art={experiences[2].art} scene={experiences[2].scene} />
-        </View>}
+        </Animated.View>}
         {!!width && step === 3 && <FirstPlant width={width} choice={choice} onChoose={setChoice} answers={answers} onAnswer={answer} editing={editing} setEditing={setEditing}
           photo={photo} idState={idState} matches={matches} onCamera={() => navigation.navigate('Camera', { returnTo: 'Welcome' })} />}
       </Animated.View>

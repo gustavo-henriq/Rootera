@@ -329,7 +329,9 @@ const EventRow = memo(function EventRow({ event, plant, onPress, onLongPress }: 
 function dayLabel(iso: string) {
   const d = new Date(iso), now = new Date();
   const diff = Math.round((new Date(now.toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 86400000);
-  return diff === 0 ? t('Today') : diff === 1 ? t('Yesterday') : d.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
+  // Today and yesterday carry their date too, so they read as a day, not as a section title.
+  const date = d.toLocaleDateString(locale(), { day: 'numeric', month: 'long' });
+  return diff === 0 ? t('Today, {date}', { date }) : diff === 1 ? t('Yesterday, {date}', { date }) : d.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 type JournalItem = { k: 'day'; label: string; count: number; open: boolean } | { k: 'event'; event: CareEvent };

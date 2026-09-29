@@ -23,7 +23,7 @@ import { t } from '../../i18n';
 const POT_H = 280;
 const POT_W = POT_H * SEED_RATIO;
 const LINE = 'Stop guessing what your plant needs.';
-const SUB = 'Rootera learns one plant at a time: its spot, its pot and the care you give it.';
+const SUB = 'Rootera learns each plant from your care.';
 /** The wordmark starts this much lower and glides up as the text arrives under it. */
 const RISE = 64;
 const BUTTON_DELAY = 1900;
@@ -80,13 +80,14 @@ export function Opening({ onContinue }: { onContinue: () => void }) {
     if (diving) return;
     if (reduceMotion) { onContinue(); return; }
     setDiving(true);
-    fade.value = withTiming(0, { duration: 260 });
+    fade.value = withTiming(0, { duration: 180 });
     // The camera accelerates into the middle of the soil, where the seed went in.
-    zoom.value = withDelay(100, withTiming(SOIL_DIVE.potZoom, { duration: SOIL_DIVE.zoom, easing: Easing.in(Easing.quad) }));
+    zoom.value = withTiming(SOIL_DIVE.potZoom, { duration: SOIL_DIVE.zoom, easing: Easing.in(Easing.cubic) });
     soil.value = withDelay(SOIL_DIVE.soilIn, withTiming(1, { duration: SOIL_DIVE.soilFade }));
-    // The soil layer mounts once it takes over, so its descent starts from there.
+    // The soil layer mounts once it takes over, so its descent starts from there; the next
+    // screen takes over on the dive's last frame (it starts from that same frame).
     setTimeout(() => setUnder(true), SOIL_DIVE.soilIn);
-    setTimeout(onContinue, SOIL_DIVE.soilIn + SOIL_DIVE.descend - 150);
+    setTimeout(onContinue, SOIL_DIVE.soilIn + SOIL_DIVE.descend + 40);
   };
 
   return <Pressable accessible={false} onPress={skip} style={{ flex: 1, backgroundColor: c.canvas, paddingTop: insets.top, paddingBottom: insets.bottom + space[6], paddingHorizontal: space.gutter, overflow: 'hidden' }}>
