@@ -7,17 +7,16 @@ import { useStore } from '../store';
 import { ago, CareEvent, describeEvent, known, Plant as PlantT, soilLabel, Twin, visualLabel } from '../model';
 import { useCompact, useTheme } from '../ds/theme';
 import { fonts, radius, space } from '../ds/tokens';
-import { Btn, Glass, SourceLabel, SourceMark, T, Tap, Toast } from '../ds/components';
+import { Btn, Glass, Group, Row, SourceLabel, SourceMark, T, Tap, Toast } from '../ds/components';
 import { Glyph, GlyphName } from '../ds/icons';
 import { Page } from '../ds/Page';
 import { Ground, PlantArt } from '../ds/plant';
 import { Appear, DrawLine, LeafBurst, pivot, Pop, Settle, WaterDrops } from '../ds/motion';
-import { CareCalendar } from '../ds/CareCalendar';
 import { ActionSheet } from '../ds/ActionSheet';
-import { GrowthDiary } from './GrowthDiary';
 import { SeedDrop } from '../ds/SeedDrop';
 import { announce, haptic } from '../ds/feedback';
 import { WhySheet } from '../ds/WhySheet';
+import { CareCalendar } from '../ds/CareCalendar';
 import { DryWindow } from '../ds/DryWindow';
 import Svg, { Circle } from 'react-native-svg';
 import { Flight, measure, Rect } from '../ds/Flight';
@@ -352,29 +351,18 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
         </View>
       </View>
 
-      <GrowthDiary plantId={plant.id} plantName={plant.name} plus={garden.plan === 'Plus'} onUpgrade={() => navigation.navigate('Plans', { reason: 'diary' })} />
-
       <View style={{ gap: space[3] }}>
         <T v="section">{t("Care calendar")}</T>
         <CareCalendar events={events} />
       </View>
 
-      <View>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: space[2] }}>
-          <T v="section">{t("History")}</T>
-          {events.length > 5 && <Tap label={t("See all in the journal")} onPress={() => navigation.navigate('Main', { tab: 'Journal' })} ring={radius.inner} style={{ minHeight: 44, justifyContent: 'center' }}><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{t("See all")}</T></Tap>}
-        </View>
-        <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>
-          {events.length ? events.slice(0, 5).map(e => <View key={e.id} style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], minHeight: 52, paddingVertical: space[2], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
-            <Glyph name={e.type === 'Watered' ? 'water' : e.type === 'Soil check' ? 'soil' : 'leaf'} size={18} tone={e.type === 'Watered' ? c.water : c.ink2} />
-            <View style={{ flex: 1 }}>
-              <T v="body">{describeEvent(e)}</T>
-              {!!e.note && <T v="subhead" tone="ink2">“{e.note}”</T>}
-            </View>
-            <T v="footnote" tone="ink2">{ago(e.at)}</T>
-          </View>) : <T v="subhead" tone="ink2" style={{ paddingVertical: space[3] }}>{t("Nothing recorded yet. Your first check will show up here.")}</T>}
-        </View>
-      </View>
+      {/* The plant's records and photos live in the Journal; here they are two plain rows. */}
+      <Group accent>
+        <Row title={t('Plant history')} detail={events.length ? t('{n} records, the latest {ago}', { n: events.length, ago: ago(events[0].at) }) : t('Nothing recorded yet')}
+          onPress={() => navigation.navigate('Main', { screen: 'Journal', params: { plant: plant.id, show: 'history' } } as never)} />
+        <Row title={t('Plant photos')} detail={garden.plan === 'Plus' ? t('Growth diary') : t('Growth diary, with Rootera+')}
+          onPress={() => navigation.navigate('Main', { screen: 'Journal', params: { plant: plant.id, show: 'photos' } } as never)} />
+      </Group>
     </Page>
 
     {!!milestone && <Milestone plant={plant} stage={milestone} onDone={() => setMilestone(null)} />}

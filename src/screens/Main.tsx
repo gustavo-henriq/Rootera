@@ -19,8 +19,8 @@ import { Settle } from '../ds/motion';
 import { PickerSheet } from '../ds/PickerSheet';
 import { ActionSheet } from '../ds/ActionSheet';
 import { measure, Rect } from '../ds/Flight';
-import { NameInvite } from './NameInvite';
 import { NudgeInvite } from './NudgeInvite';
+import { GrowthDiary } from './GrowthDiary';
 import { ROUND_SIZE } from './Round';
 import Swipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { haptic } from '../ds/feedback';
@@ -179,8 +179,9 @@ function Today({ navigation }: TabProps<'Today'>) {
     ...(needs.length ? shownNeeds.map(p => ({ k: 'need' as const, plant: p })) : [{ k: 'calm' as const }]),
     ...(shownNeeds.length < needs.length ? [{ k: 'more' as const, hidden: needs.length - shownNeeds.length }] : []),
     ...(allNeeds && needs.length > NEEDS_PREVIEW + 2 ? [{ k: 'more' as const, hidden: 0 }] : []),
-    ...(recent.length ? [{ k: 'head' as const, title: t('Recently'), action: <Tap label={t("Open the journal")} onPress={() => navigation.navigate('Journal')} ring={radius.inner} style={{ minHeight: 44, justifyContent: 'center' }}><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{t("Journal")}</T></Tap> }, ...recent.map(e => ({ k: 'event' as const, event: e }))] : []),
+    // The plants first (needing you, then resting); what was recorded lately comes last.
     ...(resting.length ? [{ k: 'head' as const, title: t('Resting'), count: resting.length }, ...resting.map(p => ({ k: 'rest' as const, plant: p }))] : []),
+    ...(recent.length ? [{ k: 'head' as const, title: t('Recently'), action: <Tap label={t("Open the journal")} onPress={() => navigation.navigate('Journal')} ring={radius.inner} style={{ minHeight: 44, justifyContent: 'center' }}><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{t("Journal")}</T></Tap> }, ...recent.map(e => ({ k: 'event' as const, event: e }))] : []),
   ];
 
   return <Page tab scrollRef={ref} titleInBar={t("Today")} gap={space[4]} glow={daylight(scheme)} onRefresh={refresh} actions={[{ icon: 'plus', label: t('Add a plant'), onPress: () => navigation.navigate('AddPlant') }]}
@@ -206,7 +207,6 @@ function Today({ navigation }: TabProps<'Today'>) {
       },
     }}>
     <Offline />
-    <NameInvite />
     <NudgeInvite />
     {needs.length >= 3 && <RoundCard count={needs.length} onStart={() => navigation.navigate('Round')} />}
     {!garden.plants.length && <EmptyShelf onAdd={() => navigation.navigate('AddPlant', { first: true })} />}
@@ -332,15 +332,19 @@ function dayLabel(iso: string) {
   return diff === 0 ? t('Today') : diff === 1 ? t('Yesterday') : d.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-type JournalItem = { k: 'day'; label: string } | { k: 'event'; event: CareEvent };
+type JournalItem = { k: 'day'; label: string; count: number; open: boolean } | { k: 'event'; event: CareEvent };
 const CHIP_LIMIT = 8;
 
-function Journal({ navigation }: TabProps<'Journal'>) {
+function Journal({ navigation, route }: TabProps<'Journal'>) {
   const { garden, refresh } = useStore();
   const { c } = useTheme();
   const ref = useRef(null); useScrollToTop(ref);
   const index = usePlantIndex(garden);
-  const [plant, setPlant] = useState('all');
+  const [plant, setPlant] = useState(route.params?.plant ?? 'all');
+  // Opened from a plant page: show that plant (its history, or its photos first).
+  useEffect(() => { if (route.params?.plant) setPlant(route.params.plant); }, [route.params?.plant, route.params?.show]);
+  const photosFirst = route.params?.show === 'photos' && route.params.plant === plant;
+  const one = plant === 'all' ? undefined : index.get(plant);
   const [picker, setPicker] = useState(false);
   // Records older than the snapshot window, paged in as the list nears its end.
   const [older, setOlder] = useState<CareEvent[]>([]);
@@ -359,11 +363,18 @@ function Journal({ navigation }: TabProps<'Journal'>) {
       setOlder(o => [...o, ...page.events]); setMore(page.more);
     } catch { setMore(false); } finally { setLoading(false); }
   };
+  // One row per day; a day opens to its records when tapped, so the journal reads as a list of
+  // dates instead of one long stream.
+  const [openDays, setOpenDays] = useState<Set<string>>(new Set());
+  const toggleDay = (d: string) => setOpenDays(s => { const n = new Set(s); n.has(d) ? n.delete(d) : n.add(d); return n; });
   const items = useMemo(() => {
-    const out: JournalItem[] = []; let last = '';
-    for (const e of events) { const d = dayLabel(e.at); if (d !== last) { out.push({ k: 'day', label: d }); last = d; } out.push({ k: 'event', event: e }); }
-    return out;
-  }, [events]);
+    const days: { label: string; events: CareEvent[] }[] = [];
+    for (const e of events) { const d = dayLabel(e.at); if (days[days.length - 1]?.label !== d) days.push({ label: d, events: [] }); days[days.length - 1].events.push(e); }
+    return days.flatMap(d => {
+      const open = openDays.has(d.label);
+      return [{ k: 'day' as const, label: d.label, count: d.events.length, open }, ...(open ? d.events.map(e => ({ k: 'event' as const, event: e })) : [])];
+    });
+  }, [events, openDays]);
   const selectedName = plant === 'all' ? t('All plants') : index.get(plant)?.name ?? t('All plants');
   // Editing the timeline: a record can be deleted (and restored with Undo, same id and time).
   const { removeCare, logCare } = useStore();
@@ -381,7 +392,12 @@ function Journal({ navigation }: TabProps<'Journal'>) {
       data: items, onEndReached: () => void loadMore(),
       keyExtractor: (i: JournalItem) => i.k === 'day' ? `d-${i.label}` : i.event.id,
       renderItem: (i: JournalItem) => i.k === 'day'
-        ? <T v="section" style={{ paddingTop: space[5], paddingBottom: space[2], borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>{i.label}</T>
+        ? <Tap role="button" selected={i.open} label={`${i.label}, ${tn(i.count, '{n} record', '{n} records')}`} onPress={() => toggleDay(i.label)} scaleTo={.99} ring={radius.inner}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], minHeight: 56, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: i.open ? c.ink3 : c.hairline }}>
+            <T v="headline" style={{ flex: 1 }}>{i.label}</T>
+            <T v="footnote" tone="ink2">{tn(i.count, '{n} record', '{n} records')}</T>
+            <View style={{ transform: [{ rotate: i.open ? '-90deg' : '90deg' }] }}><Glyph name="forward" size={14} tone={c.ink3} /></View>
+          </Tap>
         : <EventRow event={i.event} plant={index.get(i.event.plantId)} onPress={() => navigation.navigate('Plant', { id: i.event.plantId })} onLongPress={() => setMenuFor(i.event)} />,
       footer: loading ? <T v="subhead" tone="ink2">{t("Loading older records…")}</T>
         : !items.length ? <View style={{ gap: space[2] }}><T v="title2">{t("Nothing recorded yet")}</T><T v="callout" tone="ink2">{t("Soil checks, watering and notes about the leaves appear here, newest first.")}</T></View>
@@ -397,13 +413,14 @@ function Journal({ navigation }: TabProps<'Journal'>) {
     ] : []} />
     {garden.plants.length > 1 && (garden.plants.length <= CHIP_LIMIT
       ? <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.gutter, flexGrow: 0 }} contentContainerStyle={{ gap: space[2], paddingHorizontal: space.gutter }}>
-          {[{ id: 'all', name: t('All plants') }, ...garden.plants].map(p => <Chip key={p.id} label={p.name} selected={plant === p.id} onPress={() => setPlant(p.id)} />)}
+          {[{ id: 'all', name: t('All plants'), example: false }, ...garden.plants].map(p => <Chip key={p.id} label={p.example ? `${p.name} (${t('Example').toLowerCase()})` : p.name} selected={plant === p.id} onPress={() => setPlant(p.id)} />)}
         </ScrollView>
       // Too many plants for chips: one control that opens a searchable list.
       : <Tap label={t('Showing {name}. Choose a plant', { name: selectedName })} onPress={() => setPicker(true)} ring={radius.input}
           style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: space[2], minHeight: 44, paddingHorizontal: 12, borderRadius: radius.input, borderWidth: 1, borderColor: plant === 'all' ? c.hairline : c.ink }}>
           <Glyph name="search" size={16} tone={c.ink2} /><T v="subhead" lines={1}>{selectedName}</T><Glyph name="forward" size={13} tone={c.ink3} />
         </Tap>)}
+    {one && photosFirst && <GrowthDiary plantId={one.id} plantName={one.name} plus={garden.plan === 'Plus'} onUpgrade={() => navigation.navigate('Plans', { reason: 'diary' })} />}
     <PickerSheet visible={picker} title={t("Plants")} selected={plant} onSelect={setPlant} onClose={() => setPicker(false)}
       items={[{ id: 'all', label: t('All plants') }, ...garden.plants.map(p => ({ id: p.id, label: p.name, detail: known(p.room) ? p.room : p.species }))]} />
   </Page>;

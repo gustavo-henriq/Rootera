@@ -1,7 +1,9 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { PlantKind } from './model';
 
-export type Tabs = { Today: undefined; Plants: undefined; Journal: undefined; You: undefined };
+/** Journal can open on one plant: its history (calendar and records) or its photos first. */
+export type JournalParams = { plant?: string; show?: 'history' | 'photos' } | undefined;
+export type Tabs = { Today: undefined; Plants: undefined; Journal: JournalParams; You: undefined };
 
 export type Routes = {
   Welcome: { preview?: boolean; photo?: string } | undefined;
