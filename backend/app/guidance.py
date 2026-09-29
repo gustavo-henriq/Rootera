@@ -12,6 +12,7 @@ from statistics import median
 from .domain import parse_time, utcnow
 from .forecast import drying_window
 from .i18n import tr
+from .soil import pooling, shallow, unreached
 from .species import notes_for
 
 DAY = 86400
@@ -32,6 +33,8 @@ MOIST_REPORT_HOURS = {'slightly_moist': 16, 'not_sure': 16, 'moist': 40, 'wet': 
 # Without this, the app would only ever ask on the day it expects dryness and so learn a
 # drying time that is never shorter than what it already believes.
 FIRST_CHECK_DRY = .8
+# A check this soon after a watering still shows where that water went.
+SOAK_HOURS = 48
 SOIL_WORDS = {'dry': 'dry', 'slightly_moist': 'slightly moist', 'moist': 'moist', 'wet': 'very wet'}
 
 
@@ -125,6 +128,8 @@ class SensorlessGuidance:
         condition = last_soil.value['soil'] if fresh else None
         # Dry at the last check, which is more than a day old, with no watering recorded since.
         stale_dry = bool(last_soil and not recent_soil and after_water(last_soil) and last_soil.value['soil'] == 'dry')
+        # The three layers of the last check (older checks have a single reading only).
+        layers = last_soil.value.get('layers') if fresh else None
 
         basis: list[str] = []
         tip = None
@@ -155,6 +160,12 @@ class SensorlessGuidance:
                 reason += f" {notes['thirst_sign']}"
             reason = ' '.join([reason, *context[:1]])
             basis = ['Your soil check', 'Your appearance check', 'Species reference']
+        elif pooling(layers):
+            title, action = _('The bottom is still wet'), 'wait'
+            reason = _('The surface is dry, but the bottom of the pot is still wet. Water now would sit around the roots, so wait until the bottom dries too.')
+            if no_drainage:
+                reason += ' ' + _('With no drainage hole, excess water has nowhere to go.')
+            basis = ['Your soil check'] + (['Pot details you added'] if no_drainage else [])
         elif condition == 'dry':
             title, action = _('You found the soil dry'), 'log_water'
             reason = ' '.join([notes['when_dry'], *context])
@@ -168,6 +179,9 @@ class SensorlessGuidance:
             reason = _('There is still some moisture below the surface. Another check tomorrow will show whether it has dried through.')
             if notes['dryness'] == 'top':
                 reason = _('The soil is close to dry. This species usually prefers water around this point, so a check tomorrow is worthwhile.')
+            if unreached(layers) and notes['dryness'] == 'full':
+                reason = _('Dry as deep as you could check. This species likes to dry all the way through, so the bottom decides.')
+                tip = _('A wooden skewer pushed to the bottom of the pot and left a minute shows it: it comes out clean and dry when the bottom is dry.')
             basis = ['Your soil check', 'Species reference']
         elif condition in ('moist', 'wet'):
             title, action = _('Still moist' if condition == 'moist' else 'The soil is wet'), 'wait'
@@ -227,6 +241,11 @@ class SensorlessGuidance:
             basis = ['Your care history']
             tip = notes['check_tip']
 
+        if shallow(layers) and last_water and not approximate(last_water) and (parse_time(last_soil.at) - parse_time(last_water.at)).total_seconds() <= SOAK_HOURS * 3600:
+            reason += ' ' + _('The bottom was still dry after the watering, so the water may not have reached it.')
+            if not no_drainage:
+                tip = _('Next time, pour slowly until a little water comes out of the drainage hole.')
+            basis = basis + (['Your watering record'] if 'Your watering record' not in basis else [])
         signals = ['Plant context'] + (['Soil checks'] if soils else []) + (['Watering history'] if water else []) + (['Appearance notes'] if visuals else [])
         state = 'NEW' if not events else 'PATTERN' if baseline is not None else 'LEARNING'
         return {
@@ -240,7 +259,7 @@ class SensorlessGuidance:
             'baseline_days': baseline, 'completed_cycles': len(intervals), 'pattern_cycles': len(recent),
             'forecast': window,
             'baseline_note': _('Typical time until the soil dries after watering, judging by your checks. How often you check affects this number.'),
-            'soil': condition, 'soil_checked_at': last_soil.at if recent_soil else None,
+            'soil': condition, 'soil_layers': layers, 'soil_checked_at': last_soil.at if recent_soil else None,
             'visual': visual,
             'last_watered_at': last_water.at if last_water else None,
             'last_soil_check_at': last_soil.at if last_soil else None,

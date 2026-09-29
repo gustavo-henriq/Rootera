@@ -10,6 +10,8 @@ from .db import Calibration, Device, DomainEvent, Plant, Profile, SensorObservat
 from .domain import Evidence, PlantTwinEngine, normalize_adc, utcnow
 from .example import example_id, is_example, seed_example
 from .guidance import SensorlessGuidance
+from .soil import summarize
+from .species import notes_for
 from .schemas import PLAN_CAPACITY, CaregiverProfile, NudgePrefs, CalibrationIn, PlantIn, PlantUpdate, SensorIn, UserObservationIn, normalize_plan
 
 # The garden snapshot carries the most recent care records; older ones are paged by journal().
@@ -17,7 +19,7 @@ EVENT_WINDOW = 400
 # What the app reads from a twin in the garden snapshot. The full twin (reported, inferred,
 # limitations, evidence ids) stays available per plant at /v1/plants/{id}/twin.
 LEAN_GUIDANCE = ('title', 'reason', 'action', 'tip', 'basis', 'state', 'learning', 'baseline_days', 'completed_cycles', 'pattern_cycles', 'forecast',
-                 'baseline_note', 'soil', 'soil_checked_at', 'visual', 'last_watered_at', 'last_soil_check_at', 'reference')
+                 'baseline_note', 'soil', 'soil_layers', 'soil_checked_at', 'visual', 'last_watered_at', 'last_soil_check_at', 'reference')
 
 
 def lean_twin(state: dict) -> dict:
@@ -150,10 +152,15 @@ class GardenService:
         return state
 
     def add_user_observation(self, plant_id: str, payload: UserObservationIn):
-        if self.plant(plant_id, lock=True).data.get('archived'):
+        plant = self.plant(plant_id, lock=True)
+        if plant.data.get('archived'):
             raise HTTPException(404, 'Plant not found')
         old = self.db.get(UserObservation, payload.id)
         value = {'note': payload.note, 'soil': payload.soil, 'amount_ml': payload.amount_ml}
+        if payload.layers is not None:
+            # The layers are kept as said; the single reading is judged at this species' depth.
+            value['layers'] = payload.layers.model_dump()
+            value['soil'] = summarize(value['layers'], notes_for(plant.data.get('kind'))['dryness'])
         if payload.visual is not None:
             value['visual'] = payload.visual
         if payload.approximate:
@@ -207,7 +214,7 @@ class GardenService:
 
     @staticmethod
     def event_view(o):
-        return {'id': o.id, 'plantId': o.plant_id, 'type': o.kind, 'note': o.value['note'], 'soil': o.value.get('soil'), 'amount_ml': o.value.get('amount_ml'), 'visual': o.value.get('visual'), 'approximate': bool(o.value.get('approximate')), 'at': o.observed_at, 'source': 'USER'}
+        return {'id': o.id, 'plantId': o.plant_id, 'type': o.kind, 'note': o.value['note'], 'soil': o.value.get('soil'), 'layers': o.value.get('layers'), 'amount_ml': o.value.get('amount_ml'), 'visual': o.value.get('visual'), 'approximate': bool(o.value.get('approximate')), 'at': o.observed_at, 'source': 'USER'}
 
     # ---- devices (kept for future hardware; not part of the MVP UI) ---------
     def add_device(self, plant_id: str, name: str, demo: bool = False, device_id: str | None = None):

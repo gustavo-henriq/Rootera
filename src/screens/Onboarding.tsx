@@ -19,7 +19,7 @@ import { useStore } from '../store';
 import { api, ApiError, Candidate } from '../api';
 import { track } from '../analytics';
 import { photoData } from './Camera';
-import { Experience, experienceHint, experienceLabel, newId, Plant } from '../model';
+import { Experience, experienceHint, experienceLabel, newId, Plant, SoilLayers } from '../model';
 import { useTheme } from '../ds/theme';
 import { radius, space } from '../ds/tokens';
 import { Btn, T, Tap, Toast } from '../ds/components';
@@ -29,7 +29,8 @@ import { revealDuration, TextReveal } from '../ds/TextReveal';
 import { Opening } from './onboarding/Opening';
 import { SOIL_OUT, SoilReveal } from './onboarding/Soil';
 import { Story } from './onboarding/Story';
-import { Answers, Choice, currentSlot, FirstPlant, IdState, LIGHT, POTS, Slot, SOILS, STAGES, WATERED } from './onboarding/FirstPlant';
+import { Answers, Choice, currentSlot, FirstPlant, IdState, layersSummary, LIGHT, POTS, Slot, SOILS, STAGES, WATERED } from './onboarding/FirstPlant';
+import { layersComplete } from '../ds/SoilLayers';
 import { KnownRow, PlanReveal } from './onboarding/PlanReveal';
 import { Atmosphere, experiences, GlassChoice, SeedProgress } from './onboarding/shared';
 import { t } from '../i18n';
@@ -92,7 +93,9 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   const answer = (s: Slot, i: number) => { setAnswers(a => ({ ...a, [s]: i })); setEditing(null); };
   const kind = choice?.kind ?? null;
   const plantReady = !!kind && currentSlot(answers, editing) === null;
-  const soilValue = answers.soil !== undefined ? SOILS[answers.soil].value : 'not_sure';
+  // The first soil check, in three layers; "Check later" leaves the plant without one.
+  const [layers, setLayers] = useState<Partial<SoilLayers>>({});
+  const soilChecked = answers.soil !== undefined && SOILS[answers.soil].checked && layersComplete(layers);
 
   const next = () => {
     tr('onboarding_step_completed', { step: STEP_NAMES[step] });
@@ -109,7 +112,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   const plant = async () => {
     if (busy || !choice) return;
     tr('onboarding_step_completed', { step: 'plant' });
-    tr('first_plant_added', { kind: choice.kind, via: choice.via, photo: !!photo, soil_checked: soilValue !== 'not_sure' });
+    tr('first_plant_added', { kind: choice.kind, via: choice.via, photo: !!photo, soil_checked: soilChecked });
     if (preview) { setPhase('celebrate'); return; }
     setBusy(true); setError('');
     try {
@@ -125,10 +128,10 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
         const at = new Date(Date.now() - (days ? days * 86400000 : 60000)).toISOString();
         await logCare({ id: ids.current.water, plantId: p.id, type: 'Watered', note: t('Approximate date, from setup'), approximate: true, at, source: 'USER' });
       }
-      // "Not sure" is not an observation: the plant starts without a soil check instead.
-      if (soilValue !== 'not_sure') {
+      // "Check later" is not an observation: the plant starts without a soil check instead.
+      if (soilChecked) {
         ids.current.soilAt ||= new Date().toISOString();
-        await logCare({ id: ids.current.soil, plantId: p.id, type: 'Soil check', soil: soilValue, note: '', at: ids.current.soilAt, source: 'USER' });
+        await logCare({ id: ids.current.soil, plantId: p.id, type: 'Soil check', layers: layers as SoilLayers, note: '', at: ids.current.soilAt, source: 'USER' });
       }
       setPhase('celebrate');
     } catch (e) {
@@ -154,7 +157,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
       <SeedDrop size={290} run={1} kind={kind!} onDone={() => setTimeout(toPlan, reduceMotion ? 700 : 1200)} />
       <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(900)} style={{ alignItems: 'center', gap: space[1] }}>
         <T v="hero" center>{t('{name} is in your garden.', { name: choice?.name ?? '' })}</T>
-        <T v="callout" tone="ink2" center>{soilValue !== 'not_sure' ? t('Your first check is saved.') : t('Its first soil check is waiting for you.')}</T>
+        <T v="callout" tone="ink2" center>{soilChecked ? t('Your first check is saved.') : t('Its first soil check is waiting for you.')}</T>
       </Animated.View>
     </Pressable>;
   }
@@ -166,7 +169,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
       { label: t('Pot'), value: val('pot', POTS), source: 'told' },
       { label: t('Stage'), value: val('stage', STAGES), source: 'told' },
       { label: t('Last watered'), value: val('watered', WATERED), source: 'observed' },
-      { label: t('Soil today'), value: val('soil', SOILS), source: 'observed' },
+      { label: t('Soil today'), value: soilChecked ? layersSummary(layers) : t('Not sure yet'), source: 'observed' },
     ];
     return <PlanReveal kind={choice.kind} name={choice.name} photo={photo} rows={rows} twin={garden.twins[ids.current.plant]} onContinue={finish} />;
   }
@@ -223,7 +226,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
           </View>
           <GlassChoice wide on={experience === 'many'} onPress={() => chooseExperience('many')} label={experienceLabel.many} hint={experienceHint.many} art={experiences[2].art} scene={experiences[2].scene} />
         </Animated.View>}
-        {!!width && step === 3 && <FirstPlant width={width} choice={choice} onChoose={setChoice} answers={answers} onAnswer={answer} editing={editing} setEditing={setEditing}
+        {!!width && step === 3 && <FirstPlant width={width} layers={layers} onLayers={setLayers} choice={choice} onChoose={setChoice} answers={answers} onAnswer={answer} editing={editing} setEditing={setEditing}
           photo={photo} idState={idState} matches={matches} onCamera={() => navigation.navigate('Camera', { returnTo: 'Welcome' })} />}
       </Animated.View>
       </Pressable>

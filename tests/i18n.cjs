@@ -36,13 +36,14 @@ for (const f of files) {
 
 // Tables translated where they are shown: every quoted text inside the declaration.
 const TABLES = {
-  'src/model.ts': ['catalog', 'soilLabel', 'visualLabel', 'experienceLabel', 'experienceHint', 'CareType'],
+  'src/model.ts': ['catalog', 'soilLabel', 'layerLabel', 'visualLabel', 'experienceLabel', 'experienceHint', 'CareType'],
   'src/ds/components.tsx': ['sourceText'],
   'src/ds/WhySheet.tsx': ['GROUPS'],
   'src/ds/DepthRuler.tsx': ['DEPTH'],
+  'src/ds/SoilLayers.tsx': ['INFO', 'HINT'],
   'src/ds/DryWindow.tsx': ['factorLabel'],
   'src/screens/Farewell.tsx': ['CHOICES', 'WORDS'],
-  'src/screens/Care.tsx': ['soilHints', 'visualHints', 'AMOUNTS', 'STAGES', 'stageHints'],
+  'src/screens/Care.tsx': ['visualHints', 'AMOUNTS', 'STAGES', 'stageHints'],
   'src/screens/Plant.tsx': ['statusSpeech'],
   'src/screens/Main.tsx': ['tabs', 'CHECK_IN', 'nudgeNames'],
   'src/screens/Plans.tsx': ['heads', 'benefits'],

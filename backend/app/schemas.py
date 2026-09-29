@@ -87,11 +87,20 @@ class Timed(StrictModel):
         return v.astimezone(timezone.utc)
 
 
+class SoilLayers(StrictModel):
+    """A soil check in three layers (see soil.py). The bottom may be out of reach."""
+    top: Literal['dry', 'moist', 'wet']
+    middle: Literal['dry', 'moist', 'wet']
+    bottom: Literal['dry', 'moist', 'wet', 'unreached']
+
+
 class UserObservationIn(Timed):
     id: str = Field(min_length=1, max_length=80)
     type: Literal['Watered', 'Soil check', 'Fertilized', 'Observation']
     note: str = Field(default='', max_length=2000)
     soil: Literal['dry', 'slightly_moist', 'moist', 'wet', 'not_sure'] | None = None
+    # The three-layer check. When given, `soil` is derived from it (for the plant's species).
+    layers: SoilLayers | None = None
     amount_ml: float | None = Field(default=None, ge=0, le=100000)
     visual: Literal['great', 'different', 'unwell', 'not_sure'] | None = None
     # A watering remembered roughly (at setup): kept as the last watering, not as a cycle start.
@@ -103,7 +112,9 @@ class UserObservationIn(Timed):
             raise ValueError('Only a watering can be approximate.')
         if self.soil is not None and self.type != 'Soil check':
             raise ValueError('Soil condition belongs to Soil check.')
-        if self.type == 'Soil check' and self.soil is None:
+        if self.layers is not None and self.type != 'Soil check':
+            raise ValueError('Soil layers belong to Soil check.')
+        if self.type == 'Soil check' and self.soil is None and self.layers is None:
             raise ValueError('A soil check needs a soil condition.')
         if self.amount_ml is not None and self.type != 'Watered':
             raise ValueError('Water amount belongs to Watered.')

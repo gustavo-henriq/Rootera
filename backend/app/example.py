@@ -11,25 +11,31 @@ from datetime import timedelta
 
 from .db import DomainEvent, Plant, UserObservation
 from .domain import utcnow
+from .soil import summarize
 
 NAMES = {'en': 'Monstera', 'pt': 'Costela-de-adão'}
 EVENT_TYPES = {'Watered': 'PlantWatered', 'Soil check': 'SoilConditionReported', 'Observation': 'PlantObserved'}
 
 # (days before now, kind, value). Three cycles: dry about 5, 6 and 5 days after watering,
 # with checks in between as a caregiver would do; the last watering was 3 days ago.
+# Checks are in three layers, drying from the top down (a monstera is dry when the
+# surface and the middle are).
+MOIST = {'top': 'moist', 'middle': 'moist', 'bottom': 'moist'}
+DRYING = {'top': 'dry', 'middle': 'moist', 'bottom': 'moist'}
+DRY = {'top': 'dry', 'middle': 'dry', 'bottom': 'moist'}
 HISTORY = [
     (19, 'Watered', {'amount_ml': 400}),
-    (17, 'Soil check', {'soil': 'moist'}),
-    (15, 'Soil check', {'soil': 'slightly_moist'}),
-    (14.05, 'Soil check', {'soil': 'dry'}),
+    (17, 'Soil check', {'layers': MOIST}),
+    (15, 'Soil check', {'layers': DRYING}),
+    (14.05, 'Soil check', {'layers': DRY}),
     (14, 'Watered', {'amount_ml': 400}),
-    (11, 'Soil check', {'soil': 'moist'}),
-    (9, 'Soil check', {'soil': 'slightly_moist'}),
-    (8.05, 'Soil check', {'soil': 'dry'}),
+    (11, 'Soil check', {'layers': MOIST}),
+    (9, 'Soil check', {'layers': DRYING}),
+    (8.05, 'Soil check', {'layers': DRY}),
     (8, 'Watered', {'amount_ml': 350}),
-    (6, 'Soil check', {'soil': 'moist'}),
-    (4, 'Soil check', {'soil': 'slightly_moist'}),
-    (3.05, 'Soil check', {'soil': 'dry'}),
+    (6, 'Soil check', {'layers': MOIST}),
+    (4, 'Soil check', {'layers': DRYING}),
+    (3.05, 'Soil check', {'layers': DRY}),
     (3, 'Watered', {'amount_ml': 400}),
     (2, 'Observation', {'visual': 'great'}),
 ]
@@ -57,7 +63,8 @@ def seed_example(db, owner: str, lang: str = 'en') -> str:
     db.flush()
     for i, (days, kind, value) in enumerate(HISTORY):
         at = (now - timedelta(days=days)).isoformat()
-        record = {'note': '', 'soil': value.get('soil'), 'amount_ml': value.get('amount_ml'), **({'visual': value['visual']} if 'visual' in value else {})}
+        record = {'note': '', 'soil': summarize(value['layers'], 'half') if 'layers' in value else None, 'amount_ml': value.get('amount_ml'),
+                  **({'layers': value['layers']} if 'layers' in value else {}), **({'visual': value['visual']} if 'visual' in value else {})}
         db.add(UserObservation(id=f'{plant_id}-{i}', plant_id=plant_id, owner_id=owner, kind=kind, value=record,
                                observed_at=at, received_at=now.isoformat(), confidence=.65))
         # The append-only log says these records were generated for the example.

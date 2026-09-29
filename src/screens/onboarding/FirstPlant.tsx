@@ -10,7 +10,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, Platform, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, FadeOut, FadeOutUp, LinearTransition, SharedValue, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
-import { catalog, matchesSpecies, PlantKind, Soil } from '../../model';
+import { catalog, layerLabel, matchesSpecies, PlantKind, SoilLayers } from '../../model';
+import { layersComplete, SoilLayersInput } from '../../ds/SoilLayers';
 import { plantArt } from '../../ds/plant';
 import { useCompact, useTheme } from '../../ds/theme';
 import { fonts, radius, space, springs, type } from '../../ds/tokens';
@@ -28,8 +29,10 @@ export const POTS: { label: string; drainage: string; self: string }[] = [{ labe
 export const STAGES: { label: string; value: 'Seedling' | 'Young' | 'Mature' | 'Not sure' }[] = [{ label: 'Seedling', value: 'Seedling' }, { label: 'Young', value: 'Young' }, { label: 'Mature', value: 'Mature' }, { label: 'Not sure', value: 'Not sure' }];
 /** Days ago, roughly. Stored as an approximate watering; "Don't remember" records nothing. */
 export const WATERED: { label: string; days: number | null }[] = [{ label: 'Today', days: 0 }, { label: 'A few days ago', days: 3 }, { label: 'Over a week ago', days: 8 }, { label: 'Don’t remember', days: null }];
-export const SOILS: { label: string; value: Soil }[] = [{ label: 'Dry', value: 'dry' }, { label: 'Slightly moist', value: 'slightly_moist' }, { label: 'Moist', value: 'moist' }, { label: 'Very wet', value: 'wet' }, { label: 'Not sure', value: 'not_sure' }];
-const QUESTION: Record<Slot, string> = { light: 'How much light does it get?', pot: 'What is it planted in?', stage: 'How grown is it?', watered: 'When did you last water it?', soil: 'Push a finger into the soil. How does it feel?' };
+/** The soil is checked in three layers (see ds/SoilLayers); the answer is either the check or "later". */
+export const SOILS: { label: string; checked: boolean }[] = [{ label: 'Checked', checked: true }, { label: 'Check later', checked: false }];
+export const layersSummary = (l: Partial<SoilLayers>) => [l.top, l.middle, l.bottom].map(v => v ? layerLabel[v].toLowerCase() : '–').join(', ');
+const QUESTION: Record<Slot, string> = { light: 'How much light does it get?', pot: 'What is it planted in?', stage: 'How grown is it?', watered: 'When did you last water it?', soil: 'Check the soil at the surface, the middle and the bottom.' };
 const LABEL: Record<Slot, string> = { light: 'Light', pot: 'Pot', stage: 'Stage', watered: 'Watered', soil: 'Soil' };
 const LISTS: Record<Slot, { label: string }[]> = { light: LIGHT, pot: POTS, stage: STAGES, watered: WATERED, soil: SOILS };
 const options = (s: Slot) => LISTS[s].map(o => t(o.label));
@@ -142,8 +145,8 @@ function Finder({ q, setQ, choice, onChoose, photo, idState, matches, onCamera }
   </View>;
 }
 
-export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing, setEditing, photo, idState, matches, onCamera }: {
-  width: number; choice: Choice | null; onChoose: (c: Choice) => void;
+export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing, setEditing, photo, idState, matches, onCamera, layers, onLayers }: {
+  width: number; choice: Choice | null; onChoose: (c: Choice) => void; layers: Partial<SoilLayers>; onLayers: (l: Partial<SoilLayers>) => void;
   answers: Answers; onAnswer: (s: Slot, i: number) => void; editing: Slot | null; setEditing: (s: Slot) => void;
   photo?: string; idState: IdState; matches: Candidate[] | null; onCamera: () => void;
 }) {
@@ -166,7 +169,7 @@ export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing
   useEffect(() => { size.value = reduceMotion ? (plate ? big : small) : withTiming(plate ? big : small, { duration: 520, easing: Easing.inOut(Easing.cubic) }); }, [plate, width]);
   const areaStyle = useAnimatedStyle(() => ({ height: size.value + 18 }));
   const left = (width - big) / 2;
-  const valueOf = (s: Slot) => answers[s] === undefined ? undefined : options(s)[answers[s]!];
+  const valueOf = (s: Slot) => answers[s] === undefined ? undefined : s === 'soil' && SOILS[answers[s]!].checked ? layersSummary(layers) : options(s)[answers[s]!];
   const visible = (s: Slot) => answers[s] !== undefined || s === slot;
   const place: Record<Slot, { side: 'left' | 'right'; top: number; anchor: number }> = {
     light: { side: 'left', top: big * .04, anchor: left + big * .4 },
@@ -197,14 +200,21 @@ export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing
 
     {slot && <Animated.View key={slot} entering={reduceMotion ? undefined : FadeIn.delay(questionDelay).duration(240)} exiting={reduceMotion ? undefined : FadeOut.duration(140)} style={{ gap: space[3] }}>
       <T v="headline">{t(QUESTION[slot])}</T>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-        {options(slot).map((o, i) => <Chip key={o} label={o} selected={answers[slot] === i} onPress={() => onAnswer(slot, i)} />)}
-      </View>
+      {slot === 'soil'
+        ? <>
+            <SoilLayersInput value={layers} onChange={l => { onLayers(l); if (layersComplete(l)) onAnswer('soil', 0); }} />
+            <Tap label={t('Check later')} onPress={() => onAnswer('soil', 1)} ring={radius.inner} style={{ alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' }}>
+              <T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{t('Check later')}</T>
+            </Tap>
+          </>
+        : <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+            {options(slot).map((o, i) => <Chip key={o} label={o} selected={answers[slot] === i} onPress={() => onAnswer(slot, i)} />)}
+          </View>}
     </Animated.View>}
 
     {complete && <Animated.View entering={FadeInDown.delay(180).duration(420)} style={{ gap: space[1] }}>
-      <T v="headline">{SOILS[answers.soil!].value === 'not_sure' ? t('Its first soil check can wait.') : t('This is your first observation.')}</T>
-      <T v="subhead" tone="ink2">{SOILS[answers.soil!].value === 'not_sure'
+      <T v="headline">{!SOILS[answers.soil!].checked ? t('Its first soil check can wait.') : t('This is your first observation.')}</T>
+      <T v="subhead" tone="ink2">{!SOILS[answers.soil!].checked
         ? t('Rootera will ask for one soon. Every later check is compared with it.')
         : t('Rootera compares every later check with it. Tap any note to change it.')}</T>
     </Animated.View>}

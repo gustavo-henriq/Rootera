@@ -64,7 +64,7 @@ export const api = {
   archivePlant: (id: string, reason: 'died' | 'given' | 'left' | 'removed' = 'removed') => request(`/v1/plants/${encodeURIComponent(id)}?reason=${reason}`, 'DELETE'),
   logCare: (e: CareEvent) => request<CareResult>(`/v1/plants/${encodeURIComponent(e.plantId)}/user-observations`, 'POST', {
     id: e.id, type: e.type, note: e.note, observed_at: e.at,
-    soil: e.soil ?? null, amount_ml: e.amount_ml ?? null, ...(e.visual ? { visual: e.visual } : {}), ...(e.approximate ? { approximate: true } : {}),
+    soil: e.layers ? null : e.soil ?? null, ...(e.layers ? { layers: e.layers } : {}), amount_ml: e.amount_ml ?? null, ...(e.visual ? { visual: e.visual } : {}), ...(e.approximate ? { approximate: true } : {}),
   }),
   demoPlan: (plan: Plan, annual: boolean) => request('/v1/demo/plan', 'POST', { plan, annual }),
   syncBilling: () => request<{ plan: Plan }>('/v1/billing/sync', 'POST'),
