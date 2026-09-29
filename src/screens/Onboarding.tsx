@@ -53,6 +53,8 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   const [dived, setDived] = useState(false);
   const [width, setWidth] = useState(0);
   const [storyDone, setStoryDone] = useState(false);
+  // A tap anywhere on the story step moves the story on (not only on its cards).
+  const [storyTap, setStoryTap] = useState(0);
   const [experience, setExperience] = useState<Experience | ''>(garden.caregiver?.experience ?? '');
   // Only the essential nudge starts on, marked as recommended; everything else is opt-in.
   const [nudges, setNudges] = useState<NudgeKind[]>(['soil_check']);
@@ -187,7 +189,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   }
 
   const titles: Record<number, [string, string]> = {
-    1: [t('Rootera learns this plant, not plants in general.'), t('Tap each source as it appears.')],
+    1: [t('Rootera learns this plant, not plants in general.'), ''],
     2: [t('How’s your plant life right now?'), t('This sets how much Rootera explains. You can change it any time.')],
     3: [t('Which plant is yours?'), t('Start with the one you see most often.')],
     4: [choice ? t('Want a nudge when your {name} needs you?', { name: choice.name }) : t('Want a nudge when your plant needs you?'), t('Each one comes from what you record. Change them any time in You.')],
@@ -212,19 +214,20 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
         ? <Tap label={t("Skip this step")} onPress={skip} ring={radius.inner} style={{ minWidth: 44, height: 44, alignItems: 'flex-end', justifyContent: 'center' }}><T v="subhead" tone="ink2">{t("Skip")}</T></Tap>
         : <View style={{ width: 44 }} />}
     </View>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: space.gutter, paddingBottom: space[6], gap: space[5], flexGrow: 1 }}>
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: space.gutter, paddingBottom: space[6], flexGrow: 1 }}>
+      <Pressable accessible={false} disabled={step !== 1 || storyDone} onPress={() => setStoryTap(n => n + 1)} style={{ flexGrow: 1, gap: space[5] }}>
       {/* The title steps away once its job is done, so what follows can rise into its place. */}
       {!hideTitle && <Animated.View key={step} exiting={reduceMotion ? undefined : FadeOutUp.duration(280)} style={{ gap: space[2], paddingTop: space[4] }}>
         {step === 1
           ? <><TextReveal text={titles[step][0]} v="hero" delay={titleDelay} />
-              <TextReveal text={titles[step][1]} v="callout" tone="ink2" delay={titleTime - 300} perWord={30} /></>
+              {!!titles[step][1] && <TextReveal text={titles[step][1]} v="callout" tone="ink2" delay={titleTime - 300} perWord={30} />}</>
           : <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(180)} style={{ gap: space[2] }}>
               <T v="hero" accessibilityRole="header">{titles[step][0]}</T>
               <T v="callout" tone="ink2">{titles[step][1]}</T>
             </Animated.View>}
       </Animated.View>}
       <Animated.View layout={reduceMotion ? undefined : LinearTransition.duration(420)} onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ paddingTop: hideTitle ? space[3] : 0 }}>
-        {!!width && step === 1 && <Story width={width} start={titleTime} onComplete={() => setStoryDone(true)} />}
+        {!!width && step === 1 && <Story width={width} start={titleTime} advance={storyTap} onComplete={() => setStoryDone(true)} />}
         {step === 2 && <View style={{ gap: space[3] }}>
           <View style={{ flexDirection: 'row', gap: space[3] }}>
             {experiences.slice(0, 2).map(o => <GlassChoice key={o.value} on={experience === o.value} onPress={() => chooseExperience(o.value)} label={experienceLabel[o.value]} hint={experienceHint[o.value]} art={o.art} scene={o.scene} />)}
@@ -235,6 +238,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
           photo={photo} idState={idState} matches={matches} onCamera={() => navigation.navigate('Camera', { returnTo: 'Welcome' })} />}
         {step === 4 && <NudgePicker selected={nudges} onToggle={k => setNudges(n => n.includes(k) ? n.filter(x => x !== k) : [...n, k])} detail={detail} onDetail={setDetail} time={time} onTime={setTime} />}
       </Animated.View>
+      </Pressable>
     </ScrollView>
     {/* The action appears only once it can be taken: no disabled "Plant it" waiting at the bottom. */}
     {showCta && <Animated.View key={step} entering={reduceMotion || step === 2 || step === 4 ? undefined : FadeInDown.duration(380)}

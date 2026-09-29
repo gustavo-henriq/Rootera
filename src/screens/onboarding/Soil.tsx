@@ -14,7 +14,10 @@ import Svg, { Ellipse, Path } from 'react-native-svg';
 import { useTheme } from '../../ds/theme';
 
 /** Timeline of the dive, in ms from the tap on "Get started". */
-export const SOIL_DIVE = { zoom: 1100, soilIn: 820, soilFade: 320, descend: 1900 };
+// The pot art is 440 x 500 px, so it is only zoomed about 3x; the soil (drawn as vectors,
+// sharp at any size) fades in early and carries the rest of the dive. Zooming the picture
+// further (it used to go to 40x) showed its pixels.
+export const SOIL_DIVE = { zoom: 900, potZoom: 3.2, soilIn: 420, soilFade: 380, descend: 1900 };
 
 /** Root paths in a 100 x 100 box, drawn from the top centre downwards. */
 const ROOTS = [

@@ -50,7 +50,7 @@ export function Opening({ onContinue }: { onContinue: () => void }) {
     setDiving(true);
     fade.value = withTiming(0, { duration: 260 });
     // The camera accelerates into the middle of the soil, where the seed went in.
-    zoom.value = withDelay(100, withTiming(40, { duration: SOIL_DIVE.zoom, easing: Easing.in(Easing.cubic) }));
+    zoom.value = withDelay(100, withTiming(SOIL_DIVE.potZoom, { duration: SOIL_DIVE.zoom, easing: Easing.in(Easing.quad) }));
     soil.value = withDelay(SOIL_DIVE.soilIn, withTiming(1, { duration: SOIL_DIVE.soilFade }));
     // The soil layer mounts once it takes over, so its descent starts from there.
     setTimeout(() => setUnder(true), SOIL_DIVE.soilIn);

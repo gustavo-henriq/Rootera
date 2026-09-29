@@ -87,17 +87,17 @@ function Node({ source, waiting, focused, onPress, wrap }: { source: typeof SOUR
   const { c } = useTheme();
   return <Animated.View entering={FadeIn.duration(360)}>
     <Glow on={waiting} />
-    <Tap label={waiting ? `${t(source.title)}. ${t('Tap to see what it adds.')}` : `${t(source.title)}. ${t('Show what it adds.')}`} selected={focused} onPress={onPress} ring={radius.control}
+    <Tap label={t(source.title)} selected={focused} onPress={onPress} ring={radius.control}
       style={{ minHeight: 44, paddingHorizontal: 10, paddingVertical: 10, borderRadius: radius.control, borderWidth: focused || waiting ? 1.5 : 1, borderColor: focused || waiting ? c.ink : c.ink3, backgroundColor: c.raised, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
       <SourceMark kind={source.key} />
-      <T v="subhead" lines={wrap ? undefined : 1} style={{ fontFamily: fonts.medium, flexShrink: 1 }}>{t(source.title)}</T>
+      <T v="subhead" lines={wrap ? undefined : 2} style={{ fontFamily: fonts.medium, flexShrink: 1 }}>{t(source.title)}</T>
     </Tap>
   </Animated.View>;
 }
 
 /* ------------------------------------------------------------------ the story */
 
-export function Story({ width, start, onComplete }: { width: number; start: number; onComplete: () => void }) {
+export function Story({ width, start, advance = 0, onComplete }: { width: number; start: number; advance?: number; onComplete: () => void }) {
   const { c, reduceMotion } = useTheme();
   const compact = useCompact();
   const [stage, setStage] = useState(0);
@@ -114,6 +114,15 @@ export function Story({ width, start, onComplete }: { width: number; start: numb
     later(() => setShown(1), start + 700);
     return () => timers.current.forEach(clearTimeout);
   }, []);
+
+  // A tap anywhere on the screen (counted by the onboarding): open the waiting source, or,
+  // while the next one is still on its way, bring it in now.
+  useEffect(() => {
+    if (!advance) return;
+    if (stage === 0) { setStage(1); setShown(1); return; }
+    if (waiting) tap(done);
+    else if (shown < SOURCES.length && shown === done) setShown(done + 1);
+  }, [advance]);
 
   const tap = (i: number) => {
     setFocus(i);
@@ -165,7 +174,7 @@ export function Story({ width, start, onComplete }: { width: number; start: numb
             <T v="headline">{t(SOURCES[focus].title)}</T>
             <T v="body" tone="ink2">{t(SOURCES[focus].text)}</T>
           </Animated.View>
-        : shown > 0 && <Animated.View entering={FadeIn.duration(300)}><T v="body" tone="ink2">{t("Tap the glowing source to see what it adds.")}</T></Animated.View>}
+        : null}
       {bloomed && <Animated.View entering={FadeInDown.delay(450).duration(420)}>
         <T v="subhead" tone="ink2">{t("Every suggestion shows which of these it came from.")}</T>
       </Animated.View>}
