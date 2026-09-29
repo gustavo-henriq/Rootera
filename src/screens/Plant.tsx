@@ -262,6 +262,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
 
         {tab === 'now' && <Animated.View key="now" entering={reduceMotion ? undefined : FadeIn.duration(200)} style={{ gap: space[4] }}>
           <View style={{ gap: space[3] }}>
+            {!!g?.learning && g.state !== 'PATTERN' && <T v="footnote" tone="ink2">{g.learning}</T>}
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[3] }}>
               <T v="title" style={{ flex: 1 }}>{g?.title ?? t('Start with a soil check')}</T>
               {!!g?.basis?.length && <Tap label={t("Why this suggestion?")} onPress={() => setWhy(true)} ring={radius.inner} style={{ minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' }}>

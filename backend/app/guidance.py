@@ -253,7 +253,9 @@ class SensorlessGuidance:
             'title': title, 'reason': reason, 'action': action, 'tip': tip if guided else None,
             'basis': basis,
             'state': state,
-            'learning': _({'NEW': 'Getting started', 'LEARNING': 'Learning', 'PATTERN': 'Pattern found'}[state]),
+            # What the tester and the caregiver see: still analysing (species estimate), getting
+            # specific (from the second cycle), or this plant's own pattern (from the third).
+            'learning': _('Pattern found') if state == 'PATTERN' else _('Getting specific to your plant') if len(intervals) >= 2 else _('Still analyzing your plant'),
             'evidence_ids': [e.id for e in events], 'signals': signals,
             # completed_cycles counts every cycle; the pattern uses the most recent ones.
             'baseline_days': baseline, 'completed_cycles': len(intervals), 'pattern_cycles': len(recent),

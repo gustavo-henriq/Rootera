@@ -53,6 +53,14 @@ FACTORS = {
 # However many factors stack up, the estimate stays within these bounds of the start window.
 MIN_SCALE, MAX_SCALE = .6, 1.6
 FULL_TRUST_CYCLES = 3
+# How much the plant's own cycles weigh against the species estimate before the pattern:
+# the first cycle is still an observation (Rootera is analysing the plant); from the second,
+# the window leans toward this plant; from the third, it is this plant's alone.
+BLEND_WEIGHT = {1: .2, 2: .6}
+# Unless the plant dries sooner than the estimate: then its own cycles are believed quickly,
+# because trusting a too-long estimate leaves the plant dry, while a too-short one only
+# costs an extra check.
+FAST_WEIGHT = {1: .5, 2: .8}
 # A general estimate is a guess about plants like this one, so the first check is suggested
 # before its window opens: finding the soil still moist costs a check, finding it dry for
 # days costs the plant. The share grows to 1 as the caregiver's own cycles come in.
@@ -108,14 +116,15 @@ def drying_window(plant: dict, dryness: str | None, cycle_hours: list[float], la
     if plant.get('self_watering') == 'Yes':
         return None
     days = [h / 24 for h in cycle_hours]
+    weight = 0.0
     prior = estimate(plant, dryness)
     factors: list[str] = []
     if len(days) >= FULL_TRUST_CYCLES:
         low, high = _own_window(days)
         source = 'cycles'
     elif days and prior:
-        weight = len(days) / FULL_TRUST_CYCLES
         own_low, own_high = _own_window(days)
+        weight = (FAST_WEIGHT if own_low < (prior[0] + prior[1]) / 2 else BLEND_WEIGHT).get(len(days), 1.0)
         low = (1 - weight) * prior[0] + weight * own_low
         high = (1 - weight) * prior[1] + weight * own_high
         source, factors = 'blend', prior[2]
@@ -133,7 +142,8 @@ def drying_window(plant: dict, dryness: str | None, cycle_hours: list[float], la
     # Checks come a day apart at best, so a window is never narrower than a day ("4-4 days"
     # would claim a precision the records cannot have).
     high_days = max(low_days + 1, _round(high))
-    trust = 1.0 if source == 'cycles' else min(1.0, len(days) / FULL_TRUST_CYCLES)
+    # The first check comes as early as the weight given to the plant's own cycles allows.
+    trust = 1.0 if source == 'cycles' else weight if source == 'blend' else 0.0
     check_after = max(1, _round(low_days * (ESTIMATE_FIRST_CHECK + (1 - ESTIMATE_FIRST_CHECK) * trust)))
     out = {'source': source, 'low_days': low_days, 'high_days': high_days, 'check_after_days': check_after,
            'cycles': len(days), 'factors': factors, 'check_from': None, 'dry_by': None}

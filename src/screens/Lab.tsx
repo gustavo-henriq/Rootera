@@ -30,6 +30,7 @@ import { T, Tap } from '../ds/components';
 import { Glyph } from '../ds/icons';
 import { PlantArt } from '../ds/plant';
 import { haptic } from '../ds/feedback';
+import { CycleScene, CyclesScene, WateringScene } from './LabStory';
 import { locale, t, tn } from '../i18n';
 
 /* ------------------------------------------------------------------ the stage */
@@ -44,12 +45,18 @@ const POTS = [['Small pot', 'Small'], ['Medium pot', 'Medium'], ['Large pot', 'L
 const LIGHTS = [['Low light', 'Low'], ['Bright indirect light', 'Bright, indirect'], ['Direct sun', 'Direct sun']] as const;
 const PACES = [[.8, 'Faster'], [1, 'Typical'], [1.2, 'Slower']] as const;
 const LENGTHS = [28, 42, 56] as const;
-const METHODS: { key: LabMethod; label: string; means: string }[] = [
-  { key: 'rootera', label: 'As Rootera suggests', means: 'Checks before watering and waters when the right layer is dry. This is how Rootera learns.' },
-  { key: 'weekly', label: 'Every week', means: 'A fixed calendar. Watering before it dries hides the cycle from Rootera.' },
-  { key: 'often', label: 'Every 3 days', means: 'Too much water: the bottom never breathes, and the leaves feel it.' },
-  { key: 'forgetful', label: 'Every 14 days', means: 'Too little water: plants that drink from the top go thirsty.' },
-  { key: 'manual', label: 'My own days', means: 'You pick the days on the calendar.' },
+const METHODS: { key: LabMethod; label: string; means: string; main?: boolean }[] = [
+  { key: 'rootera', main: true, label: 'Follow Rootera', means: 'Check before watering, water when it’s dry. This is how Rootera learns.' },
+  { key: 'weekly', main: true, label: 'Water every week', means: 'A fixed calendar, to compare: watered before it dries, Rootera can’t close a cycle.' },
+  { key: 'manual', main: true, label: 'I pick the days', means: 'Water from the calendar, one day at a time.' },
+  { key: 'often', label: 'Too much: every 3 days', means: 'The bottom never breathes, and the leaves feel it.' },
+  { key: 'forgetful', label: 'Too little: every 14 days', means: 'Plants that drink from the top go thirsty.' },
+];
+/** The opening story (see LabStory.tsx): one scene, a title and one line each. */
+const SCENES: { title: string; line: string; note?: string }[] = [
+  { title: 'A watering makes all the difference', line: 'Rootera starts counting from the watering you record.' },
+  { title: 'Rootera learns with each cycle', line: 'After a watering the soil goes from wet to moist to dry. Your checks tell Rootera where it is, so you don’t have to work it out.', note: 'Rain, cloud and sun: the soil drying after a watering. The real weather speeds it up or slows it down.' },
+  { title: 'Three cycles to know the plant', line: 'At first Rootera is still analyzing your plant and uses what the species usually does. From the second cycle it gets specific; from the third, the recommendations are this plant’s own.' },
 ];
 const LAYERS: LayerKey[] = ['top', 'middle', 'bottom'];
 const LAYER_NAME: Record<LayerKey, string> = { top: 'Surface', middle: 'Middle', bottom: 'Bottom' };
@@ -58,7 +65,7 @@ const LEAVES = [['great', 'Looks good'], ['different', 'Something changed'], ['u
 const STEPS = [
   { title: 'The plant', means: 'Species, pot and light set the first estimate.' },
   { title: 'The watering method', means: 'How you water decides whether Rootera can learn.' },
-  { title: 'The calendar', means: 'Tap a day to water. Double tap to record soil and leaves.' },
+  { title: 'The calendar', means: 'Tap a day to see how the plant was, and water from there.' },
   { title: 'The forecast', means: 'Watch the drying window fit this plant, day by day.' },
 ];
 
@@ -73,6 +80,35 @@ function Row({ label, children }: React.PropsWithChildren<{ label: string }>) {
   return <View style={{ gap: space[2] }}>
     <T v="footnote" style={{ color: L.dim }}>{label}</T>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>{children}</View>
+  </View>;
+}
+
+/** The story's three scenes. */
+function SceneDots({ at }: { at: number }) {
+  return <View style={{ flexDirection: 'row', gap: space[2] }}>
+    {SCENES.map((_, i) => <View key={i} style={{ width: i === at ? 22 : 8, height: 8, borderRadius: 4, backgroundColor: i <= at ? L.text : L.line }} />)}
+  </View>;
+}
+
+/** The soil that evening and what happened that day. */
+function DaySoil({ day }: { day: LabOut['days'][number] }) {
+  const happened = [day.events.some(e => e.type === 'water') ? t('Watered') : null, day.events.some(e => e.type === 'check') ? t('Soil checked') : null,
+    day.leaves !== 'great' ? t(LEAVES.find(l => l[0] === day.leaves)![1]) : null].filter(Boolean).join(', ');
+  return <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
+    <View style={{ gap: 2 }}>{LAYERS.map(k => <View key={k} style={{ width: 34, height: 7, borderRadius: 2, backgroundColor: L.soil[day.soil[k]] }} />)}</View>
+    <View style={{ flex: 1 }}>
+      <T v="footnote" style={{ color: L.dim }}>{LAYERS.map(k => t(LAYER_VALUE[day.soil[k]])).join(' / ')}</T>
+      {!!happened && <T v="footnote" style={{ color: L.text }}>{happened}</T>}
+    </View>
+  </View>;
+}
+
+/** Cycles closed so far: two observations, then the pattern. */
+function CycleDots({ n }: { n: number }) {
+  const shown = Math.min(3, n);
+  return <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
+    {[0, 1, 2].map(i => <View key={i} style={{ width: 10, height: 10, borderRadius: 5, borderWidth: 1.5, borderColor: L.text, backgroundColor: i < shown ? L.text : 'transparent' }} />)}
+    <T v="footnote" style={{ color: L.dim, flex: 1 }}>{n >= 3 ? t('Pattern: recommendations from this plant') : n === 2 ? t('Getting specific: mixing the species and this plant') : t('Still analyzing your plant: species estimate')}</T>
   </View>;
 }
 
@@ -260,13 +296,14 @@ function Stat({ value, label, tone = L.text }: { value: string; label: string; t
 
 /* ------------------------------------------------------------------ the screen */
 
-type Phase = 'intro' | 'plant' | 'method' | 'stage';
-const PHASES: Phase[] = ['intro', 'plant', 'method', 'stage'];
+type Phase = 'intro' | 'story' | 'plant' | 'method' | 'stage';
+const PHASES: Phase[] = ['intro', 'story', 'plant', 'method', 'stage'];
 
 export function Lab({ navigation }: Props<'Lab'>) {
   const insets = useSafeAreaInsets();
   const { reduceMotion } = useTheme();
   const [phase, setPhase] = useState<Phase>('intro');
+  const [scene, setScene] = useState(0);
   const [kind, setKind] = useState<PlantKind>('monstera');
   const [pot, setPot] = useState<LabIn['pot']>('Medium pot');
   const [drainage, setDrainage] = useState<LabIn['drainage']>('Yes');
@@ -319,23 +356,11 @@ export function Lab({ navigation }: Props<'Lab'>) {
     next[patch.day] = { ...next[patch.day], ...patch };
     setOverrides(next);
   };
-  // A tap waters the day (or takes it back); a second tap within 300 ms opens the day instead.
-  const lastTap = useRef<{ day: number; at: number } | null>(null);
-  const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const tapDay = (d: number) => {
-    setDay(d); setPlaying(false); setUsed(u => ({ ...u, calendar: true }));
-    const now = Date.now();
-    if (lastTap.current && lastTap.current.day === d && now - lastTap.current.at < 300) {
-      if (pending.current) clearTimeout(pending.current);
-      lastTap.current = null;
-      setSheet(d);
-      return;
-    }
-    lastTap.current = { day: d, at: now };
-    pending.current = setTimeout(() => { lastTap.current = null; haptic.select(); edit({ day: d, water: !out?.days[d]?.events.some(e => e.type === 'water') }); }, 300);
-  };
+  // A tap only shows the day; watering and recording are buttons on the day, so looking never changes the cycle.
+  const tapDay = (d: number) => { setDay(d); setPlaying(false); setUsed(u => ({ ...u, calendar: true })); };
+  const toggleWater = (d: number) => { haptic.select(); edit({ day: d, water: !out?.days[d]?.events.some(e => e.type === 'water') }); };
 
-  const at = phase === 'intro' ? -1 : phase === 'plant' ? 0 : phase === 'method' ? 1 : used.forecast ? 3 : used.calendar ? 2 : 1;
+  const at = phase === 'intro' || phase === 'story' ? -1 : phase === 'plant' ? 0 : phase === 'method' ? 1 : used.forecast ? 3 : used.calendar ? 2 : 1;
   const cell = width ? Math.floor((width - 6 * 6) / 7) : 0;
   const now = out?.days[day];
   const s = out?.summary;
@@ -343,7 +368,7 @@ export function Lab({ navigation }: Props<'Lab'>) {
   const name = (k: PlantKind) => speciesName(catalog.find(c => c.kind === k)!);
   const methodInfo = METHODS.find(m => m.key === method)!;
   const dateOf = (i: number) => out ? new Date(out.days[i].date + 'T12:00:00').toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' }) : '';
-  const back = () => phase === 'intro' ? navigation.goBack() : go(PHASES[PHASES.indexOf(phase) - 1]);
+  const back = () => phase === 'intro' ? navigation.goBack() : phase === 'story' && scene > 0 ? setScene(n => n - 1) : go(PHASES[PHASES.indexOf(phase) - 1]);
   const result = !s ? '' : s.cycles >= 3
     ? t('Learned {learned} days. The plant really takes {truth} days.', { learned: fmt(s.learned_days ?? 0), truth: fmt(out!.truth.dry_after_days) })
     : s.cycles === 0 ? t('No cycle closed: the soil was never found dry after a watering, so Rootera keeps its general estimate.')
@@ -355,7 +380,7 @@ export function Lab({ navigation }: Props<'Lab'>) {
       <Tap label={phase === 'intro' ? t('Close') : t('Back')} onPress={back} ring={22} style={{ width: 44, height: 44, justifyContent: 'center' }}>
         <Glyph name={phase === 'intro' ? 'close' : 'back'} size={20} tone={L.text} />
       </Tap>
-      {phase !== 'intro' && <Progress at={at} />}
+      {phase === 'story' ? <SceneDots at={scene} /> : phase !== 'intro' && <Progress at={at} />}
       <View style={{ width: 44 }} />
     </View>
     <ScrollView ref={scroll} contentContainerStyle={{ flexGrow: 1, paddingTop: space[4], paddingBottom: insets.bottom + space[6], paddingHorizontal: space.gutter }}>
@@ -367,17 +392,21 @@ export function Lab({ navigation }: Props<'Lab'>) {
             <T v="hero" style={{ color: L.text }}>{t('Welcome. This is a test interface made only for Shipaton.')}</T>
             <T v="callout" style={{ color: L.dim }}>{t('Care for MVP Shipaton, a simulated plant, and watch Rootera adapt. Nothing here touches your garden.')}</T>
           </View>
-          <View style={{ gap: space[4] }}>
-            {STEPS.map((st, i) => <View key={i} style={{ flexDirection: 'row', gap: space[3] }}>
-              <View style={{ width: 14, height: 14, borderRadius: 7, borderWidth: 1.5, borderColor: L.text, marginTop: 4 }} />
-              <View style={{ flex: 1, gap: 2 }}>
-                <T v="headline" style={{ color: L.text }}>{t(st.title)}</T>
-                <T v="subhead" style={{ color: L.dim }}>{t(st.means)}</T>
-              </View>
-            </View>)}
-          </View>
           <View style={{ flexGrow: 1 }} />
-          <Primary title={t('Start')} onPress={() => go('plant')} />
+          <Primary title={t('Start')} onPress={() => { setScene(0); go('story'); }} />
+        </>}
+
+        {phase === 'story' && <>
+          <Animated.View key={scene} entering={reduceMotion ? undefined : FadeIn.duration(400)} style={{ gap: space[6] }}>
+            {scene === 0 ? <WateringScene /> : scene === 1 ? <CycleScene /> : <CyclesScene />}
+            <View style={{ gap: space[3] }}>
+              <T v="hero" style={{ color: L.text }}>{t(SCENES[scene].title)}</T>
+              <T v="callout" style={{ color: L.dim }}>{t(SCENES[scene].line)}</T>
+              {!!SCENES[scene].note && <T v="footnote" style={{ color: L.faint }}>{t(SCENES[scene].note!)}</T>}
+            </View>
+          </Animated.View>
+          <View style={{ flexGrow: 1 }} />
+          <Primary title={scene < SCENES.length - 1 ? t('Next') : t('Start the simulation')} onPress={() => scene < SCENES.length - 1 ? setScene(n => n + 1) : go('plant')} />
         </>}
 
         {phase === 'plant' && <>
@@ -406,13 +435,15 @@ export function Lab({ navigation }: Props<'Lab'>) {
         {phase === 'method' && <>
           <StepHead n={1} />
           <View style={{ gap: space[2] }}>
-            {METHODS.filter(m => m.key !== 'manual').map(m => <Tap key={m.key} role="radio" selected={method === m.key} label={`${t(m.label)}. ${t(m.means)}`} onPress={() => { haptic.select(); setMethod(m.key); setOverrides({}); }} ring={radius.control}
+            {METHODS.filter(m => m.main).map(m => <Tap key={m.key} role="radio" selected={method === m.key} label={`${t(m.label)}. ${t(m.means)}`} onPress={() => { haptic.select(); setMethod(m.key); setOverrides({}); }} ring={radius.control}
               style={{ padding: space[4], borderRadius: radius.control, borderWidth: 1, borderColor: method === m.key ? L.text : L.line, backgroundColor: method === m.key ? L.raised : 'transparent', gap: 2 }}>
               <T v="headline" style={{ color: L.text }}>{t(m.label)}</T>
               {method === m.key && <T v="subhead" style={{ color: L.dim }}>{t(m.means)}</T>}
             </Tap>)}
           </View>
           <More>
+            <Row label={t('Compare with')}>{METHODS.filter(m => !m.main).map(m => <Chip key={m.key} label={t(m.label)} on={method === m.key} onPress={() => { setMethod(m.key); setOverrides({}); }} />)}</Row>
+            {(method === 'often' || method === 'forgetful') && <T v="subhead" style={{ color: L.dim }}>{t(methodInfo.means)}</T>}
             {method !== 'rootera' && <Row label={t('Soil checks')}>{[1, 2, 3].map(n => <Chip key={n} label={tn(n, 'Every day', 'Every {n} days')} on={checkEvery === n} onPress={() => setCheckEvery(n)} />)}</Row>}
             <Row label={t('Length')}>{LENGTHS.map(n => <Chip key={n} label={t('{n} weeks', { n: n / 7 })} on={length === n} onPress={() => setLength(n)} />)}</Row>
           </More>
@@ -442,7 +473,7 @@ export function Lab({ navigation }: Props<'Lab'>) {
                     <DayCell key={i} day={i} d={out.days[i]} size={cell} selected={i === day} typed={!!overrides[i] && (overrides[i].layers != null || overrides[i].leaves != null)} onPress={() => tapDay(i)} />)}
                 </View>)}
             </View>
-            <T v="caption" style={{ color: L.faint }}>{t('Tap to water, double tap for soil and leaves.')}</T>
+            <T v="caption" style={{ color: L.faint }}>{t('Tap a day to see it.')}</T>
           </View>
 
           {!!now && <View style={{ gap: space[3] }}>
@@ -453,8 +484,20 @@ export function Lab({ navigation }: Props<'Lab'>) {
               </View>
               <Tap label={t('Next day')} disabled={!out || day >= out.days.length - 1} onPress={() => { setPlaying(false); setDay(d => Math.min((out?.days.length ?? 1) - 1, d + 1)); setUsed(u => ({ ...u, forecast: true })); }} ring={22} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}><Glyph name="forward" size={18} tone={L.text} /></Tap>
             </View>
+            <DaySoil day={now} />
             <T v="title" style={{ color: L.text }}>{now.guidance.title}</T>
             <StageTimeline g={now.guidance} now={now.date + 'T20:00:00Z'} />
+            <CycleDots n={now.guidance.completed_cycles} />
+            <View style={{ flexDirection: 'row', gap: space[2] }}>
+              <Tap label={now.events.some(e => e.type === 'water') ? t('Take the watering back') : t('Water this day')} onPress={() => toggleWater(day)} ring={radius.input}
+                style={{ flex: 1, minHeight: 44, borderRadius: radius.input, borderWidth: 1, borderColor: L.water, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space[2] }}>
+                <T v="subhead" center style={{ color: L.water }}>{now.events.some(e => e.type === 'water') ? t('Take the watering back') : t('Water this day')}</T>
+              </Tap>
+              <Tap label={t('Record soil and leaves')} onPress={() => setSheet(day)} ring={radius.input}
+                style={{ flex: 1, minHeight: 44, borderRadius: radius.input, borderWidth: 1, borderColor: L.line, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space[2] }}>
+                <T v="subhead" center style={{ color: L.text }}>{t('Record soil and leaves')}</T>
+              </Tap>
+            </View>
             {now.stress && <T v="subhead" style={{ color: now.stress === 'wet' ? L.warn : L.bad }}>{now.stress === 'wet' ? t('The roots are sitting wet.') : t('The plant is thirsty.')}</T>}
           </View>}
 
