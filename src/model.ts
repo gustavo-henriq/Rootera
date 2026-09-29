@@ -37,7 +37,7 @@ export interface Forecast {
 export interface Guidance {
   title: string; reason: string; action: Action; tip: string | null; basis: string[];
   state: 'NEW' | 'LEARNING' | 'PATTERN'; learning: string;
-  baseline_days: number | null; completed_cycles: number; baseline_note: string; forecast?: Forecast | null;
+  baseline_days: number | null; completed_cycles: number; cycle_days?: number[]; baseline_note: string; forecast?: Forecast | null;
   /** Cycles behind the pattern: the most recent ones (up to 6). */
   pattern_cycles?: number;
   soil: Soil | null; soil_layers?: SoilLayers | null; soil_checked_at: string | null; visual: Visual | null;

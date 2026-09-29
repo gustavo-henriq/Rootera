@@ -4,13 +4,13 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Props } from '../navigation';
 import { api } from '../api';
 import { useStore } from '../store';
-import { ago, CareEvent, describeEvent, known, Plant as PlantT, soilLabel, Twin, visualLabel } from '../model';
-import { useCompact, useTheme } from '../ds/theme';
+import { ago, CareEvent, known, layerLabel, Plant as PlantT, soilLabel, Twin, visualLabel } from '../model';
+import { useTheme } from '../ds/theme';
 import { fonts, radius, space } from '../ds/tokens';
-import { Btn, Group, Row, T, Tap, Toast } from '../ds/components';
+import { Btn, Group, Row, Segmented, T, Tap, Toast } from '../ds/components';
 import { Page } from '../ds/Page';
 import { Ground, PlantArt } from '../ds/plant';
-import { Appear, DrawLine, LeafBurst, pivot, Pop, Settle, WaterDrops } from '../ds/motion';
+import { LeafBurst, pivot, Pop, Settle, WaterDrops } from '../ds/motion';
 import { ActionSheet } from '../ds/ActionSheet';
 import { SeedDrop } from '../ds/SeedDrop';
 import { announce, haptic } from '../ds/feedback';
@@ -18,6 +18,7 @@ import { WhySheet } from '../ds/WhySheet';
 import { Farewell, FarewellSheet } from './Farewell';
 import { CareCalendar } from '../ds/CareCalendar';
 import { DryWindow } from '../ds/DryWindow';
+import { CycleBars, DryTimeline } from '../ds/DryTimeline';
 import Svg, { Circle } from 'react-native-svg';
 import { Flight, measure, Rect } from '../ds/Flight';
 import { useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
@@ -45,99 +46,61 @@ export function StatusMark({ status, size = 10 }: { status: Status; size?: numbe
 }
 
 const DAY = 86400000;
+type Tab = 'now' | 'rhythm' | 'about';
+const TABS: Tab[] = ['now', 'rhythm', 'about'];
 function ageStatus(at: string | undefined, freshDays: number, overdueDays: number): Status {
   if (!at) return 'none';
   const days = (Date.now() - new Date(at).getTime()) / DAY;
   return days <= freshDays ? 'fresh' : days <= overdueDays ? 'aging' : 'overdue';
 }
 
-interface Callout { side: 'left' | 'right'; y: number; anchor: [number, number]; label: string; value: string | null; current: boolean; detail: string; status: Status }
-
-/** Specimen plate: the plant in the middle, what we know about each part pinned to it. */
-function Specimen({ plant, twin, width, drops, events, arriving, artRef }: { plant: PlantT; twin?: Twin; width: number; drops: number; events: CareEvent[]; arriving?: boolean; artRef?: React.RefObject<View | null> }) {
-  const { c, reduceMotion } = useTheme();
-  const compact = useCompact();
-  // The plant "drinks" when a watering is recorded: a small squash, then it straightens.
+/** The plant itself: it "drinks" when a watering is recorded. Arriving from a tile it is the flight's landing spot. */
+function Hero({ plant, drops, arriving, artRef }: { plant: PlantT; drops: number; arriving?: boolean; artRef?: React.RefObject<View | null> }) {
+  const { reduceMotion } = useTheme();
+  const S = 168;
   const drink = useSharedValue(1);
   useEffect(() => {
     if (!drops || reduceMotion) return;
     drink.value = withDelay(380, withSequence(withTiming(.94, { duration: 180 }), withTiming(1.03, { duration: 200 }), withSpring(1, springs.bouncy)));
   }, [drops]);
-  const [open, setOpen] = useState<string | null>(null);
-  const g = twin?.guidance;
-  const narrow = width < 330;
-  const S = Math.min(240, width * (narrow ? .42 : .5));
   const drinkStyle = useAnimatedStyle(() => ({ transform: pivot(S, S, .5, 1, [{ scaleY: drink.value }]) }));
-  const x0 = (width - S) / 2;
-  const at = (fx: number, fy: number): [number, number] => [x0 + S * fx, 8 + S * fy];
-  const drainage = plant.drainage === 'No' ? t('No drainage') : plant.drainage === 'Yes' ? t('Drains') : plant.self_watering === 'Yes' ? t('Self-watering') : null;
-  const light = known(plant.light) ? t(plant.light.replace(' light', '').replace('Bright indirect', 'Bright, indirect')) : null;
-  // Latest records (events arrive newest first).
-  const lastSoil = events.find(e => e.type === 'Soil check' && e.soil && e.soil !== 'not_sure');
-  const lastLeaves = events.find(e => e.type === 'Observation' && e.visual && e.visual !== 'not_sure');
-  // Soil is current only as the Twin defines it: checked in the last day and after the last watering.
-  const soilStatus: Status = g?.soil ? 'fresh' : lastSoil ? (ageStatus(lastSoil.at, 0, 7) === 'overdue' ? 'overdue' : 'aging') : 'none';
-  const leafStatus = ageStatus(lastLeaves?.at, 3, 14);
-  const soilBeforeWatering = !!(lastSoil && g?.last_watered_at && new Date(g.last_watered_at) > new Date(lastSoil.at));
-  const wateredSince = soilBeforeWatering && g?.last_watered_at ? g.last_watered_at : null;
-  const soilValue = wateredSince ? (Date.now() - new Date(wateredSince).getTime() < DAY ? t('Just watered') : t('Watered {ago}', { ago: ago(wateredSince) })) : lastSoil?.soil ? soilLabel[lastSoil.soil] : null;
-  const soilNow: Status = wateredSince ? ageStatus(wateredSince, 1, 7) : soilStatus;
-  const callouts: Callout[] = [
-    { side: 'left', y: 0, anchor: at(.47, .1), label: t('Light'), value: light, current: true, detail: light ? t('You told us') : t('Add it in Edit details'), status: light ? 'fresh' : 'none' },
-    { side: 'right', y: S * .12, anchor: at(.76, .3), label: t('Leaves'), value: lastLeaves?.visual ? visualLabel[lastLeaves.visual] : null, current: leafStatus === 'fresh',
-      detail: lastLeaves ? t('You looked {ago}', { ago: ago(lastLeaves.at) }) : t('No note yet'), status: leafStatus },
-    { side: 'right', y: S * (narrow ? .72 : .64), anchor: at(.6, .64), label: t('Soil'), value: soilValue, current: soilNow === 'fresh',
-      detail: !lastSoil ? t('Not checked yet') : wateredSince ? t('Not checked since the watering. Before it, the soil was {v}.', { v: soilLabel[lastSoil.soil!].toLowerCase() }) : t('Checked {ago}', { ago: ago(lastSoil.at) }), status: soilNow },
-    { side: 'left', y: S * (narrow ? .74 : .66), anchor: at(.34, .84), label: t('Pot'), value: drainage, current: true, detail: drainage ? t('You told us') : t('Add it in Edit details'), status: drainage ? 'fresh' : 'none' },
-  ];
-  const labelW = Math.max(90, x0 - 4);
-  if (compact) return <View style={{ width, alignItems: 'center', gap: space[3] }}>
-    <View style={{ width: Math.min(200, width * .6), height: Math.min(200, width * .6) }}>
-      <Settle><PlantArt kind={plant.kind} photo={plant.photo} size={Math.min(200, width * .6)} /></Settle>
-      <WaterDrops width={Math.min(200, width * .6)} height={Math.min(200, width * .6) * .62} run={drops} />
-    </View>
-    <View style={{ alignSelf: 'stretch', borderTopWidth: StyleSheet.hairlineWidth, borderColor: c.ink3 }}>
-      {callouts.map(k => <View key={k.label} accessible accessibilityLabel={`${k.label}: ${k.value ?? t('not set')}, ${t(statusSpeech[k.status])}. ${k.detail}`}
-        style={{ paddingVertical: space[3], gap: 2, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.hairline }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}><StatusMark status={k.status} /><T v="footnote" tone="ink2">{k.label}</T></View>
-        <T v="headline">{k.value ?? t('Not set')}</T>
-        <T v="footnote" tone="ink2">{k.detail}</T>
-      </View>)}
-    </View>
+  return <View ref={artRef} collapsable={false} style={{ width: S, height: S, opacity: arriving ? 0 : 1 }}>
+    <Ground width={S * .8} style={{ position: 'absolute', bottom: -S * .06, alignSelf: 'center' }} />
+    <Animated.View style={[{ width: S, height: S }, drinkStyle]}>
+      {/* Arriving from a tile, the plant has already moved; settling again would be double motion. */}
+      {arriving !== undefined ? <PlantArt kind={plant.kind} photo={plant.photo} size={S} /> : <Settle><PlantArt kind={plant.kind} photo={plant.photo} size={S} /></Settle>}
+    </Animated.View>
+    <WaterDrops width={S} height={S * .62} run={drops} />
   </View>;
-  return <View style={{ width, height: S + (narrow ? 60 : 30) }}>
-    <View ref={artRef} collapsable={false} style={{ position: 'absolute', left: x0, top: 8, width: S, height: S, opacity: arriving ? 0 : 1 }}>
-      <Ground width={S * .8} style={{ position: 'absolute', bottom: -S * .06 }} />
-      <Animated.View style={[{ width: S, height: S }, drinkStyle]}>
-        {/* Arriving from a tile, the plant has already moved; settling again would be double motion. */}
-        {artRef && arriving !== undefined ? <PlantArt kind={plant.kind} photo={plant.photo} size={S} /> : <Settle><PlantArt kind={plant.kind} photo={plant.photo} size={S} /></Settle>}
-      </Animated.View>
-      <WaterDrops width={S} height={S * .62} run={drops} />
-    </View>
-    {callouts.map((k, i) => {
-      const [ax, ay] = k.anchor;
-      const lineY = k.y + 10;
-      const edge = k.side === 'left' ? labelW - 2 : width - labelW + 2;
-      const has = !!k.value;
-      const expanded = open === k.label;
-      return <React.Fragment key={k.label}>
-        <DrawLine x={Math.min(edge, ax)} y={lineY} length={Math.abs(ax - edge)} delay={380 + i * 130} tone={c.ink3} from={k.side === 'left' ? 'start' : 'end'} />
-        <DrawLine x={ax - .75} y={Math.min(lineY, ay)} length={Math.abs(ay - lineY)} vertical delay={620 + i * 130} tone={c.ink3} from={ay > lineY ? 'start' : 'end'} />
-        <Pop delay={860 + i * 130} style={{ position: 'absolute', left: ax - 4, top: ay - 4, width: 8, height: 8, borderRadius: 4, backgroundColor: has ? c.ink : c.canvas, borderWidth: 1.5, borderColor: c.ink }} />
-        <Appear delay={260 + i * 130} style={{ position: 'absolute', top: k.y, width: labelW - 6, [k.side]: 0 }}>
-          <Tap label={`${k.label}: ${k.value ?? t('not set')}, ${t(statusSpeech[k.status])}. ${k.detail}`} onPress={() => setOpen(expanded ? null : k.label)} scaleTo={.97} ring={radius.inner}
-            style={{ alignItems: k.side === 'left' ? 'flex-start' : 'flex-end', paddingVertical: 2 }}>
-            <View style={{ flexDirection: k.side === 'left' ? 'row' : 'row-reverse', alignItems: 'center', gap: 6 }}>
-              <StatusMark status={k.status} /><T v="caption" tone="ink2">{k.label}</T>
-            </View>
-            {has
-              ? <T lines={3} style={{ fontFamily: fonts.serif, fontSize: narrow ? 17 : 21, lineHeight: narrow ? 19 : 23, textAlign: k.side, color: k.current ? c.ink : c.ink2 }}>{k.value}</T>
-              : <View accessibilityElementsHidden style={{ width: 18, height: 1.5, backgroundColor: c.ink3, marginVertical: narrow ? 9 : 11 }} />}
-            {expanded && <Animated.View entering={FadeIn.duration(180)}><T v="caption" tone="ink2" style={{ textAlign: k.side, fontFamily: fonts.regular }}>{k.detail}</T></Animated.View>}
-          </Tap>
-        </Appear>
-      </React.Fragment>;
-    })}
+}
+
+/** What Rootera knows about each part of the plant right now, one small tile each. */
+function Facts({ plant, twin, events }: { plant: PlantT; twin?: Twin; events: CareEvent[] }) {
+  const { c } = useTheme();
+  const g = twin?.guidance;
+  const light = known(plant.light) ? t(plant.light.replace(' light', '').replace('Bright indirect', 'Bright, indirect')) : null;
+  const drainage = plant.drainage === 'No' ? t('No drainage') : plant.drainage === 'Yes' ? t('Drains') : plant.self_watering === 'Yes' ? t('Self-watering') : null;
+  // Latest records (events arrive newest first).
+  const lastSoil = events.find(e => e.type === 'Soil check' && (e.layers || (e.soil && e.soil !== 'not_sure')));
+  const lastLeaves = events.find(e => e.type === 'Observation' && e.visual && e.visual !== 'not_sure');
+  const wateredSince = !!(lastSoil && g?.last_watered_at && new Date(g.last_watered_at) > new Date(lastSoil.at));
+  const soilValue = !lastSoil ? null : wateredSince ? t('Watered since') : lastSoil.layers
+    ? [lastSoil.layers.top, lastSoil.layers.middle, lastSoil.layers.bottom].map(v => layerLabel[v]).join(' · ')
+    : soilLabel[lastSoil.soil!];
+  const soilStatus: Status = !lastSoil ? 'none' : g?.soil ? 'fresh' : ageStatus(lastSoil.at, 1, 7) === 'overdue' ? 'overdue' : 'aging';
+  const tiles: { label: string; value: string | null; detail: string; status: Status }[] = [
+    { label: t('Soil'), value: soilValue, detail: lastSoil ? ago(lastSoil.at) : t('Not checked yet'), status: soilStatus },
+    { label: t('Leaves'), value: lastLeaves?.visual ? visualLabel[lastLeaves.visual] : null, detail: lastLeaves ? ago(lastLeaves.at) : t('No note yet'), status: ageStatus(lastLeaves?.at, 3, 14) },
+    { label: t('Light'), value: light, detail: light ? t('You told us') : t('Add it in Edit details'), status: light ? 'fresh' : 'none' },
+    { label: t('Pot'), value: drainage, detail: drainage ? t('You told us') : t('Add it in Edit details'), status: drainage ? 'fresh' : 'none' },
+  ];
+  return <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+    {tiles.map(k => <View key={k.label} accessible accessibilityLabel={`${k.label}: ${k.value ?? t('not set')}, ${t(statusSpeech[k.status])}. ${k.detail}`}
+      style={{ flexGrow: 1, flexBasis: '45%', padding: space[3], borderRadius: radius.control, backgroundColor: c.sunken, gap: 2 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><StatusMark status={k.status} /><T v="footnote" tone="ink2">{k.label}</T></View>
+      <T v="headline" tone={k.value ? 'ink' : 'ink2'}>{k.value ?? t('Not set')}</T>
+      <T v="caption" tone="ink2">{k.detail}</T>
+    </View>)}
   </View>;
 }
 
@@ -188,7 +151,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
   const [width, setWidth] = useState(0);
   const [menu, setMenu] = useState(false);
   const [why, setWhy] = useState(false);
-  const [notes, setNotes] = useState(false);
+  const [tab, setTab] = useState<Tab>('now');
   const [milestone, setMilestone] = useState<string | null>(null);
   const shownMilestone = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -210,6 +173,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
     if (!saved || k === lastSaved.current) return;
     lastSaved.current = k;
     scroll.current?.scrollTo({ y: 0, animated: true });
+    setTab('now');
     if (saved.title === t('Check-in and watering saved') || saved.title === t('Watering recorded')) setDrops(d => d + 1);
     if (saved.to === 'Probably not dry yet' || saved.to === 'Around when it usually dries') setBurst(b => b + 1);
   }, [saved]);
@@ -274,7 +238,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
   };
 
   return <View style={{ flex: 1 }}>
-    <Page back={navigation.goBack} scrollRef={scroll} titleInBar={plant.name} gap={space[6]}
+    <Page back={navigation.goBack} scrollRef={scroll} titleInBar={plant.name} gap={space[5]}
       actions={[{ icon: 'more', label: t('Plant options'), onPress: () => { setMenu(true); setConfirm(false); } }]}>
       {!!saved && <Animated.View key={saved.title + (saved.to ?? '')} entering={FadeIn.duration(240)}>
         <Toast title={saved.title} onClose={() => navigation.setParams({ saved: undefined })}
@@ -282,47 +246,58 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
           action={saved.undo?.ids.length ? { title: busy ? t('Undoing…') : t('Undo'), onPress: () => void undo() } : undefined} />
       </Animated.View>}
 
-      {/* The page reads top to bottom as: the plant, what to do now, its rhythm, then the rest.
-          Everything else (history, photos, species notes) is one tap away in plain rows. */}
-      <View onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ alignItems: 'center', gap: space[4] }}>
+      {/* The plant, then three tabs: Now (what to do, and the drying timeline), Rhythm (what
+          Rootera learned), About (the species, history and photos). */}
+      <View onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ alignItems: 'center', gap: space[3] }}>
         <LeafBurst run={burst} />
-        {!!width && <Specimen plant={plant} twin={twin} width={width} drops={drops} events={events} artRef={flyFrom ? artRef : undefined} arriving={flyFrom ? flight !== 'done' : undefined} />}
+        {!!width && <Hero plant={plant} drops={drops} artRef={flyFrom ? artRef : undefined} arriving={flyFrom ? flight !== 'done' : undefined} />}
         <View style={{ alignItems: 'center', gap: 2 }}>
           <T v="display" center lines={3} style={titleStyle}>{plant.name}</T>
           <T v="latin" tone="ink2" center>{plant.species}</T>
-          {!!where && <T v="footnote" tone="ink2">{where}</T>}
-          {plant.example && <T v="footnote" tone="ink2" center style={{ marginTop: space[2], maxWidth: 320 }}>{t('Example plant, with three demo cycles. It does not count toward your plan.')}</T>}
         </View>
       </View>
 
-      {/* What to do now: the next step and the one button that acts on it. */}
-      <View style={{ gap: space[2] }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[3] }}>
-          <T v="title" style={{ flex: 1 }}>{g?.title ?? t('Start with a soil check')}</T>
-          {!!g?.basis?.length && <Tap label={t("Why this suggestion?")} onPress={() => setWhy(true)} ring={radius.inner} style={{ minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' }}>
-            <T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{t("Why?")}</T>
-          </Tap>}
-        </View>
-        <T v="body" tone="ink2">{g?.reason ?? t('A first soil check tells Rootera where this plant is starting from.')}</T>
-        {!!error && <Toast tone="error" title={t("Not saved")} text={error} onClose={() => setError('')} />}
-        {/* One check-in covers soil, watering and leaves; resting plants can still be checked. */}
-        <Btn title={t("Check in")} icon="soil" kind={g?.action === 'wait' ? 'outline' : 'filled'} onPress={() => navigation.navigate('Care', { id: plant.id, mode: 'checkin' })} style={{ marginTop: space[2] }} />
-      </View>
-
-      {/* Its rhythm: when it usually dries, and the month of care that taught Rootera that. */}
       <View style={{ gap: space[5] }}>
-        {g?.forecast ? <DryWindow forecast={g.forecast} lastWatered={g.last_watered_at} compact /> : <CycleRing done={Math.min(g?.completed_cycles ?? 0, 3)} />}
-        <CareCalendar events={events} />
-      </View>
+        <Segmented values={TABS} value={tab} onChange={setTab} labels={{ now: t('Now'), rhythm: t('Rhythm'), about: t('About') }} />
 
-      <Group>
-        <Row title={t('Plant history')} detail={events.length ? t('{n} records, the latest {ago}', { n: events.length, ago: ago(events[0].at) }) : t('Nothing recorded yet')}
-          onPress={() => navigation.navigate('Main', { screen: 'Journal', params: { plant: plant.id, show: 'history' } } as never)} />
-        <Row title={t('Plant photos')} detail={garden.plan === 'Plus' ? t('Growth diary') : t('Growth diary, with Rootera+')}
-          onPress={() => navigation.navigate('Main', { screen: 'Journal', params: { plant: plant.id, show: 'photos' } } as never)} />
-        {plant.kind !== 'other' && !!g?.reference.summary && <Row title={t('{genus} in general', { genus: plant.species.split(' ')[0] })} detail={notes ? g.reference.summary : t('What the species usually likes')}
-          onPress={() => setNotes(n => !n)} />}
-      </Group>
+        {tab === 'now' && <Animated.View key="now" entering={reduceMotion ? undefined : FadeIn.duration(200)} style={{ gap: space[4] }}>
+          <View style={{ gap: space[3] }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[3] }}>
+              <T v="title" style={{ flex: 1 }}>{g?.title ?? t('Start with a soil check')}</T>
+              {!!g?.basis?.length && <Tap label={t("Why this suggestion?")} onPress={() => setWhy(true)} ring={radius.inner} style={{ minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' }}>
+                <T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{t("Why?")}</T>
+              </Tap>}
+            </View>
+            <DryTimeline forecast={g?.forecast} lastWatered={g?.last_watered_at ?? null} />
+          </View>
+          {!!error && <Toast tone="error" title={t("Not saved")} text={error} onClose={() => setError('')} />}
+          {/* One check-in covers soil, watering and leaves; resting plants can still be checked. */}
+          <Btn title={t("Check in")} icon="soil" kind={g?.action === 'wait' ? 'outline' : 'filled'} onPress={() => navigation.navigate('Care', { id: plant.id, mode: 'checkin' })} />
+          <Facts plant={plant} twin={twin} events={events} />
+        </Animated.View>}
+
+        {tab === 'rhythm' && <Animated.View key="rhythm" entering={reduceMotion ? undefined : FadeIn.duration(200)} style={{ gap: space[6] }}>
+          {g?.forecast ? <DryWindow forecast={g.forecast} lastWatered={g.last_watered_at} /> : <CycleRing done={Math.min(g?.completed_cycles ?? 0, 3)} />}
+          {!!g?.cycle_days?.length && <CycleBars days={g.cycle_days} since={g.last_watered_at ? Math.max(0, (Date.now() - new Date(g.last_watered_at).getTime()) / 86400000) : null} />}
+          <CareCalendar events={events} />
+        </Animated.View>}
+
+        {tab === 'about' && <Animated.View key="about" entering={reduceMotion ? undefined : FadeIn.duration(200)} style={{ gap: space[5] }}>
+          {plant.example && <T v="callout" tone="ink2">{t('Example plant, with three demo cycles. It does not count toward your plan.')}</T>}
+          {plant.kind !== 'other' && !!g?.reference.summary && <View style={{ gap: space[2] }}>
+            <T v="section">{t('{genus} in general', { genus: plant.species.split(' ')[0] })}</T>
+            <T v="body" tone="ink2">{g.reference.summary}</T>
+          </View>}
+          {!!where && <T v="footnote" tone="ink2">{where}</T>}
+          <Group>
+            <Row title={t('Plant history')} detail={events.length ? t('{n} records, the latest {ago}', { n: events.length, ago: ago(events[0].at) }) : t('Nothing recorded yet')}
+              onPress={() => navigation.navigate('Main', { screen: 'Journal', params: { plant: plant.id, show: 'history' } } as never)} />
+            <Row title={t('Plant photos')} detail={garden.plan === 'Plus' ? t('Growth diary') : t('Growth diary, with Rootera+')}
+              onPress={() => navigation.navigate('Main', { screen: 'Journal', params: { plant: plant.id, show: 'photos' } } as never)} />
+            <Row title={t('Edit details')} onPress={() => navigation.navigate('PlantForm', { editId: plant.id })} />
+          </Group>
+        </Animated.View>}
+      </View>
     </Page>
 
     <FarewellSheet plant={plant} visible={confirm} onClose={() => setConfirm(false)} onConfirm={leave} />

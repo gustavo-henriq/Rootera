@@ -257,6 +257,8 @@ class SensorlessGuidance:
             'evidence_ids': [e.id for e in events], 'signals': signals,
             # completed_cycles counts every cycle; the pattern uses the most recent ones.
             'baseline_days': baseline, 'completed_cycles': len(intervals), 'pattern_cycles': len(recent),
+            # When the soil dried in each recent cycle (days after watering), oldest first.
+            'cycle_days': [round(h / 24, 1) for h in dried[-RECENT_CYCLES:]],
             'forecast': window,
             'baseline_note': _('Typical time until the soil dries after watering, judging by your checks. How often you check affects this number.'),
             'soil': condition, 'soil_layers': layers, 'soil_checked_at': last_soil.at if recent_soil else None,
