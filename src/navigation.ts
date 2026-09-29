@@ -10,7 +10,7 @@ export type Routes = {
   Main: { tab?: keyof Tabs } | undefined;
   AddPlant: { first?: boolean; photo?: string } | undefined;
   Camera: { first?: boolean; returnTo?: 'Welcome' } | undefined;
-  PlantForm: { kind: PlantKind; species: string; name: string; photo?: string; first?: boolean } | { editId: string };
+  PlantForm: { kind: PlantKind; species: string; name: string; photo?: string; first?: boolean } | { editId: string; /** Open on the pot and soil details. */ pot?: boolean };
   Plant: { id: string; from?: { x: number; y: number; w: number; h: number }; saved?: { title: string; from?: string; to?: string; undo?: { ids: string[]; stage?: string }; milestone?: string } };
   Care: { id: string; mode: 'checkin' | 'soil' | 'water' | 'visual' };
   Plans: { reason?: 'limit' | 'rooms' | 'first' | 'diary'; then?: { plantId: string } } | undefined;

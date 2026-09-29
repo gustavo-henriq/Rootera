@@ -9,6 +9,7 @@ import { useTheme } from '../ds/theme';
 import { fonts, radius, space } from '../ds/tokens';
 import { Btn, Group, Row, Segmented, T, Tap, Toast } from '../ds/components';
 import { Page } from '../ds/Page';
+import { Glyph } from '../ds/icons';
 import { Ground, PlantArt } from '../ds/plant';
 import { LeafBurst, pivot, Pop, Settle, WaterDrops } from '../ds/motion';
 import { ActionSheet } from '../ds/ActionSheet';
@@ -75,7 +76,7 @@ function Hero({ plant, drops, arriving, artRef }: { plant: PlantT; drops: number
 }
 
 /** What Rootera knows about each part of the plant right now, one small tile each. */
-function Facts({ plant, twin, events }: { plant: PlantT; twin?: Twin; events: CareEvent[] }) {
+function Facts({ plant, twin, events, onPot }: { plant: PlantT; twin?: Twin; events: CareEvent[]; onPot: () => void }) {
   const { c } = useTheme();
   const g = twin?.guidance;
   const light = known(plant.light) ? t(plant.light.replace(' light', '').replace('Bright indirect', 'Bright, indirect')) : null;
@@ -94,13 +95,30 @@ function Facts({ plant, twin, events }: { plant: PlantT; twin?: Twin; events: Ca
     { label: t('Light'), value: light, detail: light ? t('You told us') : t('Add it in Edit details'), status: light ? 'fresh' : 'none' },
     { label: t('Pot'), value: drainage, detail: drainage ? t('You told us') : t('Add it in Edit details'), status: drainage ? 'fresh' : 'none' },
   ];
-  return <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-    {tiles.map(k => <View key={k.label} accessible accessibilityLabel={`${k.label}: ${k.value ?? t('not set')}, ${t(statusSpeech[k.status])}. ${k.detail}`}
-      style={{ flexGrow: 1, flexBasis: '45%', padding: space[3], borderRadius: radius.control, backgroundColor: c.sunken, gap: 2 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><StatusMark status={k.status} /><T v="footnote" tone="ink2">{k.label}</T></View>
-      <T v="headline" tone={k.value ? 'ink' : 'ink2'}>{k.value ?? t('Not set')}</T>
-      <T v="caption" tone="ink2">{k.detail}</T>
-    </View>)}
+  // Pot size and material shape the first estimate; the onboarding only asks about drainage.
+  const potUnknown = !known(plant.pot) || !known(plant.material);
+  return <View style={{ gap: space[3] }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+      {tiles.map(k => {
+        const body = <>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><StatusMark status={k.status} /><T v="footnote" tone="ink2">{k.label}</T></View>
+          <T v="headline" tone={k.value ? 'ink' : 'ink2'}>{k.value ?? t('Not set')}</T>
+          <T v="caption" tone="ink2">{k.detail}</T>
+        </>;
+        const style = { flexGrow: 1, flexBasis: '45%' as const, padding: space[3], borderRadius: radius.control, backgroundColor: c.sunken, gap: 2 };
+        return k.label === t('Pot')
+          ? <Tap key={k.label} label={`${k.label}: ${k.value ?? t('not set')}. ${t('Edit pot details')}`} onPress={onPot} scaleTo={.98} ring={radius.control} style={style}>{body}</Tap>
+          : <View key={k.label} accessible accessibilityLabel={`${k.label}: ${k.value ?? t('not set')}, ${t(statusSpeech[k.status])}. ${k.detail}`} style={style}>{body}</View>;
+      })}
+    </View>
+    {potUnknown && <Tap label={t('Complete the pot')} onPress={onPot} ring={radius.control}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], padding: space[3], borderRadius: radius.control, borderWidth: 1, borderColor: c.hairline }}>
+      <Glyph name="plus" size={18} tone={c.leafText} />
+      <View style={{ flex: 1 }}>
+        <T v="subhead" style={{ fontFamily: fonts.medium }}>{t('Complete the pot')}</T>
+        <T v="caption" tone="ink2">{t('Size and material make the estimate more precise.')}</T>
+      </View>
+    </Tap>}
   </View>;
 }
 
@@ -274,7 +292,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
           {!!error && <Toast tone="error" title={t("Not saved")} text={error} onClose={() => setError('')} />}
           {/* One check-in covers soil, watering and leaves; resting plants can still be checked. */}
           <Btn title={t("Check in")} icon="soil" kind={g?.action === 'wait' ? 'outline' : 'filled'} onPress={() => navigation.navigate('Care', { id: plant.id, mode: 'checkin' })} />
-          <Facts plant={plant} twin={twin} events={events} />
+          <Facts plant={plant} twin={twin} events={events} onPot={() => navigation.navigate('PlantForm', { editId: plant.id, pot: true })} />
         </Animated.View>}
 
         {tab === 'rhythm' && <Animated.View key="rhythm" entering={reduceMotion ? undefined : FadeIn.duration(200)} style={{ gap: space[6] }}>

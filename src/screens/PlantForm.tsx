@@ -46,7 +46,8 @@ export function PlantForm({ navigation, route }: Props<'PlantForm'>) {
   const [light, setLight] = useState(pick(LIGHT, editing?.light, 'Not sure'));
   const [room, setRoom] = useState(known(editing?.room) ? editing!.room : '');
   const [newRoom, setNewRoom] = useState('');
-  const [more, setMore] = useState(false);
+  // Opened from the plant's pot tile: the pot and soil details start open.
+  const [more, setMore] = useState('editId' in route.params && !!(route.params as { pot?: boolean }).pot);
   const [nearWindow, setNearWindow] = useState(pick(YES_NO, editing?.environment?.near_window, 'Not sure'));
   const [drainage, setDrainage] = useState(pick(YES_NO, editing?.drainage, 'Not sure'));
   const [pot, setPot] = useState(pick(POT, editing?.pot, 'Not sure'));

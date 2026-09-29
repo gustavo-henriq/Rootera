@@ -189,6 +189,7 @@ function Today({ navigation }: TabProps<'Today'>) {
     header={<View style={{ gap: space[1] }}>
       <T v="footnote" tone="ink2">{new Date().toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })}</T>
       <T v="display">{greeting()}{first ? `,\n${first}` : ''}</T>
+      {garden.plants.length > 0 && <Btn title={t('Add a plant')} icon="plus" kind="outline" size="regular" onPress={() => navigation.navigate('AddPlant')} style={{ alignSelf: 'flex-start', marginTop: space[3] }} />}
     </View>}
     list={{
       data: items,
