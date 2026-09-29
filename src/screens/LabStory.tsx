@@ -13,7 +13,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import Animated, { cancelAnimation, Easing, SharedValue, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { cancelAnimation, Easing, interpolateColor, SharedValue, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
 import { pivot } from '../ds/motion';
 import { PlantArt } from '../ds/plant';
@@ -25,48 +25,85 @@ import { t } from '../i18n';
 export const STAGE = { text: '#F4F6F2', dim: 'rgba(244,246,242,.64)', faint: 'rgba(244,246,242,.38)', line: 'rgba(255,255,255,.14)', leaf: '#B6E07C', water: '#86BCCB', sun: '#F2D16B',
   soil: { dry: '#CDB690', moist: '#8A6242', wet: '#4A3322' } };
 
-/* ------------------------------------------------------------------ scene 1: the watering */
+/* ------------------------------------------------------------------ scene 1: the watering becomes the weather */
 
-// One timeline drives everything, so the can and the water can't drift apart. A loop of
-// 3.6 s: the can tilts (0-.2), pours (.2-.7), straightens (.7-.85), rests (.85-1).
-const LOOP = 3600;
+// One timeline (a 10 s loop) drives the whole scene, so nothing drifts apart:
+//   .00-.06 the can tilts   .06-.30 it pours   .30-.36 it straightens
+//   .36-.46 the can turns into a rain cloud   .46-.66 it rains on the plant
+//   .66-.76 the rain stops: cloudy   .76-.86 the cloud gives way to the sun   .86-1 sun
+// The soil in the pot follows: wet while watered and rained on, moist under the cloud,
+// dry in the sun. The captions change with it (they are part of the scene).
+const LOOP = 10000;
 const TILT = 38; // degrees, clockwise: the spout goes down
-// The can is drawn in a 110 x 70 box, placed at CAN; it turns around its body (PIVOT).
 const CAN = { x: 14, y: 18, w: 110, h: 70 };
-const PIVOT = { x: 36, y: 42 };
-const TIP = { x: 105, y: 17 }; // the spout's mouth, in the can's box
-const SOIL_Y = 166; // where the water meets the soil, in the scene
-const DROPS = 5;
+const PIVOT = { x: 36, y: 42 };  // the can turns around its body
+const TIP = { x: 105, y: 17 };   // the spout's mouth, in the can's box
+const CLOUD = { x: 80, y: 6, w: 110, h: 70 };
+const SOIL_Y = 166;              // where the water meets the soil
+const W = 240, H = 230;
 
-/** The can's tilt (0-1) at a point of the loop. */
+const band = (p: number, a: number, b: number) => { 'worklet'; return Math.min(1, Math.max(0, (p - a) / (b - a))); };
+/** The can's tilt (0-1). */
 function tiltAt(p: number) {
   'worklet';
-  if (p < .2) return p / .2;
-  if (p < .7) return 1;
-  if (p < .85) return 1 - (p - .7) / .15;
+  return p < .06 ? p / .06 : p < .30 ? 1 : p < .36 ? 1 - (p - .30) / .06 : 0;
+}
+/** How wet the soil is (1 wet, .5 moist, 0 dry). */
+function wetAt(p: number) {
+  'worklet';
+  if (p < .08) return .15 + .85 * (p / .08) * 0;
+  if (p < .66) return Math.min(1, .15 + (p - .08) / .1);
+  if (p < .76) return 1 - .5 * band(p, .66, .76);
+  if (p < .9) return .5 - .5 * band(p, .76, .9);
   return 0;
 }
 
-function Drop({ p, k }: { p: SharedValue<number>; k: number }) {
+function CanDrop({ p, k }: { p: SharedValue<number>; k: number }) {
   const style = useAnimatedStyle(() => {
-    const tilt = tiltAt(p.value);
-    // The spout's mouth, turned with the can.
-    const a = (tilt * TILT * Math.PI) / 180;
+    const ang = (tiltAt(p.value) * TILT * Math.PI) / 180;
     const vx = TIP.x - PIVOT.x, vy = TIP.y - PIVOT.y;
-    const x = CAN.x + PIVOT.x + vx * Math.cos(a) - vy * Math.sin(a);
-    const y = CAN.y + PIVOT.y + vx * Math.sin(a) + vy * Math.cos(a);
-    // Each drop falls from the mouth to the soil, staggered; only while the can pours.
-    const pouring = p.value > .22 && p.value < .72;
-    const f = ((p.value * 9 + k / DROPS) % 1);
-    return {
-      opacity: pouring ? 1 - f * .3 : 0,
-      transform: [{ translateX: x - 3 + f * 3 }, { translateY: y + f * (SOIL_Y - y) }],
-    };
+    const x = CAN.x + PIVOT.x + vx * Math.cos(ang) - vy * Math.sin(ang);
+    const y = CAN.y + PIVOT.y + vx * Math.sin(ang) + vy * Math.cos(ang);
+    const on = p.value > .08 && p.value < .30;
+    const f = (p.value * 30 + k / 5) % 1;
+    return { opacity: on ? 1 - f * .3 : 0, transform: [{ translateX: x - 3 + f * 3 }, { translateY: y + f * (SOIL_Y - y) }] };
   });
   return <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: 6, height: 11, borderRadius: 3, backgroundColor: STAGE.water }, style]} />;
 }
 
-export function WateringScene() {
+function RainDrop({ p, k }: { p: SharedValue<number>; k: number }) {
+  const style = useAnimatedStyle(() => {
+    const on = p.value > .46 && p.value < .66;
+    const f = (p.value * 24 + k / 7) % 1;
+    const x = CLOUD.x + 22 + (k % 7) * 11;
+    const y0 = CLOUD.y + 56;
+    return { opacity: on ? 1 - f * .4 : 0, transform: [{ translateX: x }, { translateY: y0 + f * (SOIL_Y - y0) }] };
+  });
+  return <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: 4, height: 10, borderRadius: 2, backgroundColor: STAGE.water }, style]} />;
+}
+
+const CAPTIONS = [
+  { title: 'A watering makes all the difference', line: 'Rootera starts counting from the watering you record.' },
+  { title: 'Rootera learns with each cycle', line: 'And with the real weather: rain, cloud and sun change how long the soil takes to dry.' },
+  { title: 'No need to work it out yourself', line: 'Your checks and your local weather do the sums.' },
+];
+
+function Caption({ p, i }: { p: SharedValue<number>; i: number }) {
+  // Each caption fades in with its part of the scene and out before the next.
+  const [a, b] = [[0, .36], [.36, .76], [.76, 1.01]][i];
+  const style = useAnimatedStyle(() => {
+    const v = p.value;
+    const fadeIn = i === 0 ? 1 : band(v, a, a + .04);
+    const fadeOut = i === 2 ? 1 - band(v, .97, 1) : 1 - band(v, b - .03, b);
+    return { opacity: v >= a - .001 && v < b ? Math.min(fadeIn, fadeOut) : 0 };
+  });
+  return <Animated.View style={[{ position: 'absolute', left: 0, right: 0, top: 0, gap: space[3] }, style]}>
+    <T v="hero" style={{ color: STAGE.text }}>{t(CAPTIONS[i].title)}</T>
+    <T v="callout" style={{ color: STAGE.dim }}>{t(CAPTIONS[i].line)}</T>
+  </Animated.View>;
+}
+
+export function WaterWeatherScene() {
   const { reduceMotion } = useTheme();
   const p = useSharedValue(reduceMotion ? .5 : 0);
   useEffect(() => {
@@ -74,87 +111,80 @@ export function WateringScene() {
     p.value = withRepeat(withTiming(1, { duration: LOOP, easing: Easing.linear }), -1, false);
     return () => cancelAnimation(p);
   }, []);
-  const can = useAnimatedStyle(() => ({ transform: pivot(CAN.w, CAN.h, PIVOT.x / CAN.w, PIVOT.y / CAN.h, [{ rotate: `${tiltAt(p.value) * TILT}deg` }]) }));
-  // The soil darkens while the water goes in, and dries back a little during the rest.
-  const soil = useAnimatedStyle(() => ({ opacity: p.value < .25 ? .35 : p.value < .75 ? .35 + .65 * ((p.value - .25) / .5) : 1 - .65 * ((p.value - .75) / .25) }));
-  // The plant drinks: a small squash from the pot's base as the pouring ends.
-  const plant = useAnimatedStyle(() => {
-    const d = p.value > .7 && p.value < .85 ? Math.sin(((p.value - .7) / .15) * Math.PI) : 0;
-    return { transform: pivot(150, 150, .5, 1, [{ scaleY: 1 - .05 * d }, { scaleX: 1 + .02 * d }]) };
+  // The can: tilts and pours, then shrinks toward the cloud's place as the cloud grows there.
+  const can = useAnimatedStyle(() => {
+    const m = band(p.value, .36, .46);
+    const dx = (CLOUD.x + CLOUD.w / 2 - (CAN.x + CAN.w / 2)) * m, dy = (CLOUD.y + CLOUD.h / 2 - (CAN.y + CAN.h / 2)) * m;
+    return {
+      opacity: p.value < .36 ? 1 : p.value < .46 ? 1 - m : 0,
+      transform: [{ translateX: dx }, { translateY: dy }, ...pivot(CAN.w, CAN.h, PIVOT.x / CAN.w, PIVOT.y / CAN.h, [{ rotate: `${tiltAt(p.value) * TILT}deg` }, { scale: 1 - .4 * m }])],
+    };
   });
-  return <View accessible accessibilityRole="image" accessibilityLabel={t('A watering can pours water on the plant')} style={{ width: 240, height: 230, alignSelf: 'center' }}>
-    <Animated.View style={[{ position: 'absolute', left: 60, top: 60, width: 150, height: 150 }, plant]}>
-      <PlantArt kind="monstera" size={150} />
-    </Animated.View>
-    {/* The soil at the top of the pot darkens as it takes the water. */}
-    <Animated.View style={[{ position: 'absolute', left: 104, top: SOIL_Y - 4, width: 62, height: 8, borderRadius: 4, backgroundColor: STAGE.soil.wet }, soil]} />
-    {Array.from({ length: DROPS }, (_, k) => <Drop key={k} p={p} k={k} />)}
-    {/* The can: a body, a spout and a handle. */}
-    <Animated.View style={[{ position: 'absolute', left: CAN.x, top: CAN.y, width: CAN.w, height: CAN.h }, can]}>
-      <Svg width={CAN.w} height={CAN.h} viewBox="0 0 110 70">
-        <Rect x={10} y={22} width={52} height={40} rx={8} fill={STAGE.leaf} />
-        <Path d="M60 34 L104 14 L106 20 L62 44 Z" fill={STAGE.leaf} />
-        <Path d="M20 22 C20 6 52 6 52 22" stroke={STAGE.leaf} strokeWidth={5} fill="none" />
-      </Svg>
-    </Animated.View>
+  // The cloud: grows out of the can, rains, lightens, then gives way to the sun.
+  const cloud = useAnimatedStyle(() => {
+    const m = band(p.value, .36, .46);
+    const out = band(p.value, .76, .84);
+    const fromX = (CAN.x + CAN.w / 2) - (CLOUD.x + CLOUD.w / 2), fromY = (CAN.y + CAN.h / 2) - (CLOUD.y + CLOUD.h / 2);
+    return {
+      opacity: p.value < .36 ? 0 : p.value < .76 ? m : 1 - out,
+      transform: [{ translateX: fromX * (1 - m) + 30 * out }, { translateY: fromY * (1 - m) }, { scale: .6 + .4 * m }],
+    };
+  });
+  const rainy = useAnimatedStyle(() => ({ opacity: p.value < .66 ? 1 : 1 - band(p.value, .66, .72) }));
+  const sun = useAnimatedStyle(() => {
+    const s = band(p.value, .78, .88);
+    return { opacity: s, transform: [{ scale: .6 + .4 * s }, { rotate: `${p.value * 240}deg` }] };
+  });
+  const soil = useAnimatedStyle(() => ({ backgroundColor: interpolateColor(wetAt(p.value), [0, .5, 1], [STAGE.soil.dry, STAGE.soil.moist, STAGE.soil.wet]) }));
+  const soilWord = (i: number) => useAnimatedStyle(() => {
+    const w = wetAt(p.value);
+    const on = i === 0 ? w > .75 : i === 1 ? w > .25 && w <= .75 : w <= .25;
+    return { opacity: on ? 1 : 0 };
+  });
+  const words = [soilWord(0), soilWord(1), soilWord(2)];
+  return <View style={{ gap: space[5] }}>
+    <View accessible accessibilityRole="image" accessibilityLabel={t('A watering can pours on the plant, turns into a rain cloud, then the sun comes out and the soil dries')} style={{ width: W, height: H, alignSelf: 'center' }}>
+      <Animated.View style={[{ position: 'absolute', left: 60, top: 60, width: 150, height: 150 }]}>
+        <PlantArt kind="monstera" size={150} />
+      </Animated.View>
+      {/* The soil at the top of the pot: wet, moist, dry. */}
+      <Animated.View style={[{ position: 'absolute', left: 104, top: SOIL_Y - 4, width: 62, height: 8, borderRadius: 4 }, soil]} />
+      {Array.from({ length: 5 }, (_, k) => <CanDrop key={'c' + k} p={p} k={k} />)}
+      {Array.from({ length: 7 }, (_, k) => <RainDrop key={'r' + k} p={p} k={k} />)}
+      <Animated.View style={[{ position: 'absolute', left: CAN.x, top: CAN.y, width: CAN.w, height: CAN.h }, can]}>
+        <Svg width={CAN.w} height={CAN.h} viewBox="0 0 110 70">
+          <Rect x={10} y={22} width={52} height={40} rx={8} fill={STAGE.leaf} />
+          <Path d="M60 34 L104 14 L106 20 L62 44 Z" fill={STAGE.leaf} />
+          <Path d="M20 22 C20 6 52 6 52 22" stroke={STAGE.leaf} strokeWidth={5} fill="none" />
+        </Svg>
+      </Animated.View>
+      <Animated.View style={[{ position: 'absolute', left: CLOUD.x, top: CLOUD.y, width: CLOUD.w, height: CLOUD.h }, cloud]}>
+        <Svg width={CLOUD.w} height={CLOUD.h} viewBox="-8 0 110 70"><Cloud color="#C9D0CC" /></Svg>
+        <Animated.View style={[{ position: 'absolute', left: 0, top: 0 }, rainy]}>
+          <Svg width={CLOUD.w} height={CLOUD.h} viewBox="-8 0 110 70"><Cloud color="#8FA3AE" /></Svg>
+        </Animated.View>
+      </Animated.View>
+      <Animated.View style={[{ position: 'absolute', left: CLOUD.x + 7, top: CLOUD.y - 12, width: 96, height: 96 }, sun]}>
+        <Svg width={96} height={96} viewBox="0 0 96 96">
+          {Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2; return <Line key={i} x1={48 + Math.cos(a) * 30} y1={48 + Math.sin(a) * 30} x2={48 + Math.cos(a) * 42} y2={48 + Math.sin(a) * 42} stroke={STAGE.sun} strokeWidth={4} strokeLinecap="round" />; })}
+          <Circle cx={48} cy={48} r={22} fill={STAGE.sun} />
+        </Svg>
+      </Animated.View>
+      {/* The soil's state, named. */}
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: -6, alignItems: 'center', height: 20 }}>
+        {(['Wet', 'Moist', 'Dry'] as const).map((w, i) => <Animated.View key={w} style={[{ position: 'absolute' }, words[i]]}>
+          <T v="footnote" style={{ color: STAGE.dim }}>{t('Soil: {v}', { v: t(w).toLowerCase() })}</T>
+        </Animated.View>)}
+      </View>
+    </View>
+    <View style={{ height: 150 }}>
+      {CAPTIONS.map((_, i) => <Caption key={i} p={p} i={i} />)}
+    </View>
   </View>;
 }
-
-/* ------------------------------------------------------------------ scene 2: one cycle */
-
-const SKY = ['rain', 'cloud', 'sun'] as const;
-const SKY_LABEL = { rain: 'Wet', cloud: 'Moist', sun: 'Dry' } as const;
 
 function Cloud({ color }: { color: string }) {
   return <Path d="M22 58 C8 58 6 40 20 38 C20 22 42 18 48 30 C56 18 78 22 76 40 C90 40 90 58 76 58 Z" fill={color} />;
-}
-
-export function CycleScene() {
-  const { reduceMotion } = useTheme();
-  const [phase, setPhase] = useState(reduceMotion ? 2 : 0);
-  useEffect(() => {
-    if (reduceMotion) return;
-    const timer = setInterval(() => setPhase(p => (p + 1) % 3), 1500);
-    return () => clearInterval(timer);
-  }, []);
-  const sky = SKY[phase];
-  // The layers dry from the top down: rain = all wet, cloud = top dry, sun = dry to the middle.
-  const layers = sky === 'rain' ? ['wet', 'wet', 'wet'] : sky === 'cloud' ? ['moist', 'moist', 'wet'] : ['dry', 'dry', 'moist'];
-  const fall = useSharedValue(0);
-  const spin = useSharedValue(0);
-  useEffect(() => {
-    if (reduceMotion) return;
-    fall.value = withRepeat(withTiming(1, { duration: 500, easing: Easing.in(Easing.quad) }), -1, false);
-    spin.value = withRepeat(withTiming(1, { duration: 6000, easing: Easing.linear }), -1, false);
-    return () => { cancelAnimation(fall); cancelAnimation(spin); };
-  }, []);
-  const rain = useAnimatedStyle(() => ({ transform: [{ translateY: fall.value * 16 }], opacity: 1 - fall.value * .6 }));
-  const rays = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.value * 360}deg` }] }));
-  return <View accessible accessibilityRole="image" accessibilityLabel={t('After a watering the soil goes from wet to moist to dry: one cycle')} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space[6], height: 200 }}>
-    <View style={{ width: 100, alignItems: 'center', gap: space[2] }}>
-      <View style={{ width: 96, height: 96, alignItems: 'center', justifyContent: 'center' }}>
-        {sky === 'sun'
-          ? <>
-              <Animated.View style={[{ position: 'absolute', width: 96, height: 96 }, rays]}>
-                <Svg width={96} height={96} viewBox="0 0 96 96">
-                  {Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2; return <Line key={i} x1={48 + Math.cos(a) * 30} y1={48 + Math.sin(a) * 30} x2={48 + Math.cos(a) * 42} y2={48 + Math.sin(a) * 42} stroke={STAGE.sun} strokeWidth={4} strokeLinecap="round" />; })}
-                </Svg>
-              </Animated.View>
-              <Svg width={96} height={96} viewBox="0 0 96 96"><Circle cx={48} cy={48} r={22} fill={STAGE.sun} /></Svg>
-            </>
-          : <Svg width={96} height={80} viewBox="0 0 96 80"><G transform="translate(3 0)"><Cloud color={sky === 'rain' ? '#9FB3BD' : '#C9D0CC'} /></G></Svg>}
-        {sky === 'rain' && <Animated.View style={[{ position: 'absolute', top: 70, flexDirection: 'row', gap: 12 }, rain]}>
-          {[0, 1, 2].map(i => <View key={i} style={{ width: 5, height: 12, borderRadius: 3, backgroundColor: STAGE.water }} />)}
-        </Animated.View>}
-      </View>
-      <T v="headline" style={{ color: STAGE.text }}>{t(SKY_LABEL[sky])}</T>
-    </View>
-    {/* The pot's three layers, in step with the sky. */}
-    <View style={{ gap: 4 }}>
-      {layers.map((l, i) => <View key={i} style={{ width: 90, height: 26, borderRadius: radius.inner, backgroundColor: STAGE.soil[l as 'wet'] }} />)}
-      <T v="caption" style={{ color: STAGE.faint, marginTop: 4 }}>{t('Surface, middle, bottom')}</T>
-    </View>
-  </View>;
 }
 
 /* ------------------------------------------------------------------ scene 3: three cycles */

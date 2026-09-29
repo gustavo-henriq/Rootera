@@ -42,7 +42,7 @@ const TABLES = {
   'src/ds/DepthRuler.tsx': ['DEPTH'],
   'src/ds/SoilLayers.tsx': ['INFO', 'HINT'],
   'src/screens/Lab.tsx': ['METHODS', 'STEPS', 'LAYER_NAME', 'LAYER_VALUE', 'LEAVES', 'POTS', 'LIGHTS', 'PACES', 'SCENES', 'CLIMATES'],
-  'src/screens/LabStory.tsx': ['SKY_LABEL'],
+  'src/screens/LabStory.tsx': ['CAPTIONS'],
   'src/ds/DryWindow.tsx': ['factorLabel'],
   'src/screens/Farewell.tsx': ['CHOICES', 'WORDS'],
   'src/screens/Care.tsx': ['visualHints', 'AMOUNTS', 'STAGES', 'stageHints'],

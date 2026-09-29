@@ -30,7 +30,7 @@ import { T, Tap } from '../ds/components';
 import { Glyph } from '../ds/icons';
 import { PlantArt } from '../ds/plant';
 import { haptic } from '../ds/feedback';
-import { CycleScene, CyclesScene, WateringScene } from './LabStory';
+import { CyclesScene, WaterWeatherScene } from './LabStory';
 import { locale, t, tn } from '../i18n';
 
 /* ------------------------------------------------------------------ the stage */
@@ -55,9 +55,10 @@ const METHODS: { key: LabMethod; label: string; means: string; main?: boolean }[
   { key: 'forgetful', label: 'Too little: every 14 days', means: 'Plants that drink from the top go thirsty.' },
 ];
 /** The opening story (see LabStory.tsx): one scene, a title and one line each. */
-const SCENES: { title: string; line: string; note?: string }[] = [
-  { title: 'A watering makes all the difference', line: 'Rootera starts counting from the watering you record.' },
-  { title: 'Rootera learns with each cycle', line: 'After a watering the soil goes from wet to moist to dry. Your checks tell Rootera where it is, so you don’t have to work it out.', note: 'Rain, cloud and sun: the soil drying after a watering. The real weather speeds it up or slows it down.' },
+// The first scene (the watering that becomes the weather) carries its own captions, in step
+// with the animation; the second has a title and a line.
+const SCENES: { title?: string; line?: string; note?: string }[] = [
+  {},
   { title: 'Three cycles to know the plant', line: 'At first Rootera is still analyzing your plant and uses what the species usually does. From the second cycle it gets specific; from the third, the recommendations are this plant’s own.' },
 ];
 const LAYERS: LayerKey[] = ['top', 'middle', 'bottom'];
@@ -401,12 +402,12 @@ export function Lab({ navigation }: Props<'Lab'>) {
 
         {phase === 'story' && <>
           <Animated.View key={scene} entering={reduceMotion ? undefined : FadeIn.duration(400)} style={{ gap: space[6] }}>
-            {scene === 0 ? <WateringScene /> : scene === 1 ? <CycleScene /> : <CyclesScene />}
-            <View style={{ gap: space[3] }}>
-              <T v="hero" style={{ color: L.text }}>{t(SCENES[scene].title)}</T>
-              <T v="callout" style={{ color: L.dim }}>{t(SCENES[scene].line)}</T>
+            {scene === 0 ? <WaterWeatherScene /> : <CyclesScene />}
+            {!!SCENES[scene].title && <View style={{ gap: space[3] }}>
+              <T v="hero" style={{ color: L.text }}>{t(SCENES[scene].title!)}</T>
+              <T v="callout" style={{ color: L.dim }}>{t(SCENES[scene].line!)}</T>
               {!!SCENES[scene].note && <T v="footnote" style={{ color: L.faint }}>{t(SCENES[scene].note!)}</T>}
-            </View>
+            </View>}
           </Animated.View>
           <View style={{ flexGrow: 1 }} />
           <Primary title={scene < SCENES.length - 1 ? t('Next') : t('Start the simulation')} onPress={() => scene < SCENES.length - 1 ? setScene(n => n + 1) : go('plant')} />
