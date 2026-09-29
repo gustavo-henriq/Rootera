@@ -14,7 +14,8 @@ import { Btn, Chip, FloatingTabBar, Group, Row, SourceLabel, T, Tap, Toast } fro
 import { Glyph, GlyphName } from '../ds/icons';
 import { Page } from '../ds/Page';
 import { Ground, PlantArt, plantArt } from '../ds/plant';
-import { Pop, Settle } from '../ds/motion';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { Settle } from '../ds/motion';
 import { PickerSheet } from '../ds/PickerSheet';
 import { ActionSheet } from '../ds/ActionSheet';
 import { measure, Rect } from '../ds/Flight';
@@ -242,10 +243,9 @@ const Tile = memo(function Tile({ plant, width, onPress, needs, where, animate }
       </View>
       {!!where && <T v="footnote" tone="ink2" lines={1}>{where}</T>}
     </View>
-    {/* Only the first screenful pops in; tiles further down just appear, so scrolling stays smooth. */}
-    {animate !== null
-      ? <Pop delay={animate} style={{ position: 'absolute', top: 0, left: width * .1, right: width * .1, alignItems: 'center' }}>{art}</Pop>
-      : <View style={{ position: 'absolute', top: 0, left: width * .1, right: width * .1, alignItems: 'center' }}>{art}</View>}
+    {/* The first screenful fades in, one after another, without a spring: the plants used to
+        bounce before settling on their cards. Tiles further down just appear. */}
+    <Animated.View entering={animate !== null ? FadeIn.delay(animate).duration(220) : undefined} style={{ position: 'absolute', top: 0, left: width * .1, right: width * .1, alignItems: 'center' }}>{art}</Animated.View>
   </Tap>;
 });
 
@@ -259,7 +259,7 @@ function SearchField({ value, onChange, label }: { value: string; onChange: (s: 
   </View>;
 }
 
-type PlantCell = { k: 'plant'; plant: Plant } | { k: 'add' };
+type PlantCell = { k: 'plant'; plant: Plant };
 
 function Plants({ navigation }: TabProps<'Plants'>) {
   const { garden, refresh } = useStore();
@@ -280,25 +280,16 @@ function Plants({ navigation }: TabProps<'Plants'>) {
   const list = useMemo(() => byUrgency(garden)
     .filter(p => !plus || room === 'All' || p.room === room)
     .filter(p => !needle || searchText(`${p.name} ${p.species} ${p.room}`).includes(needle)), [garden, plus, room, needle]);
-  const full = atCapacity(garden);
-  const add = () => navigation.navigate(full ? 'Plans' : 'AddPlant', full ? { reason: 'limit' } : undefined as any);
   const openPlant = useCallback((p: Plant, from?: Rect) => navigation.navigate('Plant', { id: p.id, from }), [navigation]);
-  const cells: PlantCell[] = garden.plants.length ? [...list.map(p => ({ k: 'plant' as const, plant: p })), ...(needle ? [] : [{ k: 'add' as const }])] : [];
+  // Adding a plant lives on Today; this tab is the shelf itself.
+  const cells: PlantCell[] = list.map(p => ({ k: 'plant' as const, plant: p }));
 
-  return <Page tab scrollRef={ref} title={t("Plants")} gap={space[4]} onRefresh={refresh} actions={[{ icon: 'plus', label: t('Add a plant'), onPress: add }]}
+  return <Page tab scrollRef={ref} title={t("Plants")} gap={space[4]} onRefresh={refresh}
     list={{
       data: cells, numColumns: 2, columnGap: space[3],
-      keyExtractor: (i: PlantCell) => i.k === 'plant' ? i.plant.id : 'add',
-      renderItem: (i: PlantCell, n: number) => i.k === 'plant'
-        ? <Tile plant={i.plant} width={col} onPress={openPlant} needs={garden.twins[i.plant.id]?.guidance.action !== 'wait'} animate={n < 8 ? n * 55 : null}
-            where={plus && known(i.plant.room) ? i.plant.room : known(i.plant.environment?.location) ? t(i.plant.environment!.location) : null} />
-        : <Tap label={full ? t('Plant limit reached. See Rootera+') : t('Add a plant')} onPress={add} ring={radius.card} style={{ width: col, paddingTop: col * .36, marginBottom: space[4] }}>
-            <View style={{ height: col * .9, borderRadius: radius.card, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.ink3, alignItems: 'center', justifyContent: 'center', gap: space[1], padding: space[3] }}>
-              <Glyph name={full ? 'lock' : 'plus'} size={24} tone={c.ink2} />
-              <T v="subhead" center style={{ fontFamily: fonts.medium }}>{full ? t('Shelf full') : t('Add a plant')}</T>
-              {garden.plan_capacity !== null && <T v="footnote" tone="ink2" center>{t('{n} of {max} on the free plan', { n: planUsed(garden), max: garden.plan_capacity })}</T>}
-            </View>
-          </Tap>,
+      keyExtractor: (i: PlantCell) => i.plant.id,
+      renderItem: (i: PlantCell, n: number) => <Tile plant={i.plant} width={col} onPress={openPlant} needs={garden.twins[i.plant.id]?.guidance.action !== 'wait'} animate={n < 8 ? n * 45 : null}
+            where={plus && known(i.plant.room) ? i.plant.room : known(i.plant.environment?.location) ? t(i.plant.environment!.location) : null} />,
       footer: !!needle && !list.length ? <T v="callout" tone="ink2">{t('No plant matches “{q}”.', { q })}</T> : undefined,
     }}>
     <Offline />
