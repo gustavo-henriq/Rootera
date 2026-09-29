@@ -454,6 +454,7 @@ function You({ navigation }: TabProps<'You'>) {
     </Group>
     <Group header={t("About")} footer={t("In this preview, your garden lives on a test server. Photos stay on this device.")}>
       <Row title={t("How Rootera learns")} onPress={() => navigation.navigate('About')} />
+      <Row title={t('Shipaton lab')} detail={t('Simulate MVP Shipaton and watch Rootera adapt.')} onPress={() => navigation.navigate('Lab')} />
       <Row title={t("Preview onboarding")} detail={t("Plays it again. Nothing is saved.")} onPress={() => navigation.navigate('Welcome', { preview: true })} />
     </Group>
     {/* Changing the language remounts the app (App.tsx), so every screen re-reads its text. */}

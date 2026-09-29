@@ -41,6 +41,7 @@ const TABLES = {
   'src/ds/WhySheet.tsx': ['GROUPS'],
   'src/ds/DepthRuler.tsx': ['DEPTH'],
   'src/ds/SoilLayers.tsx': ['INFO', 'HINT'],
+  'src/screens/Lab.tsx': ['METHODS', 'STEPS', 'LAYER_NAME', 'LAYER_VALUE', 'LEAVES', 'POTS', 'LIGHTS', 'PACES', 'COMING'],
   'src/ds/DryWindow.tsx': ['factorLabel'],
   'src/screens/Farewell.tsx': ['CHOICES', 'WORDS'],
   'src/screens/Care.tsx': ['visualHints', 'AMOUNTS', 'STAGES', 'stageHints'],

@@ -1,6 +1,6 @@
 import { NativeModules, Platform } from 'react-native';
 import Constants from 'expo-constants';
-import { CareEvent, Caregiver, Garden, Nudges, Plan, Plant, PlantKind } from './model';
+import { CareEvent, Caregiver, Garden, Guidance, Layer, LayerKey, Nudges, Plan, Plant, PlantKind, SoilLayers } from './model';
 import { lang, t } from './i18n';
 
 /**
@@ -56,7 +56,26 @@ export async function request<T>(path: string, method = 'GET', body?: unknown, t
 export interface CareResult { id: string; duplicate: boolean; change: { from: string; to: string } | null }
 export interface Candidate { scientific_name: string; common_name: string; family: string; kind: PlantKind; score: number }
 
+/** The Shipaton lab (backend/app/lab.py): a virtual plant run through the real guidance engine. */
+export type LabMethod = 'rootera' | 'weekly' | 'often' | 'forgetful' | 'manual';
+export interface LabDayIn { day: number; water?: boolean | null; check?: boolean | null; layers?: SoilLayers | null; leaves?: 'great' | 'different' | 'unwell' | null }
+export interface LabIn { kind: PlantKind; pot: 'Small pot' | 'Medium pot' | 'Large pot'; drainage: 'Yes' | 'No'; light: 'Low light' | 'Bright indirect light' | 'Direct sun';
+  method: LabMethod; days: number; check_every: number; pace: number; overrides: LabDayIn[] }
+export interface LabDay {
+  day: number; date: string; soil: Record<LayerKey, Layer>; leaves: 'great' | 'different' | 'unwell'; stress: 'wet' | 'dry' | null;
+  events: ({ type: 'water' } | { type: 'check'; layers: SoilLayers; typed: boolean } | { type: 'leaves'; visual: 'great' | 'different' | 'unwell'; typed: boolean })[];
+  guidance: Pick<Guidance, 'title' | 'reason' | 'action' | 'tip' | 'basis' | 'forecast' | 'baseline_days' | 'completed_cycles' | 'cycle_days' | 'soil' | 'soil_layers' | 'last_watered_at'>;
+}
+export interface LabOut {
+  plant: { name: string; kind: PlantKind; dryness: string; decisive: LayerKey[] };
+  truth: { layer_days: Record<LayerKey, number>; dry_after_days: number };
+  days: LabDay[];
+  summary: { waterings: number; checks: number; wet_days: number; dry_days: number; unwell_days: number; learned_days: number | null; window: [number, number] | null; window_source: string | null; cycles: number; error_days: number | null };
+  integrations: { weather: boolean; photos: boolean };
+}
+
 export const api = {
+  labSimulate: (body: LabIn) => request<LabOut>('/v1/lab/simulate', 'POST', body, 20000),
   garden: () => request<Garden>('/v1/garden'),
   profile: (changes: Partial<{ name: string; onboarded: boolean; reminders: boolean; caregiver: Caregiver; nudges: Nudges }>) => request('/v1/profile', 'PATCH', changes),
   addPlant: (plant: Plant) => request<Plant>('/v1/plants', 'POST', plant),

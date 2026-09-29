@@ -283,7 +283,10 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
         </Animated.View>}
 
         {tab === 'about' && <Animated.View key="about" entering={reduceMotion ? undefined : FadeIn.duration(200)} style={{ gap: space[5] }}>
-          {plant.example && <T v="callout" tone="ink2">{t('Example plant, with three demo cycles. It does not count toward your plan.')}</T>}
+          {plant.example && <View style={{ gap: space[3] }}>
+            <T v="callout" tone="ink2">{t('The Shipaton example: three demo cycles, outside your plan.')}</T>
+            <Btn kind="outline" title={t('Open the Shipaton lab')} onPress={() => navigation.navigate('Lab')} />
+          </View>}
           {plant.kind !== 'other' && !!g?.reference.summary && <View style={{ gap: space[2] }}>
             <T v="section">{t('{genus} in general', { genus: plant.species.split(' ')[0] })}</T>
             <T v="body" tone="ink2">{g.reference.summary}</T>

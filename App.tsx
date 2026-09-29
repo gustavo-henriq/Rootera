@@ -28,6 +28,7 @@ import { preloadImages } from './src/ds/preload';
 import { TodaySkeleton, Unreachable } from './src/ds/states';
 import { scheduleNudges } from './src/nudges';
 import { ProfileInvite } from './src/screens/ProfileInvite';
+import { Lab } from './src/screens/Lab';
 import * as SplashScreen from 'expo-splash-screen';
 import { lang, loadLang, onLangChange, t } from './src/i18n';
 
@@ -83,6 +84,7 @@ function Navigator() {
       <Stack.Screen name="Experience" component={Experience} />
       <Stack.Screen name="Nudges" component={Nudges} />
       <Stack.Screen name="About" component={About} />
+      <Stack.Screen name="Lab" component={Lab} options={{ presentation: 'fullScreenModal', animation: reduce ? 'none' : 'fade' }} />
       <Stack.Screen name="Round" component={Round} options={{ presentation: 'fullScreenModal', animation: reduce ? 'none' : 'slide_from_bottom' }} />
     </Stack.Navigator>
     {/* The profile is asked for after the first watering, and required after the second. */}

@@ -19,6 +19,8 @@ export type Routes = {
   About: undefined;
   /** Check-in round over every plant that needs you. */
   Round: undefined;
+  /** The Shipaton lab: a simulated plant run through the real engine. */
+  Lab: undefined;
 };
 
 export type Props<T extends keyof Routes> = NativeStackScreenProps<Routes, T>;
