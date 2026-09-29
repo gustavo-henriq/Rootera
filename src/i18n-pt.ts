@@ -328,12 +328,8 @@ export const PT: Record<string, string> = {
   "Plays it again. Nothing is saved.": "Mostra de novo. Nada é salvo.",
 
   // Name invite
-  "Add your name. It shows up here on Today.": "Adicione seu nome. Ele aparece aqui em Hoje.",
   "What should we call you?": "Como podemos te chamar?",
-  "Add name": "Adicionar nome",
-  "Optional. It shows up here on Today.": "Opcional. Ele aparece aqui em Hoje.",
   "Your name": "Seu nome",
-  "Save name": "Salvar nome",
   "Type a name to save it.": "Digite um nome para salvar.",
 
   // Onboarding: first plant
@@ -639,6 +635,11 @@ export const PT: Record<string, string> = {
   "low light": "pouca luz",
   "outdoors": "ao ar livre",
   "today": "hoje",
+  "One last thing: your name": "Só falta uma coisa: seu nome",
+  "Create your profile to keep looking after your plants.": "Crie seu perfil para continuar cuidando das suas plantas.",
+  "You have started caring with Rootera. Create your profile to keep it yours.": "Você já começou a cuidar com o Rootera. Crie seu perfil para deixar tudo com a sua cara.",
+  "Create profile": "Criar perfil",
+  "During Shipaton, your profile is only your name. Full accounts come after.": "Durante o Shipaton, seu perfil é só o seu nome. Contas completas chegam depois.",
   "{name} is leaving your garden?": "A {name} vai sair do seu jardim?",
   "Tell Rootera what happened. Its history is kept either way.": "Conte ao Rootera o que aconteceu. O histórico dela fica guardado de qualquer forma.",
   "Back to my garden": "Voltar ao meu jardim",

@@ -13,7 +13,6 @@ import { PlantArt } from '../ds/plant';
 import { haptic } from '../ds/feedback';
 import { DepthRuler } from '../ds/DepthRuler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CHECKED_IN } from './NameInvite';
 import { t } from '../i18n';
 
 const soilHints: Record<Soil, string> = {
@@ -89,7 +88,6 @@ function CheckIn({ navigation, route }: Props<'Care'>) {
       if (watered === 'yes') track(await logCare({ ...base, id: ids.current.water, type: 'Watered', amount_ml: ml, at: new Date(at0 + 1000).toISOString() }));
       if (visual) track(await logCare({ ...base, id: ids.current.look, type: 'Observation', visual, note: note.trim(), at: new Date(at0 + 2000).toISOString() }));
       if (stage && stage !== plant.stage) await updatePlant(plant.id, { stage });
-      AsyncStorage.setItem(CHECKED_IN, '1').catch(() => undefined);
       // What this check-in created, so the confirmation can offer Undo.
       const created = [ids.current.soil, ...(watered === 'yes' ? [ids.current.water] : []), ...(visual ? [ids.current.look] : [])];
       navigation.popTo('Plant', { id: plant.id, saved: { title: watered === 'yes' ? t('Check-in and watering saved') : t('Check-in saved'), from: to ? g?.title : undefined, to,
