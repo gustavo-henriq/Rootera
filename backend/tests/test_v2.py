@@ -136,3 +136,10 @@ def test_yearly_and_lifetime_products_are_read_right():
     assert entitlement('monthly', later)['annual'] is False
     life = entitlement('lifetime', None)
     assert life['active'] and life['lifetime'] and not life['annual']
+
+
+def test_a_first_lookup_that_creates_the_subscriber_is_not_an_error():
+    def handler(request):
+        return httpx.Response(201, json={'subscriber': {'entitlements': {}}})
+    ent = revenuecat.active_entitlement('new-user', 'sk_test', 'rootera', httpx.Client(transport=httpx.MockTransport(handler)))
+    assert ent == {'active': False, 'annual': False}

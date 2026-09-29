@@ -27,7 +27,8 @@ def active_entitlement(app_user_id: str, secret_key: str, entitlement: str, clie
     finally:
         if own:
             client.close()
-    if response.status_code != 200:
+    # 201: RevenueCat created the subscriber on this first lookup (someone who never bought).
+    if response.status_code not in (200, 201):
         raise BillingUnavailable(f'RevenueCat returned {response.status_code}.')
     ent = response.json().get('subscriber', {}).get('entitlements', {}).get(entitlement)
     if not ent:
