@@ -12,6 +12,7 @@ import { fonts, radius, space, springs } from '../../ds/tokens';
 import { Chip, Glass, T, Tap } from '../../ds/components';
 import { Glyph } from '../../ds/icons';
 import { t } from '../../i18n';
+import { pivot } from '../../ds/motion';
 
 /**
  * Asks the OS for notification permission. Returns whether nudges can reach the phone.
@@ -51,11 +52,11 @@ function MessageGlyph({ on }: { on: boolean }) {
   const p = useSharedValue(on ? 1 : 0);
   React.useEffect(() => { p.value = withSpring(on ? 1 : 0, springs.smooth); }, [on]);
   const first = useAnimatedStyle(() => ({ width: 16 + 6 * p.value }));
-  const rest = useAnimatedStyle(() => ({ opacity: p.value, transform: [{ scaleX: .3 + .7 * p.value }] }));
-  const last = useAnimatedStyle(() => ({ opacity: p.value, transform: [{ scaleX: .3 + .7 * p.value }] }));
+  const rest = useAnimatedStyle(() => ({ opacity: p.value, transform: pivot(18, 3, 0, .5, [{ scaleX: .3 + .7 * p.value }]) }));
+  const last = useAnimatedStyle(() => ({ opacity: p.value, transform: pivot(12, 3, 0, .5, [{ scaleX: .3 + .7 * p.value }]) }));
   const styles = [first, rest, last];
   return <View style={{ width: 44, height: 44, borderRadius: radius.control, backgroundColor: on ? c.successSoft : c.sunken, alignItems: 'flex-start', justifyContent: 'center', paddingLeft: 10, gap: 4 }}>
-    {[22, 18, 12].map((w, i) => <Animated.View key={i} style={[{ height: 3, width: w, borderRadius: 2, backgroundColor: on ? c.leafText : c.ink2, transformOrigin: 'left' }, styles[i]]} />)}
+    {[22, 18, 12].map((w, i) => <Animated.View key={i} style={[{ height: 3, width: w, borderRadius: 2, backgroundColor: on ? c.leafText : c.ink2 }, styles[i]]} />)}
   </View>;
 }
 

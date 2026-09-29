@@ -8,6 +8,21 @@ import Animated, { Easing, FadeInDown, FadeInUp, useAnimatedStyle, useSharedValu
 import { useTheme } from './theme';
 import { springs } from './tokens';
 
+type Step = { translateX: number } | { translateY: number } | { scale: number } | { scaleX: number } | { scaleY: number } | { rotate: string };
+
+/**
+ * Scale or rotate a box of w x h about a point given as fractions of its size (0,0 = top
+ * left, .5,1 = bottom centre), without `transformOrigin`. The box moves so the point is at
+ * its centre, transforms, and moves back: the same result on every platform, without
+ * depending on how each native renderer applies transformOrigin to animated images (on the
+ * iPhone the logo sprout and growing plants looked wrong). Call it inside useAnimatedStyle.
+ */
+export function pivot(w: number, h: number, ox: number, oy: number, steps: Step[]): Step[] {
+  'worklet';
+  const dx = (ox - .5) * w, dy = (oy - .5) * h;
+  return [{ translateX: dx }, { translateY: dy }, ...steps, { translateX: -dx }, { translateY: -dy }];
+}
+
 /** List items rise in one after another, once per mount. */
 export function Stagger({ index, children, style }: React.PropsWithChildren<{ index: number; style?: StyleProp<ViewStyle> }>) {
   const { reduceMotion } = useTheme();
@@ -29,22 +44,24 @@ export function DrawLine({ x, y, length, vertical, delay, tone, from = 'start' }
   const { reduceMotion } = useTheme();
   const p = useSharedValue(reduceMotion ? 1 : 0);
   useEffect(() => { if (!reduceMotion) p.value = withDelay(delay, withSpring(1, springs.smooth)); }, [reduceMotion]);
-  const style = useAnimatedStyle(() => vertical ? { transform: [{ scaleY: p.value }] } : { transform: [{ scaleX: p.value }] });
-  const origin = vertical ? (from === 'start' ? 'top' : 'bottom') : (from === 'start' ? 'left' : 'right');
-  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: x, top: y, width: vertical ? 1.5 : Math.max(0, length), height: vertical ? Math.max(0, length) : 1.5, backgroundColor: tone, transformOrigin: origin }, style]} />;
+  const w = vertical ? 1.5 : Math.max(0, length), h = vertical ? Math.max(0, length) : 1.5;
+  const end = from === 'start' ? 0 : 1;
+  const style = useAnimatedStyle(() => ({ transform: vertical ? pivot(w, h, .5, end, [{ scaleY: p.value }]) : pivot(w, h, end, .5, [{ scaleX: p.value }]) }));
+  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: x, top: y, width: w, height: h, backgroundColor: tone }, style]} />;
 }
 
 /** One gentle settle when a plant appears; never loops. */
 export function Settle({ children, delay = 100 }: React.PropsWithChildren<{ delay?: number }>) {
   const { reduceMotion } = useTheme();
   const r = useSharedValue(0), y = useSharedValue(reduceMotion ? 0 : 14);
+  const box = useSharedValue({ w: 0, h: 0 });
   useEffect(() => {
     if (reduceMotion) return;
     y.value = withDelay(delay, withSpring(0, springs.smooth));
     r.value = withDelay(delay + 180, withSequence(withTiming(-2.4, { duration: 150 }), withSpring(0, springs.bouncy)));
   }, [reduceMotion]);
-  const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }, { rotate: `${r.value}deg` }] }));
-  return <Animated.View style={[{ transformOrigin: 'bottom' }, style]}>{children}</Animated.View>;
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }, ...pivot(box.value.w, box.value.h, .5, 1, [{ rotate: `${r.value}deg` }])] }));
+  return <Animated.View onLayout={e => { box.value = { w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height }; }} style={style}>{children}</Animated.View>;
 }
 
 function Drop({ x, delay, fall }: { x: number; delay: number; fall: number }) {

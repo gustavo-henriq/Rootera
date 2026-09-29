@@ -11,7 +11,7 @@ import { Btn, Glass, SourceLabel, SourceMark, T, Tap, Toast } from '../ds/compon
 import { Glyph, GlyphName } from '../ds/icons';
 import { Page } from '../ds/Page';
 import { Ground, PlantArt } from '../ds/plant';
-import { Appear, DrawLine, LeafBurst, Pop, Settle, WaterDrops } from '../ds/motion';
+import { Appear, DrawLine, LeafBurst, pivot, Pop, Settle, WaterDrops } from '../ds/motion';
 import { CareCalendar } from '../ds/CareCalendar';
 import { ActionSheet } from '../ds/ActionSheet';
 import { GrowthDiary } from './GrowthDiary';
@@ -64,11 +64,11 @@ function Specimen({ plant, twin, width, drops, events, arriving, artRef }: { pla
     if (!drops || reduceMotion) return;
     drink.value = withDelay(380, withSequence(withTiming(.94, { duration: 180 }), withTiming(1.03, { duration: 200 }), withSpring(1, springs.bouncy)));
   }, [drops]);
-  const drinkStyle = useAnimatedStyle(() => ({ transform: [{ scaleY: drink.value }] }));
   const [open, setOpen] = useState<string | null>(null);
   const g = twin?.guidance;
   const narrow = width < 330;
   const S = Math.min(240, width * (narrow ? .42 : .5));
+  const drinkStyle = useAnimatedStyle(() => ({ transform: pivot(S, S, .5, 1, [{ scaleY: drink.value }]) }));
   const x0 = (width - S) / 2;
   const at = (fx: number, fy: number): [number, number] => [x0 + S * fx, 8 + S * fy];
   const drainage = plant.drainage === 'No' ? t('No drainage') : plant.drainage === 'Yes' ? t('Drains') : plant.self_watering === 'Yes' ? t('Self-watering') : null;
@@ -109,7 +109,7 @@ function Specimen({ plant, twin, width, drops, events, arriving, artRef }: { pla
   return <View style={{ width, height: S + (narrow ? 60 : 30) }}>
     <View ref={artRef} collapsable={false} style={{ position: 'absolute', left: x0, top: 8, width: S, height: S, opacity: arriving ? 0 : 1 }}>
       <Ground width={S * .8} style={{ position: 'absolute', bottom: -S * .06 }} />
-      <Animated.View style={[{ transformOrigin: 'bottom' }, drinkStyle]}>
+      <Animated.View style={[{ width: S, height: S }, drinkStyle]}>
         {/* Arriving from a tile, the plant has already moved; settling again would be double motion. */}
         {artRef && arriving !== undefined ? <PlantArt kind={plant.kind} photo={plant.photo} size={S} /> : <Settle><PlantArt kind={plant.kind} photo={plant.photo} size={S} /></Settle>}
       </Animated.View>

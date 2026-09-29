@@ -7,6 +7,7 @@ import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useTheme } from './theme';
+import { pivot } from './motion';
 import { t } from '../i18n';
 
 const LETTERS = require('../../assets/logo/letters.webp');
@@ -15,6 +16,8 @@ const SPROUT = require('../../assets/logo/sprout.webp');
 const RATIO = 215 / 720;
 const STEM_BASE_Y = 95 / 215; // where the sprout meets the O
 const STEM_X = 185 / 720;
+/** The O squashes on its own base: halfway between the stem and the bottom of the art. */
+const O_BASE_Y = STEM_BASE_Y + .5 * (1 - STEM_BASE_Y);
 
 export function LogoSprout({ width = 260, run, variant = 'full', onDone }: { width?: number; run: number; variant?: 'full' | 'short'; onDone?: () => void }) {
   const { reduceMotion } = useTheme();
@@ -45,19 +48,19 @@ export function LogoSprout({ width = 260, run, variant = 'full', onDone }: { wid
   }, [run]);
 
   const lettersStyle = useAnimatedStyle(() => ({ opacity: letters.value, transform: [{ translateY: (1 - letters.value) * 6 }] }));
-  const oStyle = useAnimatedStyle(() => ({ opacity: letters.value, transform: [{ translateY: oY.value }, { scaleY: oSquash.value }, { scaleX: 2 - oSquash.value }] }));
+  const oStyle = useAnimatedStyle(() => ({ opacity: letters.value, transform: [{ translateY: oY.value }, ...pivot(width, h, STEM_X, O_BASE_Y, [{ scaleY: oSquash.value }, { scaleX: 2 - oSquash.value }])] }));
   // The sprout rides on top of the O, so it rises with every push before it breaks out.
   // Never scale to exactly 0: on iOS that is a degenerate transform and the layer flickers.
   // The sprout stays hidden by opacity until it actually starts to grow.
   const sproutStyle = useAnimatedStyle(() => {
     const s = Math.max(.04, sprout.value);
-    return { opacity: sprout.value > .04 ? 1 : 0, transform: [{ translateY: oY.value }, { scaleY: s }, { scaleX: .5 + .5 * s }, { rotate: `${shake.value}deg` }] };
+    return { opacity: sprout.value > .04 ? 1 : 0, transform: [{ translateY: oY.value }, ...pivot(width, h, STEM_X, STEM_BASE_Y, [{ scaleY: s }, { scaleX: .5 + .5 * s }, { rotate: `${shake.value}deg` }])] };
   });
 
   const layer = { position: 'absolute' as const, width, height: h };
   return <View accessible accessibilityRole="image" accessibilityLabel={t("Rootera")} style={{ width, height: h }}>
     <Animated.Image source={LETTERS} resizeMode="contain" style={[layer, lettersStyle]} />
-    <Animated.Image source={SPROUT} resizeMode="contain" style={[layer, { transformOrigin: `${STEM_X * 100}% ${STEM_BASE_Y * 100}%` }, sproutStyle]} />
-    <Animated.Image source={O} resizeMode="contain" style={[layer, { transformOrigin: `${STEM_X * 100}% ${STEM_BASE_Y * 100 + 50 * (1 - STEM_BASE_Y)}%` }, oStyle]} />
+    <Animated.Image source={SPROUT} resizeMode="contain" style={[layer, sproutStyle]} />
+    <Animated.Image source={O} resizeMode="contain" style={[layer, oStyle]} />
   </View>;
 }

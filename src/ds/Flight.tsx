@@ -10,6 +10,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { PlantKind } from '../model';
 import { PlantArt } from './plant';
 import { springs } from './tokens';
+import { pivot } from './motion';
 
 export interface Rect { x: number; y: number; w: number; h: number }
 
@@ -31,10 +32,10 @@ export function Flight({ kind, photo, from, to, onDone }: { kind: PlantKind; pho
   }, [origin]);
   const k = to.w / from.w;
   const style = useAnimatedStyle(() => ({
-    transform: [{ translateX: (to.x - from.x) * p.value }, { translateY: (to.y - from.y) * p.value }, { scale: 1 + (k - 1) * p.value }],
+    transform: [{ translateX: (to.x - from.x) * p.value }, { translateY: (to.y - from.y) * p.value }, ...pivot(from.w, from.h, 0, 0, [{ scale: 1 + (k - 1) * p.value }])],
   }));
   return <View ref={root} pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 30 }]}>
-    {origin && <Animated.View style={[{ position: 'absolute', left: from.x - origin.x, top: from.y - origin.y, width: from.w, height: from.h, transformOrigin: 'top left' }, style]}>
+    {origin && <Animated.View style={[{ position: 'absolute', left: from.x - origin.x, top: from.y - origin.y, width: from.w, height: from.h }, style]}>
       <PlantArt kind={kind} photo={photo} size={from.w} />
     </Animated.View>}
   </View>;

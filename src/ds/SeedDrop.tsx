@@ -17,6 +17,7 @@ import { PlantKind } from '../model';
 import { plantArt } from './plant';
 import { useTheme } from './theme';
 import { springs } from './tokens';
+import { pivot } from './motion';
 import { t } from '../i18n';
 
 const EMPTY = require('../../assets/flower/0-empty.webp');
@@ -24,6 +25,7 @@ const SEEDED = require('../../assets/flower/1-seed.webp');
 const SPROUTED = require('../../assets/flower/2-sprout.webp');
 const SEED = require('../../assets/flower/seed-sprite.webp');
 const RATIO = 994 / 1130; // frame canvas
+export const SEED_RATIO = RATIO;
 /** Where the soil surface sits in the frame, as a fraction of its height. */
 export const SEED_SOIL = 555 / 1130;
 export const SEED_AT = { x: .497, y: .498 }; // the seed's resting place in the seeded frame
@@ -79,9 +81,9 @@ export function SeedDrop({ size = 240, run, kind, onImpact, onDone, from = 'left
   }, [run]);
 
   const seedStyle = useAnimatedStyle(() => ({ opacity: seedO.value, transform: [{ translateX: x.value }, { translateY: y.value }, { rotate: `${spin.value}deg` }] }));
-  const potStyle = useAnimatedStyle(() => ({ opacity: 1 - bloom.value, transform: [{ scaleY: pot.value }, { scaleX: 2 - pot.value }] }));
+  const potStyle = useAnimatedStyle(() => ({ opacity: 1 - bloom.value, transform: pivot(w, size, .5, 1, [{ scaleY: pot.value }, { scaleX: 2 - pot.value }]) }));
   const seededStyle = useAnimatedStyle(() => ({ opacity: seeded.value * (1 - sprouted.value) }));
-  const sproutStyle = useAnimatedStyle(() => ({ opacity: sprouted.value, transform: [{ scaleY: push.value }] }));
+  const sproutStyle = useAnimatedStyle(() => ({ opacity: sprouted.value, transform: pivot(w, size, .5, SEED_SOIL, [{ scaleY: push.value }]) }));
   const bloomStyle = useAnimatedStyle(() => ({ opacity: bloom.value, transform: [{ translateY: (1 - bloom.value) * 10 }, { scale: .92 + .08 * bloom.value }] }));
 
   const frame = { position: 'absolute' as const, width: w, height: size };
@@ -89,10 +91,10 @@ export function SeedDrop({ size = 240, run, kind, onImpact, onDone, from = 'left
     {kind && <Animated.View style={[{ position: 'absolute', left: -w * .1, right: -w * .1, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'flex-end' }, bloomStyle]}>
       <Image source={plantArt[kind]} resizeMode="contain" style={{ width: size * 1.02, height: size * 1.02 }} />
     </Animated.View>}
-    <Animated.View style={[frame, { transformOrigin: 'bottom' }, potStyle]}>
+    <Animated.View style={[frame, potStyle]}>
       <Image source={EMPTY} resizeMode="contain" style={frame} />
       <Animated.Image source={SEEDED} resizeMode="contain" style={[frame, seededStyle]} />
-      <Animated.Image source={SPROUTED} resizeMode="contain" style={[frame, { transformOrigin: `50% ${SEED_SOIL * 100}%` }, sproutStyle]} />
+      <Animated.Image source={SPROUTED} resizeMode="contain" style={[frame, sproutStyle]} />
     </Animated.View>
     <View pointerEvents="none" style={{ position: 'absolute', left: w / 2 - 3, top: size * SEED_SOIL - 4 }}>
       {[-46, -24, 20, 40, -8].map((dx, i) => <Speck key={i} dx={dx} delay={SEED_TIMING.impact + i * 22} run={run} colour={c.soil[2 + (i % 2)]} />)}

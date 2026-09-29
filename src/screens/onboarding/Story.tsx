@@ -13,6 +13,7 @@ import { fonts, radius, space } from '../../ds/tokens';
 import { SourceMark, T, Tap } from '../../ds/components';
 import { Ground } from '../../ds/plant';
 import { t } from '../../i18n';
+import { pivot } from '../../ds/motion';
 
 /** One image per stage (seed, sprout, young plant, bud, bloom), all on the same canvas. */
 export const flowerStages: number[] = [
@@ -37,8 +38,8 @@ function StageImage({ src, on, w, h }: { src: number; on: boolean; w: number; h:
   const p = useSharedValue(on ? 1 : 0);
   useEffect(() => { p.value = reduceMotion ? (on ? 1 : 0) : withTiming(on ? 1 : 0, { duration: on ? 420 : 320 }); }, [on]);
   // Cross-fade with a small rise; no scale from zero (it flickers on iOS).
-  const style = useAnimatedStyle(() => ({ opacity: p.value, transform: [{ scale: .96 + .04 * p.value }] }));
-  return <Animated.Image source={src} resizeMode="contain" style={[{ position: 'absolute', width: w, height: h, transformOrigin: 'bottom' }, style]} />;
+  const style = useAnimatedStyle(() => ({ opacity: p.value, transform: pivot(w, h, .5, 1, [{ scale: .96 + .04 * p.value }]) }));
+  return <Animated.Image source={src} resizeMode="contain" style={[{ position: 'absolute', width: w, height: h }, style]} />;
 }
 
 function Flower({ stage, size }: { stage: number; size: number }) {
@@ -73,10 +74,12 @@ function Line({ on, from, to }: { on: boolean; from: { x: number; y: number }; t
   useEffect(() => { p.value = reduceMotion ? (on ? 1 : .02) : withTiming(on ? 1 : .02, { duration: 380, easing: Easing.out(Easing.cubic) }); }, [on]);
   const vertical = from.x === to.x;
   const len = vertical ? Math.abs(to.y - from.y) : Math.abs(to.x - from.x);
-  const style = useAnimatedStyle(() => ({ opacity: on ? 1 : 0, transform: [vertical ? { scaleY: p.value } : { scaleX: p.value }] }));
+  const style = useAnimatedStyle(() => ({ opacity: on ? 1 : 0, transform: vertical
+    ? pivot(1.5, len, .5, from.y > to.y ? 1 : 0, [{ scaleY: p.value }])
+    : pivot(len, 1.5, from.x < to.x ? 0 : 1, .5, [{ scaleX: p.value }]) }));
   const box = vertical
-    ? { left: from.x - .75, top: Math.min(from.y, to.y), width: 1.5, height: len, transformOrigin: from.y > to.y ? 'bottom' : 'top' }
-    : { top: from.y - .75, left: Math.min(from.x, to.x), height: 1.5, width: len, transformOrigin: from.x < to.x ? 'left' : 'right' };
+    ? { left: from.x - .75, top: Math.min(from.y, to.y), width: 1.5, height: len }
+    : { top: from.y - .75, left: Math.min(from.x, to.x), height: 1.5, width: len };
   return <Animated.View pointerEvents="none" style={[{ position: 'absolute', backgroundColor: c.ink2 }, box as any, style]} />;
 }
 

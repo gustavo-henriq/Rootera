@@ -18,6 +18,7 @@ import { Glyph } from '../../ds/icons';
 import { Candidate } from '../../api';
 import { Chip, Glass, SourceMark, T, Tap } from '../../ds/components';
 import { t } from '../../i18n';
+import { pivot } from '../../ds/motion';
 
 export type Slot = 'light' | 'pot' | 'stage' | 'watered' | 'soil';
 // Soil comes last: it is the one thing you go and check, and it becomes the first observation.
@@ -43,10 +44,11 @@ function Note({ slot, side, top, value, active, onPress, anchor, width }: { slot
   const line = useSharedValue(reduceMotion ? 1 : .02);
   useEffect(() => { if (!reduceMotion) line.value = withDelay(140, withSpring(1, springs.smooth)); }, []);
   const len = side === 'left' ? anchor - boxW : width - boxW - anchor;
-  const draw = useAnimatedStyle(() => ({ transform: [{ scaleX: line.value }] }));
+  const lineW = Math.max(0, len);
+  const draw = useAnimatedStyle(() => ({ transform: pivot(lineW, 1.5, side === 'left' ? 0 : 1, .5, [{ scaleX: line.value }]) }));
   const label = t(LABEL[slot]);
   return <>
-    <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: top + 25, left: side === 'left' ? boxW : anchor, width: Math.max(0, len), height: 1.5, backgroundColor: c.ink2, transformOrigin: side === 'left' ? 'left' : 'right' }, draw]} />
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: top + 25, left: side === 'left' ? boxW : anchor, width: lineW, height: 1.5, backgroundColor: c.ink2 }, draw]} />
     <View pointerEvents="none" style={{ position: 'absolute', top: top + 21, left: anchor - 4, width: 9, height: 9, borderRadius: 5, backgroundColor: c.ink }} />
     <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(320)} style={{ position: 'absolute', top, [side]: 0, width: boxW }}>
       <Tap label={value ? `${label}: ${value}. ${t('Change')}` : `${label}. ${t('Choose below')}`} onPress={onPress} ring={radius.input}>
@@ -72,12 +74,12 @@ function Specimen({ kind, size }: { kind: PlantKind | null; size: SharedValue<nu
     if (!reduceMotion) grow.value = withSpring(1, { damping: 13, stiffness: 120, mass: .9 });
   }, [kind]);
   const box = useAnimatedStyle(() => ({ width: size.value, height: size.value }));
-  const plantStyle = useAnimatedStyle(() => ({ opacity: Math.min(1, grow.value * 2), transform: [{ scaleY: .25 + .75 * grow.value }, { scaleX: .7 + .3 * grow.value }] }));
+  const plantStyle = useAnimatedStyle(() => ({ opacity: Math.min(1, grow.value * 2), transform: pivot(size.value, size.value, .5, 1, [{ scaleY: .25 + .75 * grow.value }, { scaleX: .7 + .3 * grow.value }]) }));
   const shadowStyle = useAnimatedStyle(() => ({ width: size.value * .56, height: size.value * .06, bottom: -size.value * .03 }));
   return <Animated.View style={[{ alignItems: 'center' }, box]}>
     <Animated.View style={[{ position: 'absolute', borderRadius: 400, backgroundColor: c.hairline }, shadowStyle]} />
     <Image source={plantArt[kind ?? 'monstera']} resizeMode="contain" tintColor={c.sunken} accessibilityLabel={kind ? undefined : t('A plant silhouette, waiting for you to choose')} style={{ position: 'absolute', width: '100%', height: '100%', opacity: kind ? 0 : 1 }} />
-    {kind && <Animated.View key={kind} style={[{ position: 'absolute', width: '100%', height: '100%', transformOrigin: 'bottom' }, plantStyle]}>
+    {kind && <Animated.View key={kind} style={[{ position: 'absolute', width: '100%', height: '100%' }, plantStyle]}>
       <Image source={plantArt[kind]} resizeMode="contain" accessibilityLabel={speciesLabel(kind)} style={{ width: '100%', height: '100%' }} />
     </Animated.View>}
   </Animated.View>;

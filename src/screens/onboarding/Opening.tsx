@@ -9,12 +9,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../ds/theme';
 import { space } from '../../ds/tokens';
 import { Btn } from '../../ds/components';
-import { SEED_AT, SeedDrop } from '../../ds/SeedDrop';
+import { SEED_AT, SEED_RATIO, SeedDrop } from '../../ds/SeedDrop';
+import { pivot } from '../../ds/motion';
 import { LogoSprout } from '../../ds/LogoSprout';
 import { revealDuration, TextReveal } from '../../ds/TextReveal';
 import { SOIL_DIVE, SoilLayer } from './Soil';
 import { t } from '../../i18n';
 
+const POT_H = 280;
+const POT_W = POT_H * SEED_RATIO;
 const LINE = 'Stop guessing what your plant needs.';
 const SUB = 'Rootera learns one plant at a time: its spot, its pot and the care you give it.';
 
@@ -33,7 +36,7 @@ export function Opening({ onContinue }: { onContinue: () => void }) {
   const logoStyle = useAnimatedStyle(() => ({ opacity: fade.value, transform: [{ translateY: -rise.value * 64 }] }));
   const fadeStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
   // The pot grows around its soil line, so the camera ends up inside the soil.
-  const potStyle = useAnimatedStyle(() => ({ transform: [{ scale: zoom.value }] }));
+  const potStyle = useAnimatedStyle(() => ({ transform: pivot(POT_W, POT_H, SEED_AT.x, SEED_AT.y, [{ scale: zoom.value }]) }));
 
   const whenLogoDone = () => {
     // The wordmark glides up (no spring) to make room for the line below it.
@@ -63,8 +66,8 @@ export function Opening({ onContinue }: { onContinue: () => void }) {
           <TextReveal text={t(SUB)} v="callout" tone="ink2" center delay={revealDuration(t(LINE))} perWord={35} />
         </View>}
       </Animated.View>
-      <Animated.View style={[{ marginTop: -space[4], transformOrigin: `${SEED_AT.x * 100}% ${SEED_AT.y * 100}%` }, potStyle]}>
-        <SeedDrop size={280} run={1} onImpact={() => setLogoRun(1)} />
+      <Animated.View style={[{ marginTop: -space[4], width: POT_W, height: POT_H }, potStyle]}>
+        <SeedDrop size={POT_H} run={1} onImpact={() => setLogoRun(1)} />
       </Animated.View>
     </View>
     {ready && <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(1900).duration(400)} style={fadeStyle}>
