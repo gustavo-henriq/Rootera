@@ -19,6 +19,7 @@ import { Glyph } from '../../ds/icons';
 import { Candidate } from '../../api';
 import { Chip, Glass, SourceMark, T, Tap } from '../../ds/components';
 import { t } from '../../i18n';
+import { IdentifyResult } from '../Identify';
 import { pivot } from '../../ds/motion';
 
 export type Slot = 'light' | 'pot' | 'stage' | 'watered' | 'soil';
@@ -94,9 +95,9 @@ export interface Choice { kind: PlantKind; name: string; latin: string; via: 'fe
 export type IdState = 'idle' | 'loading' | 'off' | 'error';
 
 /** Search, photo identification and "add by name", above the carousel. */
-function Finder({ q, setQ, choice, onChoose, photo, idState, matches, onCamera }: {
+function Finder({ q, setQ, choice, onChoose, photo, idState, matches, attempt, onCamera }: {
   q: string; setQ: (q: string) => void; choice: Choice | null; onChoose: (c: Choice) => void;
-  photo?: string; idState: IdState; matches: Candidate[] | null; onCamera: () => void;
+  photo?: string; idState: IdState; matches: Candidate[] | null; attempt: number; onCamera: () => void;
 }) {
   const { c } = useTheme();
   const needle = q.trim().toLowerCase();
@@ -124,14 +125,8 @@ function Finder({ q, setQ, choice, onChoose, photo, idState, matches, onCamera }
     {!!photo && <View style={{ flexDirection: 'row', gap: space[3], alignItems: 'center' }}>
       <Image source={{ uri: photo }} accessibilityLabel={t("Your photo")} style={{ width: 52, height: 64, borderRadius: radius.input }} />
       <View style={{ flex: 1, gap: space[1] }}>
-        {idState === 'loading' && <T v="subhead" tone="ink2">{t("Looking for matches…")}</T>}
-        {idState === 'off' && <T v="footnote" tone="ink2">{t('Photo ID is off in this preview. Pick the plant below.')}</T>}
-        {idState === 'error' && <T v="footnote" tone="danger">{t("Identification didn’t work. Choose the plant below.")}</T>}
-        {matches && !matches.length && <T v="footnote" tone="ink2">{t("No confident match. Choose the plant below.")}</T>}
-        {!!matches?.length && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-          {matches.slice(0, 3).map(m => <Chip key={m.scientific_name} label={m.common_name || m.scientific_name} selected={choice?.latin === m.scientific_name}
-            onPress={() => onChoose({ kind: m.kind, name: m.common_name || m.scientific_name, latin: m.scientific_name, via: 'photo' })} />)}
-        </View>}
+        <IdentifyResult state={idState} matches={matches} attempt={attempt} onRetry={onCamera} selected={choice?.latin}
+          onPick={m => onChoose({ kind: m.kind, name: m.common_name || m.scientific_name, latin: m.scientific_name, via: 'photo' })} />
       </View>
     </View>}
     <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: space[2], paddingRight: space[4] }} style={{ marginHorizontal: -space.gutter, paddingLeft: space.gutter, flexGrow: 0 }}>
@@ -145,10 +140,10 @@ function Finder({ q, setQ, choice, onChoose, photo, idState, matches, onCamera }
   </View>;
 }
 
-export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing, setEditing, photo, idState, matches, onCamera, layers, onLayers }: {
+export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing, setEditing, photo, idState, matches, attempt, onCamera, layers, onLayers }: {
   width: number; choice: Choice | null; onChoose: (c: Choice) => void; layers: Partial<SoilLayers>; onLayers: (l: Partial<SoilLayers>) => void;
   answers: Answers; onAnswer: (s: Slot, i: number) => void; editing: Slot | null; setEditing: (s: Slot) => void;
-  photo?: string; idState: IdState; matches: Candidate[] | null; onCamera: () => void;
+  photo?: string; idState: IdState; matches: Candidate[] | null; attempt: number; onCamera: () => void;
 }) {
   const kind = choice?.kind ?? null;
   const [q, setQ] = useState('');
@@ -181,7 +176,7 @@ export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing
 
   return <View style={{ gap: space[4] }}>
     {!plate && <Animated.View exiting={reduceMotion ? undefined : FadeOutUp.duration(260)}>
-      <Finder q={q} setQ={setQ} choice={choice} onChoose={onChoose} photo={photo} idState={idState} matches={matches} onCamera={onCamera} />
+      <Finder q={q} setQ={setQ} choice={choice} onChoose={onChoose} photo={photo} idState={idState} matches={matches} attempt={attempt} onCamera={onCamera} />
     </Animated.View>}
 
     <Animated.View layout={reduceMotion ? undefined : LinearTransition.duration(420)} style={[{ width, alignItems: 'center' }, areaStyle]}>

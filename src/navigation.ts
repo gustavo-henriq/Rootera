@@ -8,8 +8,9 @@ export type Tabs = { Today: undefined; Plants: undefined; Journal: JournalParams
 export type Routes = {
   Welcome: { preview?: boolean; photo?: string } | undefined;
   Main: { tab?: keyof Tabs } | undefined;
-  AddPlant: { first?: boolean; photo?: string } | undefined;
-  Camera: { first?: boolean; returnTo?: 'Welcome' } | undefined;
+  /** `attempt`: which photo this is (up to three before the name is asked for). */
+  AddPlant: { first?: boolean; photo?: string; attempt?: number } | undefined;
+  Camera: { first?: boolean; returnTo?: 'Welcome'; attempt?: number } | undefined;
   PlantForm: { kind: PlantKind; species: string; name: string; photo?: string; first?: boolean } | { editId: string; /** Open on the pot and soil details. */ pot?: boolean };
   Plant: { id: string; from?: { x: number; y: number; w: number; h: number }; saved?: { title: string; from?: string; to?: string; undo?: { ids: string[]; stage?: string }; milestone?: string } };
   Care: { id: string; mode: 'checkin' | 'soil' | 'water' | 'visual' };

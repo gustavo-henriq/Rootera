@@ -12,6 +12,7 @@ import { Page } from '../ds/Page';
 import { Ground, PlantArt, plantArt } from '../ds/plant';
 import { Stagger } from '../ds/motion';
 import { photoData } from './Camera';
+import { IdentifyResult, MAX_ATTEMPTS } from './Identify';
 import { t } from '../i18n';
 
 /** Specimen swatch: the plant rising out of its tile, a label underneath. */
@@ -32,6 +33,7 @@ export function AddPlant({ navigation, route }: Props<'AddPlant'>) {
   const { garden } = useStore();
   const { c } = useTheme();
   const photo = route.params?.photo;
+  const attempt = route.params?.attempt ?? 1;
   const [q, setQ] = useState('');
   const [matches, setMatches] = useState<Candidate[] | null>(null);
   const [idState, setIdState] = useState<'idle' | 'loading' | 'off' | 'error'>('idle');
@@ -52,7 +54,8 @@ export function AddPlant({ navigation, route }: Props<'AddPlant'>) {
     const t = q.trim().toLowerCase();
     return t ? catalog.filter(s => matchesSpecies(q, s)) : catalog;
   }, [q]);
-  const choose = (s: Pick<Species, 'kind' | 'name' | 'latin'>) => navigation.navigate('PlantForm', { kind: s.kind, species: s.latin, name: t(s.name), photo });
+  // The photo only identifies; the plant keeps Rootera's illustration.
+  const choose = (s: Pick<Species, 'kind' | 'name' | 'latin'>) => navigation.navigate('PlantForm', { kind: s.kind, species: s.latin, name: t(s.name) });
   const custom = () => choose({ kind: 'other', name: q.trim() || t('My plant'), latin: q.trim() || 'Unknown species' });
 
   if (atCapacity(garden)) {
@@ -75,20 +78,15 @@ export function AddPlant({ navigation, route }: Props<'AddPlant'>) {
     {photo && <View style={{ flexDirection: 'row', gap: space[4], alignItems: 'center' }}>
       <Image source={{ uri: photo }} style={{ width: 88, height: 110, borderRadius: radius.control }} />
       <View style={{ flex: 1, gap: space[2] }}>
-        {idState === 'loading' && <T v="subhead" tone="ink2">{t("Looking for matches with Pl@ntNet…")}</T>}
-        {idState === 'off' && <T v="subhead" tone="ink2">{t("Photo ID is off in this version. The photo stays as your plant’s picture.")}</T>}
-        {idState === 'error' && <T v="subhead" tone="danger">{t("Identification failed. Choose the plant below instead.")}</T>}
-        {matches && !matches.length && <T v="subhead" tone="ink2">{t("No confident match. Choose the plant below.")}</T>}
-        {matches?.map(m => <Tap key={m.scientific_name} label={`${m.common_name}, ${m.scientific_name}`} onPress={() => choose({ kind: m.kind, name: m.common_name, latin: m.scientific_name })} ring={radius.inner} style={{ paddingVertical: 4 }}>
-          <T v="headline">{m.common_name}</T>
-          <T v="latin" tone="ink2" style={{ fontSize: 15 }}>{t('{name}, possible match', { name: m.scientific_name })}</T>
-        </Tap>)}
+        <IdentifyResult state={idState} matches={matches} attempt={attempt}
+          onRetry={() => navigation.replace('Camera', { attempt: Math.min(MAX_ATTEMPTS, attempt + 1) })}
+          onPick={m => choose({ kind: m.kind, name: m.common_name || m.scientific_name, latin: m.scientific_name })} />
       </View>
     </View>}
 
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], borderBottomWidth: 1, borderColor: c.ink3 }}>
       <Glyph name="search" size={20} tone={c.ink2} />
-      <TextInput accessibilityLabel={t("Search plants")} value={q} onChangeText={setQ} placeholder={t("Monstera, pothos, babosa…")} placeholderTextColor={c.ink3} returnKeyType="search" maxFontSizeMultiplier={1.5}
+      <TextInput accessibilityLabel={t("Search plants")} autoFocus={!!photo && attempt >= MAX_ATTEMPTS && (idState === 'error' || (matches !== null && !matches.some(m => m.score >= .2)))} value={q} onChangeText={setQ} placeholder={t("Monstera, pothos, babosa…")} placeholderTextColor={c.ink3} returnKeyType="search" maxFontSizeMultiplier={1.5}
         style={[type.body, { flex: 1, minHeight: 52, color: c.ink }, Platform.OS === 'web' && ({ outlineStyle: 'none' } as any)]} />
       {!photo && <Tap label={t("Identify from a photo")} onPress={() => navigation.navigate('Camera')} ring={radius.inner} style={{ height: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: space[2] }}>
         <Glyph name="camera" size={20} tone={c.leafText} /><T v="subhead" tone="leafText" style={{ fontFamily: fonts.medium }}>{t("Photo")}</T>

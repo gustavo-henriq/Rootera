@@ -30,7 +30,7 @@ export function Camera({ navigation, route }: Props<'Camera'>) {
     if (base64) photoData.set(uri, base64);
     // The first-plant step opens the camera too; the photo goes back to where it was asked for.
     if (route.params?.returnTo === 'Welcome') navigation.popTo('Welcome', { photo: uri }, { merge: true });
-    else navigation.replace('AddPlant', { photo: uri });
+    else navigation.replace('AddPlant', { photo: uri, attempt: route.params?.attempt ?? 1 });
   };
   const capture = async () => {
     if (busy || !camera.current || !ready) return;

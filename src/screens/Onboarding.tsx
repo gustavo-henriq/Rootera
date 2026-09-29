@@ -62,6 +62,8 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   const [editing, setEditing] = useState<Slot | null>(null);
   const [idState, setIdState] = useState<IdState>('idle');
   const [matches, setMatches] = useState<Candidate[] | null>(null);
+  // Which photo this is: after three misses the name is asked for.
+  const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const leftCelebration = useRef(false);
@@ -77,9 +79,10 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   useEffect(() => { if (phase === 'steps') tr('onboarding_step_viewed', { step: STEP_NAMES[step] }); }, [step, phase]);
   useEffect(() => { if (phase === 'plan') tr('onboarding_step_viewed', { step: 'plan' }); }, [phase]);
 
-  // A photo from the camera: identify it (free), and keep it as the plant's picture.
+  // A photo from the camera: identify it (free). It stays only for identifying; the plant keeps its illustration.
   useEffect(() => {
     if (!photo) return;
+    setAttempt(a => a + 1);
     const data = photoData.get(photo);
     if (!garden.integrations.identification || !data) { setIdState('off'); setMatches(null); return; }
     let live = true;
@@ -120,7 +123,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
       await saveProfile({ name: garden.name, onboarded: true, reminders: false, caregiver: { experience: experience || 'first', detail }, nudges: { kinds: ['soil_check'], time: garden.nudges?.time ?? '08:00' } });
       const light = answers.light !== undefined ? LIGHT[answers.light].value : 'Not sure';
       const pot = answers.pot !== undefined ? POTS[answers.pot] : POTS[3];
-      const p: Plant = { id: ids.current.plant, kind: choice.kind, species: choice.latin, name: choice.name, photo: photo ?? null, room: 'Not sure', pot: 'Not sure', light, stage: answers.stage !== undefined ? STAGES[answers.stage].value : 'Not sure', drainage: pot.drainage, self_watering: pot.self, environment: { location: 'Indoors', near_window: 'Not sure' } };
+      const p: Plant = { id: ids.current.plant, kind: choice.kind, species: choice.latin, name: choice.name, photo: null, room: 'Not sure', pot: 'Not sure', light, stage: answers.stage !== undefined ? STAGES[answers.stage].value : 'Not sure', drainage: pot.drainage, self_watering: pot.self, environment: { location: 'Indoors', near_window: 'Not sure' } };
       if (!garden.plants.some(x => x.id === p.id)) await addPlant(p);
       // A remembered watering is kept as approximate, and always before today's soil check.
       const days = answers.watered !== undefined ? WATERED[answers.watered].days : null;
@@ -171,7 +174,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
       { label: t('Last watered'), value: val('watered', WATERED), source: 'observed' },
       { label: t('Soil today'), value: soilChecked ? layersSummary(layers) : t('Not sure yet'), source: 'observed' },
     ];
-    return <PlanReveal kind={choice.kind} name={choice.name} photo={photo} rows={rows} twin={garden.twins[ids.current.plant]} onContinue={finish} />;
+    return <PlanReveal kind={choice.kind} name={choice.name} rows={rows} twin={garden.twins[ids.current.plant]} onContinue={finish} />;
   }
 
   const titles: Record<number, [string, string]> = {
@@ -227,7 +230,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
           <GlassChoice wide on={experience === 'many'} onPress={() => chooseExperience('many')} label={experienceLabel.many} hint={experienceHint.many} art={experiences[2].art} scene={experiences[2].scene} />
         </Animated.View>}
         {!!width && step === 3 && <FirstPlant width={width} layers={layers} onLayers={setLayers} choice={choice} onChoose={setChoice} answers={answers} onAnswer={answer} editing={editing} setEditing={setEditing}
-          photo={photo} idState={idState} matches={matches} onCamera={() => navigation.navigate('Camera', { returnTo: 'Welcome' })} />}
+          photo={photo} idState={idState} matches={matches} attempt={Math.max(1, attempt)} onCamera={() => navigation.navigate('Camera', { returnTo: 'Welcome' })} />}
       </Animated.View>
       </Pressable>
     </ScrollView>
