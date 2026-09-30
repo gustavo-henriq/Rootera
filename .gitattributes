@@ -1,0 +1,7 @@
+# LF everywhere, so tools that read the source (tests/i18n.cjs) see the same text on every OS.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.webp binary
+*.ttf binary
+*.db binary

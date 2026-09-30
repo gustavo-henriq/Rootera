@@ -10,7 +10,8 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
-const read = f => fs.readFileSync(path.join(root, f), 'utf8');
+// CRLF (a Windows checkout) reads as LF, so the extraction below sees the same text everywhere.
+const read = f => fs.readFileSync(path.join(root, f), 'utf8').replace(/\r\n/g, '\n');
 const files = [];
 (function walk(dir) {
   for (const e of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
@@ -80,7 +81,7 @@ for (const [f, names] of Object.entries(TABLES)) {
 // Stage phrases and the server's words that the app translates (titles in change reports, basis).
 for (const s of ['Seedling', 'Young', 'Mature']) add(`${s} plant`, 'src/screens/Plant.tsx#where');
 for (const s of ['Bright, indirect', 'Low', 'Indirect']) add(s, 'src/screens/Plant.tsx#light');
-const guidance = fs.readFileSync(path.join(root, 'backend/app/guidance.py'), 'utf8');
+const guidance = fs.readFileSync(path.join(root, 'backend/app/guidance.py'), 'utf8').replace(/\r\n/g, '\n');
 for (const m of guidance.matchAll(/title, action = _\('([^']+)'/g)) add(m[1], 'guidance.py#title');
 for (const m of guidance.matchAll(/'(Still moist|The soil is wet)'/g)) add(m[1], 'guidance.py#title');
 for (const m of guidance.matchAll(/basis = \[([^\]]*)\]/g)) for (const b of m[1].matchAll(/'([^']+)'/g)) add(b[1], 'guidance.py#basis');
