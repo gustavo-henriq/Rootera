@@ -1,25 +1,27 @@
 /**
- * The Shipaton lab's opening story: three animated scenes that explain the method before
- * the simulation. Drawn on the lab's dark stage (see Lab.tsx), with shapes drawn in SVG
- * and moved by Reanimated; with Reduce Motion each scene shows its end state.
+ * The Shipaton lab's opening story, drawn on the lab's dark stage (see Lab.tsx) with SVG
+ * shapes moved by Reanimated. With Reduce Motion each scene shows its end state.
  *
- * 1. A watering makes all the difference: a can pours on the plant, the soil darkens.
- * 2. One cycle: after a watering the soil goes from wet to moist to dry. Rain, a cloud and
- *    the sun stand for the soil drying, in step with the three layers of the pot. They are
- *    not the weather (Rootera does not use the weather yet), and the scene says so.
- * 3. Three cycles to know the plant: the first two are observations mixed with the
- *    species estimate; from the third, the window comes from this plant alone, and it
- *    narrows as the circles fill.
+ * 1. The watering becomes the weather (one continuous scene, played once, then held):
+ *    a watering can pours on the plant; its outline turns into a rain cloud that keeps
+ *    the rain going; the rain stops, the cloud lightens and drifts away, and the sun it
+ *    was hiding comes out. Three captions follow the same timeline.
+ * 2. Three cycles to know the plant: still analysing, getting specific, the pattern; the
+ *    window narrows as the circles fill.
+ *
+ * The can-to-cloud change is a real change of shape: both outlines are sampled into the
+ * same number of points, and on every frame the outline is drawn from points moved from
+ * one to the other (an animated SVG prop, like the gauges in onboarding/shared.tsx).
  */
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import Animated, { cancelAnimation, Easing, interpolateColor, SharedValue, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
+import Animated, { cancelAnimation, Easing, FadeIn, SharedValue, useAnimatedProps, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Svg, { Circle, Defs, Line, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { pivot } from '../ds/motion';
 import { PlantArt } from '../ds/plant';
 import { useTheme } from '../ds/theme';
-import { radius, space } from '../ds/tokens';
-import { T } from '../ds/components';
+import { fonts, radius, space } from '../ds/tokens';
+import { T, Tap } from '../ds/components';
 import { t } from '../i18n';
 
 export const STAGE = { text: '#F4F6F2', dim: 'rgba(244,246,242,.64)', faint: 'rgba(244,246,242,.38)', line: 'rgba(255,255,255,.14)', leaf: '#B6E07C', water: '#86BCCB', sun: '#F2D16B',
@@ -27,59 +29,178 @@ export const STAGE = { text: '#F4F6F2', dim: 'rgba(244,246,242,.64)', faint: 'rg
 
 /* ------------------------------------------------------------------ scene 1: the watering becomes the weather */
 
-// One timeline (a 10 s loop) drives the whole scene, so nothing drifts apart:
-//   .00-.06 the can tilts   .06-.30 it pours   .30-.36 it straightens
-//   .36-.46 the can turns into a rain cloud   .46-.66 it rains on the plant
-//   .66-.76 the rain stops: cloudy   .76-.86 the cloud gives way to the sun   .86-1 sun
-// The soil in the pot follows: wet while watered and rained on, moist under the cloud,
-// dry in the sun. The captions change with it (they are part of the scene).
-const LOOP = 10000;
-const TILT = 38; // degrees, clockwise: the spout goes down
-const CAN = { x: 14, y: 18, w: 110, h: 70 };
-const PIVOT = { x: 36, y: 42 };  // the can turns around its body
-const TIP = { x: 105, y: 17 };   // the spout's mouth, in the can's box
-const CLOUD = { x: 80, y: 6, w: 110, h: 70 };
-const SOIL_Y = 166;              // where the water meets the soil
-const W = 240, H = 230;
+type Pt = [number, number];
+const W = 290, H = 270;
+// The plant stands in the middle; the can comes from the left; the sky has room above.
+const PLANT = { x: 70, y: 104, size: 150 };
+// Measured on the monstera art (354 x 440, contained in the square): the soil's centre is at
+// 68% of the height and the plant's centre line; drops end there, never over the pot.
+const SOIL = { x: PLANT.x + 76, y: PLANT.y + 101 };
+const CAN = { x: 10, y: 54, w: 110, h: 70 };
+const PIVOT: Pt = [36, 42];   // the can turns around its body
+const TIP: Pt = [105, 17];    // the spout's mouth, in the can's box
+const TILT = 32;              // degrees, clockwise: the spout goes down
+const RAIN_GREY = '#8FA3AE', LIGHT_GREY = '#D3DAD6';
+// The cloud path's box (x 6-90, y 18-58), scaled and centred over the plant.
+const CLOUD_K = 1.4;
+const CLOUD_AT = { x: SOIL.x - (84 * CLOUD_K) / 2, y: 50 };
+const SUN = { x: SOIL.x, y: 80, r: 24 };
+// The sun's warm light: an oval that fades out before the scene's edges (a parent may clip them).
+const GLOW = { rx: 120, ry: SUN.y };
 
-const band = (p: number, a: number, b: number) => { 'worklet'; return Math.min(1, Math.max(0, (p - a) / (b - a))); };
-/** The can's tilt (0-1). */
-function tiltAt(p: number) {
+// The timeline, in ms: slow enough to follow, played once and held on the sun.
+const TL = {
+  tilt: [300, 1700], pour: [1400, 5200], back: [5100, 6100],
+  morph: [6300, 8700], handle: [6300, 7000],
+  rain: [8100, 11700], clear: [11500, 12700], drift: [12500, 15300], sun: [12100, 13300], end: 15800,
+};
+const CAPTION_AT = [0, 6200, 12500];
+
+/* The two outlines, sampled the same way (clockwise from the top-left). */
+const arcPts = (cx: number, cy: number, r: number, a0: number, a1: number, n = 8): Pt[] =>
+  Array.from({ length: n + 1 }, (_, i) => { const a = ((a0 + ((a1 - a0) * i) / n) * Math.PI) / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)] as Pt; });
+const linePts = (a: Pt, b: Pt, n = 6): Pt[] => Array.from({ length: n + 1 }, (_, i) => [a[0] + ((b[0] - a[0]) * i) / n, a[1] + ((b[1] - a[1]) * i) / n] as Pt);
+const bezPts = (p0: Pt, p1: Pt, p2: Pt, p3: Pt, n = 16): Pt[] => Array.from({ length: n + 1 }, (_, i) => {
+  const u = i / n, v = 1 - u;
+  return [v * v * v * p0[0] + 3 * v * v * u * p1[0] + 3 * v * u * u * p2[0] + u * u * u * p3[0], v * v * v * p0[1] + 3 * v * v * u * p1[1] + 3 * v * u * u * p2[1] + u * u * u * p3[1]] as Pt;
+});
+
+/** Evenly spaced points along a closed outline, starting at its top-left. */
+function resample(pts: Pt[], n: number): Pt[] {
+  const ring = [...pts, pts[0]];
+  const len = [0];
+  for (let i = 1; i < ring.length; i++) len.push(len[i - 1] + Math.hypot(ring[i][0] - ring[i - 1][0], ring[i][1] - ring[i - 1][1]));
+  const total = len[len.length - 1];
+  const out: Pt[] = [];
+  let j = 1;
+  for (let k = 0; k < n; k++) {
+    const d = (k * total) / n;
+    while (len[j] < d) j++;
+    const f = (d - len[j - 1]) / (len[j] - len[j - 1] || 1);
+    out.push([ring[j - 1][0] + (ring[j][0] - ring[j - 1][0]) * f, ring[j - 1][1] + (ring[j][1] - ring[j - 1][1]) * f]);
+  }
+  const xs = out.map(p => p[0]), ys = out.map(p => p[1]);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  let start = 0, best = Infinity;
+  out.forEach((p, i) => { const s = (p[0] - x0) / (x1 - x0) + (p[1] - y0) / (y1 - y0); if (s < best) { best = s; start = i; } });
+  return [...out.slice(start), ...out.slice(0, start)];
+}
+
+/** A smooth closed path through the points (quadratic curves between midpoints). */
+function smooth(pts: Pt[]): string {
   'worklet';
-  return p < .06 ? p / .06 : p < .30 ? 1 : p < .36 ? 1 - (p - .30) / .06 : 0;
+  const n = pts.length, f = (v: number) => v.toFixed(1);
+  let d = 'M' + f((pts[n - 1][0] + pts[0][0]) / 2) + ' ' + f((pts[n - 1][1] + pts[0][1]) / 2);
+  for (let i = 0; i < n; i++) {
+    const p = pts[i], q = pts[(i + 1) % n];
+    d += ' Q' + f(p[0]) + ' ' + f(p[1]) + ' ' + f((p[0] + q[0]) / 2) + ' ' + f((p[1] + q[1]) / 2);
+  }
+  return d + ' Z';
 }
-/** How wet the soil is (1 wet, .5 moist, 0 dry). */
-function wetAt(p: number) {
+
+const N = 96;
+// The can: a rounded body with the spout, in its own 110 x 70 box (the handle is drawn apart).
+const CAN_LOCAL = resample([
+  ...linePts([18, 22], [54, 22]), ...arcPts(54, 30, 8, -90, 0), ...linePts([62, 30], [62, 33], 1),
+  ...linePts([62, 33], [104, 14]), ...linePts([104, 14], [106, 20], 2), ...linePts([106, 20], [62, 43]),
+  ...linePts([62, 43], [62, 54], 3), ...arcPts(54, 54, 8, 0, 90), ...linePts([54, 62], [18, 62]),
+  ...arcPts(18, 54, 8, 90, 180), ...linePts([10, 54], [10, 30]), ...arcPts(18, 30, 8, 180, 270),
+], N);
+const CAN_SCENE: Pt[] = CAN_LOCAL.map(([x, y]) => [CAN.x + x, CAN.y + y]);
+// The cloud: the same outline as the lab's cloud, placed over the plant.
+const CLOUD_SCENE: Pt[] = resample([
+  ...bezPts([22, 58], [8, 58], [6, 40], [20, 38]), ...bezPts([20, 38], [20, 22], [42, 18], [48, 30]),
+  ...bezPts([48, 30], [56, 18], [78, 22], [76, 40]), ...bezPts([76, 40], [90, 40], [90, 58], [76, 58]),
+  ...linePts([76, 58], [22, 58], 12),
+].map(([x, y]) => [CLOUD_AT.x + (x - 6) * CLOUD_K, CLOUD_AT.y + (y - 18) * CLOUD_K] as Pt), N);
+const CLOUD_PATH = smooth(CLOUD_SCENE);
+const CAN_PATH = smooth(CAN_LOCAL);
+const CAN_OUTLINE = smooth(CAN_SCENE);
+/** The outline on its way from the can (0) to the cloud (1): every point eased across, lifted a little. */
+function morphAt(u: number) {
   'worklet';
-  if (p < .08) return .15 + .85 * (p / .08) * 0;
-  if (p < .66) return Math.min(1, .15 + (p - .08) / .1);
-  if (p < .76) return 1 - .5 * band(p, .66, .76);
-  if (p < .9) return .5 - .5 * band(p, .76, .9);
-  return 0;
+  const lift = 12 * Math.sin(Math.PI * u);
+  const pts: Pt[] = [];
+  for (let i = 0; i < CAN_SCENE.length; i++) {
+    const a = CAN_SCENE[i], b = CLOUD_SCENE[i];
+    pts.push([a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u - lift]);
+  }
+  return smooth(pts);
 }
 
-function CanDrop({ p, k }: { p: SharedValue<number>; k: number }) {
-  const style = useAnimatedStyle(() => {
-    const ang = (tiltAt(p.value) * TILT * Math.PI) / 180;
-    const vx = TIP.x - PIVOT.x, vy = TIP.y - PIVOT.y;
-    const x = CAN.x + PIVOT.x + vx * Math.cos(ang) - vy * Math.sin(ang);
-    const y = CAN.y + PIVOT.y + vx * Math.sin(ang) + vy * Math.cos(ang);
-    const on = p.value > .08 && p.value < .30;
-    const f = (p.value * 30 + k / 5) % 1;
-    return { opacity: on ? 1 - f * .3 : 0, transform: [{ translateX: x - 3 + f * 3 }, { translateY: y + f * (SOIL_Y - y) }] };
-  });
-  return <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: 6, height: 11, borderRadius: 3, backgroundColor: STAGE.water }, style]} />;
+/* The timeline's shapes of time. */
+const band = (v: number, a: number, b: number) => { 'worklet'; return Math.min(1, Math.max(0, (v - a) / (b - a))); };
+const sm = (u: number) => { 'worklet'; return u * u * (3 - 2 * u); };
+/** The can's tilt (0-1): in slowly, held while pouring, back slowly. */
+function tiltAt(ms: number) {
+  'worklet';
+  return ms < TL.back[0] ? sm(band(ms, TL.tilt[0], TL.tilt[1])) : 1 - sm(band(ms, TL.back[0], TL.back[1]));
+}
+/** Where the spout's mouth is, in the scene, at a given tilt. */
+function tipAt(tilt: number): Pt {
+  'worklet';
+  const a = (tilt * TILT * Math.PI) / 180, vx = TIP[0] - PIVOT[0], vy = TIP[1] - PIVOT[1];
+  return [CAN.x + PIVOT[0] + vx * Math.cos(a) - vy * Math.sin(a), CAN.y + PIVOT[1] + vx * Math.sin(a) + vy * Math.cos(a)];
+}
+/**
+ * A repeating fall inside a window: where this drop is in its current fall (0-1), or -1 when
+ * it isn't falling. A fall that started inside the window finishes after it (the water
+ * already in the air lands), so the stream starts and stops gently.
+ */
+function fallAt(ms: number, from: number, to: number, offset: number, duration: number) {
+  'worklet';
+  const rel = ms - from - offset;
+  if (rel < 0) return -1;
+  const n = Math.floor(rel / duration);
+  return from + offset + n * duration > to ? -1 : (rel - n * duration) / duration;
 }
 
-function RainDrop({ p, k }: { p: SharedValue<number>; k: number }) {
+const POUR_FALL = 1100, POUR_DROPS = 8;
+function PourDrop({ ms, k }: { ms: SharedValue<number>; k: number }) {
   const style = useAnimatedStyle(() => {
-    const on = p.value > .46 && p.value < .66;
-    const f = (p.value * 24 + k / 7) % 1;
-    const x = CLOUD.x + 22 + (k % 7) * 11;
-    const y0 = CLOUD.y + 56;
-    return { opacity: on ? 1 - f * .4 : 0, transform: [{ translateX: x }, { translateY: y0 + f * (SOIL_Y - y0) }] };
+    const f = fallAt(ms.value, TL.pour[0], TL.pour[1], (k * POUR_FALL) / POUR_DROPS, POUR_FALL);
+    if (f < 0) return { opacity: 0 };
+    // It left the spout when this fall began, from where the mouth was then.
+    const [x0, y0] = tipAt(tiltAt(ms.value - f * POUR_FALL));
+    // A short arc: steady forward, falling faster and faster, into the soil.
+    const x = x0 + (SOIL.x - 4 - x0) * f, y = y0 + (SOIL.y - y0) * (.2 * f + .8 * f * f);
+    return { opacity: f < .88 ? .95 : .95 * (1 - (f - .88) / .12), transform: [{ translateX: x - 2.5 }, { translateY: y - 4 }, { scaleY: 1 + .5 * f }] };
   });
-  return <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: 4, height: 10, borderRadius: 2, backgroundColor: STAGE.water }, style]} />;
+  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: 0, width: 5, height: 8, borderRadius: 3, backgroundColor: STAGE.water }, style]} />;
+}
+
+const RAIN_FALL = 950, RAIN_DROPS = 12;
+function RainDrop({ ms, k }: { ms: SharedValue<number>; k: number }) {
+  const x0 = CLOUD_AT.x + 16 + k * ((84 * CLOUD_K - 32) / (RAIN_DROPS - 1)) + ((k * 7) % 5) - 2;
+  const y0 = CLOUD_AT.y + 38 * CLOUD_K - 2 + ((k * 5) % 4);
+  // Some drops stop on the leaves, others reach the soil.
+  const y1 = SOIL.y - 4 - ((k * 13) % 34);
+  const offset = (k * 311) % RAIN_FALL;
+  const style = useAnimatedStyle(() => {
+    const f = fallAt(ms.value, TL.rain[0], TL.rain[1], offset, RAIN_FALL);
+    if (f < 0) return { opacity: 0 };
+    const y = y0 + (y1 - y0) * (.3 * f + .7 * f * f);
+    return { opacity: f < .85 ? .8 : .8 * (1 - (f - .85) / .15), transform: [{ translateX: x0 - 5 * f }, { translateY: y }, { rotate: '8deg' }] };
+  });
+  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: 0, width: 3, height: 10, borderRadius: 2, backgroundColor: STAGE.water }, style]} />;
+}
+
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+const FULL = { position: 'absolute', left: 0, top: 0, width: W, height: H } as const;
+
+/** The can turning into the cloud: one outline reshaped on every frame, its green going grey. */
+function Morph({ ms }: { ms: SharedValue<number> }) {
+  const shown = useAnimatedStyle(() => ({ opacity: ms.value >= TL.morph[0] && ms.value <= TL.morph[1] ? 1 : 0 }));
+  const grey = useAnimatedStyle(() => ({ opacity: sm(band(ms.value, TL.morph[0], TL.morph[1])) }));
+  const shape = useAnimatedProps(() => ({ d: morphAt(sm(band(ms.value, TL.morph[0], TL.morph[1]))) }));
+  const greyShape = useAnimatedProps(() => ({ d: morphAt(sm(band(ms.value, TL.morph[0], TL.morph[1]))) }));
+  return <Animated.View pointerEvents="none" style={[FULL, shown]}>
+    <Svg width={W} height={H}><AnimatedPath d={CAN_OUTLINE} animatedProps={shape} fill={STAGE.leaf} /></Svg>
+    {/* The same outline in the rain's grey fades in on top: the colour changes, the edge stays single. */}
+    <Animated.View style={[FULL, grey]}>
+      <Svg width={W} height={H}><AnimatedPath d={CAN_OUTLINE} animatedProps={greyShape} fill={RAIN_GREY} /></Svg>
+    </Animated.View>
+  </Animated.View>;
 }
 
 const CAPTIONS = [
@@ -88,14 +209,13 @@ const CAPTIONS = [
   { title: 'No need to work it out yourself', line: 'Your checks and your local weather do the sums.' },
 ];
 
-function Caption({ p, i }: { p: SharedValue<number>; i: number }) {
-  // Each caption fades in with its part of the scene and out before the next.
-  const [a, b] = [[0, .36], [.36, .76], [.76, 1.01]][i];
+function Caption({ ms, i }: { ms: SharedValue<number>; i: number }) {
+  const a = CAPTION_AT[i], b = CAPTION_AT[i + 1];
   const style = useAnimatedStyle(() => {
-    const v = p.value;
-    const fadeIn = i === 0 ? 1 : band(v, a, a + .04);
-    const fadeOut = i === 2 ? 1 - band(v, .97, 1) : 1 - band(v, b - .03, b);
-    return { opacity: v >= a - .001 && v < b ? Math.min(fadeIn, fadeOut) : 0 };
+    const v = ms.value;
+    const inn = i === 0 ? 1 : sm(band(v, a, a + 700));
+    const out = b === undefined ? 1 : 1 - sm(band(v, b - 500, b));
+    return { opacity: v < a ? 0 : Math.min(inn, out), transform: [{ translateY: 10 * (1 - inn) }] };
   });
   return <Animated.View style={[{ position: 'absolute', left: 0, right: 0, top: 0, gap: space[3] }, style]}>
     <T v="hero" style={{ color: STAGE.text }}>{t(CAPTIONS[i].title)}</T>
@@ -105,89 +225,109 @@ function Caption({ p, i }: { p: SharedValue<number>; i: number }) {
 
 export function WaterWeatherScene() {
   const { reduceMotion } = useTheme();
-  const p = useSharedValue(reduceMotion ? .5 : 0);
+  const ms = useSharedValue(reduceMotion ? TL.end : 0);
+  const spin = useSharedValue(0);
+  const [done, setDone] = useState(reduceMotion);
+  const play = () => {
+    setDone(false);
+    ms.value = 0;
+    ms.value = withTiming(TL.end, { duration: TL.end, easing: Easing.linear });
+  };
   useEffect(() => {
     if (reduceMotion) return;
-    p.value = withRepeat(withTiming(1, { duration: LOOP, easing: Easing.linear }), -1, false);
-    return () => cancelAnimation(p);
+    spin.value = withRepeat(withTiming(1, { duration: 14000, easing: Easing.linear }), -1, false);
+    play();
+    return () => { cancelAnimation(ms); cancelAnimation(spin); };
   }, []);
-  // The can: tilts and pours, then shrinks toward the cloud's place as the cloud grows there.
-  const can = useAnimatedStyle(() => {
-    const m = band(p.value, .36, .46);
-    const dx = (CLOUD.x + CLOUD.w / 2 - (CAN.x + CAN.w / 2)) * m, dy = (CLOUD.y + CLOUD.h / 2 - (CAN.y + CAN.h / 2)) * m;
-    return {
-      opacity: p.value < .36 ? 1 : p.value < .46 ? 1 - m : 0,
-      transform: [{ translateX: dx }, { translateY: dy }, ...pivot(CAN.w, CAN.h, PIVOT.x / CAN.w, PIVOT.y / CAN.h, [{ rotate: `${tiltAt(p.value) * TILT}deg` }, { scale: 1 - .4 * m }])],
-    };
-  });
-  // The cloud: grows out of the can, rains, lightens, then gives way to the sun.
+  // "See again" shows once the scene has played through.
+  useEffect(() => {
+    if (done || reduceMotion) return;
+    const timer = setTimeout(() => setDone(true), TL.end);
+    return () => clearTimeout(timer);
+  }, [done]);
+
+  const can = useAnimatedStyle(() => ({
+    opacity: ms.value < TL.morph[0] ? 1 : 0,
+    transform: pivot(CAN.w, CAN.h, PIVOT[0] / CAN.w, PIVOT[1] / CAN.h, [{ rotate: `${tiltAt(ms.value) * TILT}deg` }]),
+  }));
+  const handle = useAnimatedStyle(() => ({
+    opacity: ms.value < TL.handle[0] ? 1 : 1 - sm(band(ms.value, TL.handle[0], TL.handle[1])),
+    transform: pivot(CAN.w, CAN.h, PIVOT[0] / CAN.w, PIVOT[1] / CAN.h, [{ rotate: `${tiltAt(ms.value) * TILT}deg` }]),
+  }));
+  // The cloud takes over from the last frame and lightens as the rain stops. Then it drifts
+  // off whole to the right, uncovering the sun, and leaves the frame (a fading cloud would
+  // turn dark on this stage). On a wide screen it fades once it's far enough.
   const cloud = useAnimatedStyle(() => {
-    const m = band(p.value, .36, .46);
-    const out = band(p.value, .76, .84);
-    const fromX = (CAN.x + CAN.w / 2) - (CLOUD.x + CLOUD.w / 2), fromY = (CAN.y + CAN.h / 2) - (CLOUD.y + CLOUD.h / 2);
-    return {
-      opacity: p.value < .36 ? 0 : p.value < .76 ? m : 1 - out,
-      transform: [{ translateX: fromX * (1 - m) + 30 * out }, { translateY: fromY * (1 - m) }, { scale: .6 + .4 * m }],
-    };
+    const u = band(ms.value, TL.drift[0], TL.drift[1]);
+    const away = sm(u);
+    return { opacity: ms.value <= TL.morph[1] ? 0 : 1 - sm(band(u, .75, 1)), transform: [{ translateX: 300 * away }, { translateY: -6 * away }] };
   });
-  const rainy = useAnimatedStyle(() => ({ opacity: p.value < .66 ? 1 : 1 - band(p.value, .66, .72) }));
+  const lighter = useAnimatedStyle(() => ({ opacity: sm(band(ms.value, TL.clear[0], TL.clear[1])) }));
+  // The sun lights up behind the cloud (a sun fading in on its own would look dark here), so
+  // it's already bright when the cloud moves off. Then the warm glow grows; the rays turn slowly.
   const sun = useAnimatedStyle(() => {
-    const s = band(p.value, .78, .88);
-    return { opacity: s, transform: [{ scale: .6 + .4 * s }, { rotate: `${p.value * 240}deg` }] };
+    const s = sm(band(ms.value, TL.sun[0], TL.sun[1]));
+    return { opacity: s, transform: [{ translateY: 16 * (1 - s) }, { scale: .8 + .2 * s }] };
   });
-  const soil = useAnimatedStyle(() => ({ backgroundColor: interpolateColor(wetAt(p.value), [0, .5, 1], [STAGE.soil.dry, STAGE.soil.moist, STAGE.soil.wet]) }));
-  const soilWord = (i: number) => useAnimatedStyle(() => {
-    const w = wetAt(p.value);
-    const on = i === 0 ? w > .75 : i === 1 ? w > .25 && w <= .75 : w <= .25;
-    return { opacity: on ? 1 : 0 };
-  });
-  const words = [soilWord(0), soilWord(1), soilWord(2)];
+  const glow = useAnimatedStyle(() => ({ opacity: .6 * sm(band(ms.value, TL.sun[0] + 400, TL.end)) }));
+  const rays = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.value * 360}deg` }] }));
+
   return <View style={{ gap: space[5] }}>
-    <View accessible accessibilityRole="image" accessibilityLabel={t('A watering can pours on the plant, turns into a rain cloud, then the sun comes out and the soil dries')} style={{ width: W, height: H, alignSelf: 'center' }}>
-      <Animated.View style={[{ position: 'absolute', left: 60, top: 60, width: 150, height: 150 }]}>
-        <PlantArt kind="monstera" size={150} />
-      </Animated.View>
-      {/* The soil at the top of the pot: wet, moist, dry. */}
-      <Animated.View style={[{ position: 'absolute', left: 104, top: SOIL_Y - 4, width: 62, height: 8, borderRadius: 4 }, soil]} />
-      {Array.from({ length: 5 }, (_, k) => <CanDrop key={'c' + k} p={p} k={k} />)}
-      {Array.from({ length: 7 }, (_, k) => <RainDrop key={'r' + k} p={p} k={k} />)}
-      <Animated.View style={[{ position: 'absolute', left: CAN.x, top: CAN.y, width: CAN.w, height: CAN.h }, can]}>
-        <Svg width={CAN.w} height={CAN.h} viewBox="0 0 110 70">
-          <Rect x={10} y={22} width={52} height={40} rx={8} fill={STAGE.leaf} />
-          <Path d="M60 34 L104 14 L106 20 L62 44 Z" fill={STAGE.leaf} />
-          <Path d="M20 22 C20 6 52 6 52 22" stroke={STAGE.leaf} strokeWidth={5} fill="none" />
+    <View accessible accessibilityRole="image" accessibilityLabel={t('A watering can waters the plant and turns into a rain cloud; then the sky clears and the sun comes out')}
+      style={{ width: W, height: H, alignSelf: 'center' }}>
+      {/* The warm light of the sun, behind everything. */}
+      <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: SUN.x - GLOW.rx, top: SUN.y - GLOW.ry, width: 2 * GLOW.rx, height: 2 * GLOW.ry }, glow]}>
+        <Svg width={2 * GLOW.rx} height={2 * GLOW.ry}>
+          <Defs><RadialGradient id="sunglow" cx="50%" cy="50%" r="50%"><Stop offset="0" stopColor={STAGE.sun} stopOpacity={.45} /><Stop offset="1" stopColor={STAGE.sun} stopOpacity={0} /></RadialGradient></Defs>
+          <Rect width={2 * GLOW.rx} height={2 * GLOW.ry} fill="url(#sunglow)" />
         </Svg>
       </Animated.View>
-      <Animated.View style={[{ position: 'absolute', left: CLOUD.x, top: CLOUD.y, width: CLOUD.w, height: CLOUD.h }, cloud]}>
-        <Svg width={CLOUD.w} height={CLOUD.h} viewBox="-8 0 110 70"><Cloud color="#C9D0CC" /></Svg>
-        <Animated.View style={[{ position: 'absolute', left: 0, top: 0 }, rainy]}>
-          <Svg width={CLOUD.w} height={CLOUD.h} viewBox="-8 0 110 70"><Cloud color="#8FA3AE" /></Svg>
+      <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: SUN.x - 50, top: SUN.y - 50, width: 100, height: 100 }, sun]}>
+        <Animated.View style={[{ position: 'absolute', width: 100, height: 100 }, rays]}>
+          <Svg width={100} height={100}>
+            {Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * Math.PI * 2; return <Line key={i} x1={50 + Math.cos(a) * 32} y1={50 + Math.sin(a) * 32} x2={50 + Math.cos(a) * 43} y2={50 + Math.sin(a) * 43} stroke={STAGE.sun} strokeWidth={3.5} strokeLinecap="round" />; })}
+          </Svg>
+        </Animated.View>
+        <Svg width={100} height={100}><Circle cx={50} cy={50} r={SUN.r} fill={STAGE.sun} /></Svg>
+      </Animated.View>
+      <View pointerEvents="none" style={{ position: 'absolute', left: PLANT.x, top: PLANT.y }}><PlantArt kind="monstera" size={PLANT.size} /></View>
+      {Array.from({ length: POUR_DROPS }, (_, k) => <PourDrop key={'p' + k} ms={ms} k={k} />)}
+      {Array.from({ length: RAIN_DROPS }, (_, k) => <RainDrop key={'r' + k} ms={ms} k={k} />)}
+      {/* The can (body and spout), and its handle, which fades as the can changes. */}
+      <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: CAN.x, top: CAN.y, width: CAN.w, height: CAN.h }, handle]}>
+        <Svg width={CAN.w} height={CAN.h}><Path d="M20 22 C20 6 52 6 52 22" stroke={STAGE.leaf} strokeWidth={5} strokeLinecap="round" fill="none" /></Svg>
+      </Animated.View>
+      <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: CAN.x, top: CAN.y, width: CAN.w, height: CAN.h }, can]}>
+        <Svg width={CAN.w} height={CAN.h}><Path d={CAN_PATH} fill={STAGE.leaf} /></Svg>
+      </Animated.View>
+      <Morph ms={ms} />
+      <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: 0, width: W, height: H }, cloud]}>
+        <Svg width={W} height={H}><Path d={CLOUD_PATH} fill={RAIN_GREY} /></Svg>
+        <Animated.View style={[{ position: 'absolute', left: 0, top: 0 }, lighter]}>
+          <Svg width={W} height={H}><Path d={CLOUD_PATH} fill={LIGHT_GREY} /></Svg>
         </Animated.View>
       </Animated.View>
-      <Animated.View style={[{ position: 'absolute', left: CLOUD.x + 7, top: CLOUD.y - 12, width: 96, height: 96 }, sun]}>
-        <Svg width={96} height={96} viewBox="0 0 96 96">
-          {Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2; return <Line key={i} x1={48 + Math.cos(a) * 30} y1={48 + Math.sin(a) * 30} x2={48 + Math.cos(a) * 42} y2={48 + Math.sin(a) * 42} stroke={STAGE.sun} strokeWidth={4} strokeLinecap="round" />; })}
-          <Circle cx={48} cy={48} r={22} fill={STAGE.sun} />
-        </Svg>
-      </Animated.View>
-      {/* The soil's state, named. */}
-      <View style={{ position: 'absolute', left: 0, right: 0, bottom: -6, alignItems: 'center', height: 20 }}>
-        {(['Wet', 'Moist', 'Dry'] as const).map((w, i) => <Animated.View key={w} style={[{ position: 'absolute' }, words[i]]}>
-          <T v="footnote" style={{ color: STAGE.dim }}>{t('Soil: {v}', { v: t(w).toLowerCase() })}</T>
-        </Animated.View>)}
-      </View>
     </View>
-    <View style={{ height: 150 }}>
-      {CAPTIONS.map((_, i) => <Caption key={i} p={p} i={i} />)}
-    </View>
+    {reduceMotion
+      ? <View style={{ gap: space[4] }}>{CAPTIONS.map(c => <View key={c.title} style={{ gap: space[1] }}>
+          <T v="headline" style={{ color: STAGE.text }}>{t(c.title)}</T>
+          <T v="subhead" style={{ color: STAGE.dim }}>{t(c.line)}</T>
+        </View>)}</View>
+      : <View style={{ gap: space[2] }}>
+          <View style={{ height: 176 }}>{CAPTIONS.map((_, i) => <Caption key={i} ms={ms} i={i} />)}</View>
+          {/* Room kept for "See again", so nothing moves when it appears. */}
+          <View style={{ height: 44 }}>
+            {done && <Animated.View entering={FadeIn.duration(500)} style={{ alignSelf: 'flex-start' }}>
+              <Tap label={t('See again')} onPress={play} ring={radius.inner} style={{ minHeight: 44, justifyContent: 'center' }}>
+                <T v="subhead" style={{ color: STAGE.leaf, fontFamily: fonts.medium }}>{t('See again')}</T>
+              </Tap>
+            </Animated.View>}
+          </View>
+        </View>}
   </View>;
 }
 
-function Cloud({ color }: { color: string }) {
-  return <Path d="M22 58 C8 58 6 40 20 38 C20 22 42 18 48 30 C56 18 78 22 76 40 C90 40 90 58 76 58 Z" fill={color} />;
-}
-
-/* ------------------------------------------------------------------ scene 3: three cycles */
+/* ------------------------------------------------------------------ scene 2: three cycles */
 
 export function CyclesScene() {
   const { reduceMotion } = useTheme();
