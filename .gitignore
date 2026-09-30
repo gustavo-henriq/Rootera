@@ -51,3 +51,6 @@ __pycache__/
 .playwright-mcp/
 backend/.testdata/
 backend/backups/
+
+# Local screenshots kept for the demo video (not published)
+docs/prints/

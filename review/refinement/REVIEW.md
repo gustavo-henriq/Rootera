@@ -8,11 +8,11 @@ O bloco verde ocupava quase toda a primeira dobra e repetia mensagens genéricas
 
 Antes:
 
-![Antes](C:/Users/Carlos/Documents/Codex/2026-09-07/faz-o-front-end-do-rootera-4/outputs/rootera/review/refinement/01-home-before.png)
+![Antes](01-home-before.png)
 
 Depois:
 
-![Depois](C:/Users/Carlos/Documents/Codex/2026-09-07/faz-o-front-end-do-rootera-4/outputs/rootera/review/refinement/14-home-after.png)
+![Depois](14-home-after.png)
 
 ## 2. Detalhes — corrigidos
 
@@ -20,11 +20,11 @@ A imagem grande empurrava os cuidados para fora da tela. A planta agora aparece 
 
 Antes:
 
-![Antes](C:/Users/Carlos/Documents/Codex/2026-09-07/faz-o-front-end-do-rootera-4/outputs/rootera/review/refinement/02-details-before.png)
+![Antes](02-details-before.png)
 
 Depois:
 
-![Depois](C:/Users/Carlos/Documents/Codex/2026-09-07/faz-o-front-end-do-rootera-4/outputs/rootera/review/refinement/20-details-final.png)
+![Depois](20-details-final.png)
 
 ## 3. Check-in — corrigido
 
@@ -32,11 +32,11 @@ As opções deixaram de ser cinco cartões concorrentes. Uma lista agrupada mant
 
 Antes:
 
-![Antes](C:/Users/Carlos/Documents/Codex/2026-09-07/faz-o-front-end-do-rootera-4/outputs/rootera/review/refinement/03-check-before.png)
+![Antes](03-check-before.png)
 
 Depois:
 
-![Depois](C:/Users/Carlos/Documents/Codex/2026-09-07/faz-o-front-end-do-rootera-4/outputs/rootera/review/refinement/11-check-after.png)
+![Depois](11-check-after.png)
 
 ## 4. Onboarding — corrigido
 
@@ -44,7 +44,7 @@ Apresentação antes do acesso. A montagem do vaso foi preservada; três notific
 
 Depois:
 
-![Depois](C:/Users/Carlos/Documents/Codex/2026-09-07/faz-o-front-end-do-rootera-4/outputs/rootera/review/refinement/05-notifications-after.png)
+![Depois](05-notifications-after.png)
 
 ## 5. Cadastro — corrigido
 
@@ -52,7 +52,7 @@ A escolha manual vai direto ao cadastro, sem confirmar a mesma espécie duas vez
 
 Depois:
 
-![Depois](C:/Users/Carlos/Documents/Codex/2026-09-07/faz-o-front-end-do-rootera-4/outputs/rootera/review/refinement/09-environment-after.png)
+![Depois](09-environment-after.png)
 
 ## 6. Atividade — corrigida
 
@@ -60,7 +60,7 @@ A lista principal mostra o histórico registrado, em vez de intercalar avisos ge
 
 Depois:
 
-![Depois](C:/Users/Carlos/Documents/Codex/2026-09-07/faz-o-front-end-do-rootera-4/outputs/rootera/review/refinement/15-activity-after.png)
+![Depois](15-activity-after.png)
 
 ## 7. Perfil — corrigido
 
@@ -68,7 +68,7 @@ Grupos simples de linhas substituem cartões e mensagens decorativas. Editar exp
 
 Depois:
 
-![Depois](C:/Users/Carlos/Documents/Codex/2026-09-07/faz-o-front-end-do-rootera-4/outputs/rootera/review/refinement/16-profile-after.png)
+![Depois](16-profile-after.png)
 
 ## Regras e dados
 
