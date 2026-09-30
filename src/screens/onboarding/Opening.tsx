@@ -26,7 +26,7 @@ const LINE = 'Stop guessing what your plant needs.';
 const SUB = 'Rootera learns each plant from your care.';
 /** The wordmark starts this much lower and glides up as the text arrives under it. */
 const RISE = 64;
-const BUTTON_DELAY = 1900;
+const BUTTON_DELAY = 1400;
 
 export function Opening({ onContinue }: { onContinue: () => void }) {
   const { c, reduceMotion } = useTheme();

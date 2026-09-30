@@ -13,7 +13,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from '
 import { ago, Forecast } from '../model';
 import { locale, t, tn } from '../i18n';
 import { useTheme } from './theme';
-import { radius, space } from './tokens';
+import { motion, radius, space } from './tokens';
 import { T } from './components';
 import { pivot } from './motion';
 
@@ -41,7 +41,7 @@ export function DryTimeline({ forecast: f, lastWatered, now = Date.now() }: { fo
   const [w, setW] = React.useState(0);
   const since = lastWatered ? Math.max(0, (now - new Date(lastWatered).getTime()) / DAY) : null;
   const fill = useSharedValue(reduceMotion ? 1 : 0);
-  useEffect(() => { if (!reduceMotion) fill.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) }); }, [since !== null]);
+  useEffect(() => { if (!reduceMotion) fill.value = withTiming(1, { duration: motion.dur.fill, easing: Easing.out(Easing.cubic) }); }, [since !== null]);
   // Measured once the line is laid out; the fill grows from the watering to today.
   const fillW = useSharedValue(1);
   const progress = useAnimatedStyle(() => ({ transform: pivot(fillW.value, 6, 0, .5, [{ scaleX: Math.max(.001, fill.value) }]) }));

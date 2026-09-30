@@ -7,7 +7,7 @@ import { BlurView } from 'expo-blur';
 import { Experience, experienceHint, experienceLabel, PlantKind } from '../../model';
 import { plantArt } from '../../ds/plant';
 import { useTheme } from '../../ds/theme';
-import { radius, space } from '../../ds/tokens';
+import { motion, radius, space } from '../../ds/tokens';
 import { Glass, T, Tap } from '../../ds/components';
 import { Glyph } from '../../ds/icons';
 import { t } from '../../i18n';
@@ -19,7 +19,7 @@ const SEED = 'M12 3C19 8.5 20.5 21 12 29C3.5 21 5 8.5 12 3Z';
 export function SeedProgress({ step, total }: { step: number; total: number }) {
   const { c, reduceMotion } = useTheme();
   const fill = useSharedValue(step / total);
-  useEffect(() => { fill.value = reduceMotion ? step / total : withTiming(step / total, { duration: 600, easing: Easing.out(Easing.cubic) }); }, [step]);
+  useEffect(() => { fill.value = reduceMotion ? step / total : withTiming(step / total, { duration: motion.dur.fill, easing: Easing.out(Easing.cubic) }); }, [step]);
   const props = useAnimatedProps(() => ({ y: 32 - 28 * fill.value, height: 28 * fill.value + 1 }));
   const done = step >= total;
   return <View accessible accessibilityRole="progressbar" accessibilityLabel={t('Step {i} of {n}', { i: step, n: total })} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>

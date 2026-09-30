@@ -5,9 +5,10 @@
  */
 import { useEffect } from 'react';
 import { ActionSheetIOS, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import Animated, {  } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './theme';
+import { useSheetPresence } from './motion';
 import { radius, space } from './tokens';
 import { T, Tap } from './components';
 import { Glyph, GlyphName } from './icons';
@@ -17,7 +18,8 @@ import { t } from '../i18n';
 export interface SheetAction { label: string; icon: GlyphName; onPress: () => void; destructive?: boolean }
 
 export function ActionSheet({ visible, title, actions, onClose }: { visible: boolean; title?: string; actions: SheetAction[]; onClose: () => void }) {
-  const { c, reduceMotion } = useTheme();
+  const { c } = useTheme();
+  const presence = useSheetPresence(visible);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -37,14 +39,14 @@ export function ActionSheet({ visible, title, actions, onClose }: { visible: boo
     }
   }, [visible]);
 
-  if (Platform.OS === 'ios' || !visible) return null;
+  if (Platform.OS === 'ios' || !presence.mounted) return null;
   return <Modal transparent visible animationType="none" onRequestClose={onClose} statusBarTranslucent>
-    <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(160)} exiting={FadeOut.duration(120)} style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]}>
+    <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }, presence.backdrop]}>
       <Pressable accessibilityRole="button" accessibilityLabel={t("Close")} onPress={onClose} style={StyleSheet.absoluteFill} />
     </Animated.View>
     <View pointerEvents="box-none" style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
-      <Animated.View accessibilityViewIsModal entering={reduceMotion ? undefined : SlideInDown.springify().damping(26).stiffness(260)} exiting={SlideOutDown.duration(160)}
-        style={{ width: '100%', maxWidth: 440, backgroundColor: c.raised, borderTopLeftRadius: radius.chrome, borderTopRightRadius: radius.chrome, paddingTop: space[2], paddingBottom: insets.bottom + space[3], paddingHorizontal: space[3] }}>
+      <Animated.View accessibilityViewIsModal
+        style={[presence.panel, { width: '100%', maxWidth: 440, backgroundColor: c.raised, borderTopLeftRadius: radius.chrome, borderTopRightRadius: radius.chrome, paddingTop: space[2], paddingBottom: insets.bottom + space[3], paddingHorizontal: space[3] }]}>
         {!!title && <T v="footnote" tone="ink2" center style={{ paddingVertical: space[2] }}>{title}</T>}
         {actions.map(a => <Tap key={a.label} label={a.label} onPress={() => { onClose(); a.onPress(); }} ring={radius.control}
           style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], minHeight: 52, paddingHorizontal: space[3] }}>

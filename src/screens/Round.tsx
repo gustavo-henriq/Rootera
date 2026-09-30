@@ -7,18 +7,18 @@
  */
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, SlideInRight, SlideOutLeft, ZoomIn } from 'react-native-reanimated';
+import Animated, { SlideInRight, SlideOutLeft } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Props } from '../navigation';
 import { useStore } from '../store';
 import { byUrgency, newId, Plant, Soil, SoilLayers, summarizeLayers } from '../model';
 import { layersComplete, SoilLayersInput } from '../ds/SoilLayers';
 import { useTheme } from '../ds/theme';
-import { fonts, radius, space } from '../ds/tokens';
+import { fonts, motion, radius, space } from '../ds/tokens';
 import { Btn, T, Tap, Toast } from '../ds/components';
 import { Glyph } from '../ds/icons';
 import { Ground, PlantArt } from '../ds/plant';
-import { LeafBurst } from '../ds/motion';
+import { enter, LeafBurst } from '../ds/motion';
 import { haptic } from '../ds/feedback';
 import { t, tn } from '../i18n';
 
@@ -115,13 +115,13 @@ export function Round({ navigation }: Props<'Round'>) {
     {finished
       ? <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: space[3] }}>
           <LeafBurst run={checked ? 1 : 0} />
-          <Animated.View entering={reduceMotion ? undefined : ZoomIn.springify().damping(12)}><Glyph name="check" size={44} tone={c.leafText} /></Animated.View>
+          <Animated.View entering={reduceMotion ? undefined : enter.pop()}><Glyph name="check" size={44} tone={c.leafText} /></Animated.View>
           <T v="hero" center accessibilityRole="header">{queue.length ? t('Round done') : t('Nothing needs you')}</T>
           <T v="callout" tone="ink2" center>{queue.length
             ? `${tn(checked, '{n} plant checked', '{n} plants checked')}${wateredCount ? t(', {n} watered', { n: wateredCount }) : ''}. ${t('Rootera updated each plant’s next step.')}`
             : t('Every plant is resting.')}</T>
         </View>
-      : <Animated.View key={plant.id + (askWater ? '-w' : '')} entering={reduceMotion ? undefined : askWater ? FadeIn.duration(200) : SlideInRight.springify().damping(24).stiffness(220)} exiting={reduceMotion ? undefined : SlideOutLeft.duration(180)}
+      : <Animated.View key={plant.id + (askWater ? '-w' : '')} entering={reduceMotion ? undefined : askWater ? enter.fade() : SlideInRight.springify().damping(24).stiffness(220)} exiting={reduceMotion ? undefined : SlideOutLeft.duration(motion.dur.fast)}
           style={{ flex: 1, justifyContent: 'center', gap: space[4] }}>
           <View style={{ alignItems: 'center' }}>
             <PlantArt kind={plant.kind} photo={plant.photo} size={180} />
@@ -132,7 +132,7 @@ export function Round({ navigation }: Props<'Round'>) {
             <T v="subhead" tone="ink2" center lines={2}>{g?.title ?? t('Start with a soil check')}</T>
           </View>
           {askWater
-            ? <Animated.View entering={reduceMotion ? undefined : FadeInDown.duration(220)} style={{ gap: space[3] }}>
+            ? <Animated.View entering={reduceMotion ? undefined : enter.rise()} style={{ gap: space[3] }}>
                 <T v="headline" center>{t("Dry at its depth. Did you water it?")}</T>
                 <View style={{ flexDirection: 'row', gap: space[3] }}>
                   <Btn title={t("Yes, watered")} icon="water" busy={busy} onPress={() => void watered(true)} style={{ flex: 1 }} />

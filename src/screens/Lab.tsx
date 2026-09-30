@@ -25,7 +25,8 @@ import { Props } from '../navigation';
 import { api, LabClimate, LabDayIn, LabIn, LabMethod, LabOut } from '../api';
 import { catalog, Layer, LayerKey, PlantKind, SoilLayers, speciesName } from '../model';
 import { useTheme } from '../ds/theme';
-import { fonts, radius, space } from '../ds/tokens';
+import { enter } from '../ds/motion';
+import { fonts, motion, radius, space } from '../ds/tokens';
 import { T, Tap } from '../ds/components';
 import { Glyph } from '../ds/icons';
 import { PlantArt } from '../ds/plant';
@@ -132,12 +133,13 @@ function StepHead({ n }: { n: number }) {
 
 /** Secondary choices, closed until asked for. */
 function More({ children }: React.PropsWithChildren) {
+  const { reduceMotion } = useTheme();
   const [open, setOpen] = useState(false);
   return <View style={{ gap: space[4] }}>
     <Tap label={open ? t('Fewer options') : t('More options')} onPress={() => setOpen(o => !o)} ring={radius.inner} style={{ alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' }}>
       <T v="subhead" style={{ color: L.leaf, fontFamily: fonts.medium }}>{open ? t('Fewer options') : t('More options')}</T>
     </Tap>
-    {open && <Animated.View entering={FadeIn.duration(200)} style={{ gap: space[4] }}>{children}</Animated.View>}
+    {open && <Animated.View entering={reduceMotion ? undefined : enter.fade()} style={{ gap: space[4] }}>{children}</Animated.View>}
   </View>;
 }
 
@@ -150,8 +152,9 @@ function Primary({ title, onPress }: { title: string; onPress: () => void }) {
 
 /** Light that comes up as the steps are done. */
 function Glow({ level }: { level: number }) {
+  const { reduceMotion } = useTheme();
   const v = useSharedValue(.15);
-  useEffect(() => { v.value = withTiming(.15 + .85 * level, { duration: 900 }); }, [level]);
+  useEffect(() => { const to = .15 + .85 * level; v.value = reduceMotion ? to : withTiming(to, { duration: motion.dur.story }); }, [level]);
   const style = useAnimatedStyle(() => ({ opacity: v.value }));
   return <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, style]}>
     <Svg width="100%" height="100%">
@@ -388,7 +391,7 @@ export function Lab({ navigation }: Props<'Lab'>) {
       <View style={{ width: 44 }} />
     </View>
     <ScrollView ref={scroll} contentContainerStyle={{ flexGrow: 1, paddingTop: space[4], paddingBottom: insets.bottom + space[6], paddingHorizontal: space.gutter }}>
-      <Animated.View key={phase} entering={reduceMotion ? undefined : FadeIn.duration(phase === 'intro' ? 900 : 260)} style={{ flexGrow: 1, gap: space[6] }}>
+      <Animated.View key={phase} entering={reduceMotion ? undefined : phase === 'intro' ? FadeIn.duration(motion.dur.story) : enter.fade()} style={{ flexGrow: 1, gap: space[6] }}>
 
         {phase === 'intro' && <>
           <View style={{ gap: space[3] }}>
@@ -401,7 +404,7 @@ export function Lab({ navigation }: Props<'Lab'>) {
         </>}
 
         {phase === 'story' && <>
-          <Animated.View key={scene} entering={reduceMotion ? undefined : FadeIn.duration(400)} style={{ gap: space[6] }}>
+          <Animated.View key={scene} entering={reduceMotion ? undefined : FadeIn.duration(motion.dur.slow)} style={{ gap: space[6] }}>
             {scene === 0 ? <WaterWeatherScene /> : <CyclesScene />}
             {!!SCENES[scene].title && <View style={{ gap: space[3] }}>
               <T v="hero" style={{ color: L.text }}>{t(SCENES[scene].title!)}</T>
@@ -513,7 +516,7 @@ export function Lab({ navigation }: Props<'Lab'>) {
             <Tap label={learning ? t('Hide how it learned') : t('See how it learned')} onPress={() => setLearning(o => !o)} ring={radius.inner} style={{ alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' }}>
               <T v="subhead" style={{ color: L.leaf, fontFamily: fonts.medium }}>{learning ? t('Hide how it learned') : t('See how it learned')}</T>
             </Tap>
-            {learning && out && <Animated.View entering={FadeIn.duration(220)} style={{ gap: space[4] }}>
+            {learning && out && <Animated.View entering={reduceMotion ? undefined : enter.fade()} style={{ gap: space[4] }}>
               <Learning out={out} upTo={day} />
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
                 <Stat value={String(s.waterings)} label={t('Waterings')} />

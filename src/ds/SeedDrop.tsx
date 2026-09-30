@@ -32,7 +32,7 @@ export const SEED_AT = { x: .497, y: .498 }; // the seed's resting place in the 
 const SEED_W = 97 / 994;
 
 /** Timeline in ms, exported so screens can sync text and sound to the impact. */
-export const SEED_TIMING = { flight: 1250, impact: 1250, sprout: 1700, settled: 2600, bloom: 3000, done: 3700 };
+export const SEED_TIMING = { flight: 950, impact: 950, sprout: 1350, settled: 2100, bloom: 2450, done: 3050 };
 
 function Speck({ dx, delay, run, colour }: { dx: number; delay: number; run: number; colour: string }) {
   const p = useSharedValue(0);

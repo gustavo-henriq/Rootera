@@ -8,9 +8,10 @@
  * the name is asked for, with Pl@ntNet's weak guesses as "Maybe it's…".
  */
 import { View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { Candidate } from '../api';
 import { useTheme } from '../ds/theme';
+import { enter } from '../ds/motion';
 import { fonts, radius, space } from '../ds/tokens';
 import { Chip, T, Tap } from '../ds/components';
 import { Glyph } from '../ds/icons';
@@ -33,7 +34,7 @@ export function confidentMatches(matches: Candidate[] | null) {
 export function IdentifyResult({ state, matches, attempt, onRetry, onPick, selected }: {
   state: IdState; matches: Candidate[] | null; attempt: number; onRetry: () => void; onPick: (m: Candidate) => void; selected?: string;
 }) {
-  const { c } = useTheme();
+  const { c, reduceMotion } = useTheme();
   const sure = confidentMatches(matches);
   const missed = state === 'error' || (state === 'idle' && matches !== null && sure.length === 0);
   const guesses = (matches ?? []).filter(m => m.score < CONFIDENT);
@@ -48,7 +49,7 @@ export function IdentifyResult({ state, matches, attempt, onRetry, onPick, selec
   </View>;
   if (!missed) return null;
   // A miss: another photo with a new tip, or, after the last one, the name.
-  return <Animated.View entering={FadeIn.duration(220)} style={{ gap: space[3] }}>
+  return <Animated.View entering={reduceMotion ? undefined : enter.fade()} style={{ gap: space[3] }}>
     {attempt < MAX_ATTEMPTS
       ? <>
           <T v="subhead">{t('Rootera couldn’t recognize it this time.')} {t(TIPS[Math.min(attempt, TIPS.length) - 1])}</T>

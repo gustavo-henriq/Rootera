@@ -15,7 +15,7 @@ import { View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Line, Path, Rect } from 'react-native-svg';
 import { useTheme } from './theme';
-import { space } from './tokens';
+import { motion, space } from './tokens';
 import { T } from './components';
 import { t } from '../i18n';
 
@@ -46,7 +46,7 @@ export function DepthRuler({ dryness, depth, heading, label, bands }: { dryness?
   const startTip = HEAD + TOP - 8;
   const tip = useSharedValue(reduceMotion ? depthY : startTip);
   useEffect(() => {
-    tip.value = reduceMotion ? depthY : withDelay(tip.value === startTip ? 250 : 0, withTiming(depthY, { duration: 700, easing: Easing.inOut(Easing.cubic) }));
+    tip.value = reduceMotion ? depthY : withDelay(tip.value === startTip ? 250 : 0, withTiming(depthY, { duration: motion.dur.fill, easing: Easing.inOut(Easing.cubic) }));
   }, [depthY]);
   const hand = useAnimatedStyle(() => ({ transform: [{ translateY: tip.value - HAND_H * TIP }] }));
   // The soil inside the pot, split in three equal layers (the pot narrows toward the bottom).

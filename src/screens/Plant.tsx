@@ -6,13 +6,13 @@ import { api } from '../api';
 import { useStore } from '../store';
 import { ago, CareEvent, known, layerLabel, Plant as PlantT, soilLabel, Twin, visualLabel } from '../model';
 import { useTheme } from '../ds/theme';
-import { fonts, radius, space } from '../ds/tokens';
+import { fonts, motion, radius, space } from '../ds/tokens';
 import { Btn, Group, Row, Segmented, T, Tap, Toast } from '../ds/components';
 import { Page } from '../ds/Page';
 import { Glyph } from '../ds/icons';
 import { askForLocalWeather } from '../weather';
 import { Ground, PlantArt } from '../ds/plant';
-import { LeafBurst, pivot, Pop, Settle, WaterDrops } from '../ds/motion';
+import { enter, LeafBurst, pivot, Pop, Settle, WaterDrops } from '../ds/motion';
 import { ActionSheet } from '../ds/ActionSheet';
 import { SeedDrop } from '../ds/SeedDrop';
 import { announce, haptic } from '../ds/feedback';
@@ -152,8 +152,8 @@ function Milestone({ plant, stage, onDone }: { plant: PlantT; stage: string; onD
   useEffect(() => { haptic.bloom(); announce(line); }, []);
   return <Pressable accessibilityRole="button" accessibilityLabel={`${line}. ${t('Continue')}`} onPress={onDone}
     style={[StyleSheet.absoluteFill, { zIndex: 40, backgroundColor: c.canvas, alignItems: 'center', justifyContent: 'center', gap: space[5], padding: space.gutter }]}>
-    <SeedDrop size={260} run={1} kind={plant.kind} onDone={() => setTimeout(onDone, reduceMotion ? 900 : 1600)} />
-    <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(900)} style={{ alignItems: 'center', gap: space[1] }}>
+    <SeedDrop size={260} run={1} kind={plant.kind} onDone={() => setTimeout(onDone, reduceMotion ? 900 : 1200)} />
+    <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(motion.dur.story)} style={{ alignItems: 'center', gap: space[1] }}>
       <T v="footnote" tone="ink2">{t("New stage")}</T>
       <T v="hero" center>{line}</T>
       <T v="callout" tone="ink2" center>{t("Tap to continue")}</T>
@@ -259,7 +259,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
   return <View style={{ flex: 1 }}>
     <Page back={navigation.goBack} scrollRef={scroll} titleInBar={plant.name} gap={space[5]}
       actions={[{ icon: 'more', label: t('Plant options'), onPress: () => { setMenu(true); setConfirm(false); } }]}>
-      {!!saved && <Animated.View key={saved.title + (saved.to ?? '')} entering={FadeIn.duration(240)}>
+      {!!saved && <Animated.View key={saved.title + (saved.to ?? '')} entering={reduceMotion ? undefined : enter.fade()}>
         <Toast title={saved.title} onClose={() => navigation.setParams({ saved: undefined })}
           text={saved.to ? t('Next step changed: {v}.', { v: t(saved.to).toLowerCase() }) : saved.title !== t('Details updated') && saved.title !== t('Check-in undone') ? t('Next step unchanged. Saved to its history.') : undefined}
           action={saved.undo?.ids.length ? { title: busy ? t('Undoing…') : t('Undo'), onPress: () => void undo() } : undefined} />
@@ -280,7 +280,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
       <View style={{ gap: space[5] }}>
         <Segmented values={TABS} value={tab} onChange={setTab} labels={{ now: t('Now'), rhythm: t('Rhythm'), about: t('About') }} />
 
-        {tab === 'now' && <Animated.View key="now" entering={reduceMotion ? undefined : FadeIn.duration(200)} style={{ gap: space[4] }}>
+        {tab === 'now' && <Animated.View key="now" entering={reduceMotion ? undefined : enter.fade()} style={{ gap: space[4] }}>
           <View style={{ gap: space[3] }}>
             {!!g?.learning && g.state !== 'PATTERN' && <T v="footnote" tone="ink2">{g.learning}</T>}
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[3] }}>
@@ -297,7 +297,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
           <Facts plant={plant} twin={twin} events={events} onPot={() => navigation.navigate('PlantForm', { editId: plant.id, pot: true })} />
         </Animated.View>}
 
-        {tab === 'rhythm' && <Animated.View key="rhythm" entering={reduceMotion ? undefined : FadeIn.duration(200)} style={{ gap: space[6] }}>
+        {tab === 'rhythm' && <Animated.View key="rhythm" entering={reduceMotion ? undefined : enter.fade()} style={{ gap: space[6] }}>
           {g?.forecast ? <DryWindow forecast={g.forecast} lastWatered={g.last_watered_at} /> : <CycleRing done={Math.min(g?.completed_cycles ?? 0, 3)} />}
           {garden.weather
             ? <T v="footnote" tone="ink2">{t('This week{place}: highs around {t} °C, {rh}% humidity.', { place: garden.location?.place ? ` (${garden.location.place})` : '', t: Math.round(garden.weather.tmax ?? 0), rh: garden.weather.rh ?? '–' })}</T>
@@ -313,7 +313,7 @@ export function Plant({ navigation, route }: Props<'Plant'>) {
           <CareCalendar events={events} />
         </Animated.View>}
 
-        {tab === 'about' && <Animated.View key="about" entering={reduceMotion ? undefined : FadeIn.duration(200)} style={{ gap: space[5] }}>
+        {tab === 'about' && <Animated.View key="about" entering={reduceMotion ? undefined : enter.fade()} style={{ gap: space[5] }}>
           {plant.example && <View style={{ gap: space[3] }}>
             <T v="callout" tone="ink2">{t('The Shipaton example: three demo cycles, outside your plan.')}</T>
             <Btn kind="outline" title={t('Open the Shipaton lab')} onPress={() => navigation.navigate('Lab')} />

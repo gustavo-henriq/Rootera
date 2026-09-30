@@ -1,11 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { Props } from '../navigation';
 import { useStore } from '../store';
 import { CareEvent, newId, SoilLayers, Visual, visualLabel } from '../model';
 import { useTheme } from '../ds/theme';
-import { fonts, radius, space } from '../ds/tokens';
+import { enter } from '../ds/motion';
+import { fonts, radius, space, timing } from '../ds/tokens';
 import { Btn, Chip, Field, T, Tap, Toast } from '../ds/components';
 import { Glyph, GlyphName } from '../ds/icons';
 import { Page } from '../ds/Page';
@@ -50,7 +51,7 @@ const stageHints: Record<(typeof STAGES)[number], string> = { Seedling: 'Just st
  */
 function CheckIn({ navigation, route }: Props<'Care'>) {
   const { garden, logCare, updatePlant } = useStore();
-  const { c } = useTheme();
+  const { c, reduceMotion } = useTheme();
   const plant = garden.plants.find(p => p.id === route.params.id)!;
   const g = garden.twins[plant.id]?.guidance;
   const [layers, setLayers] = useState<Partial<SoilLayers>>({});
@@ -109,19 +110,19 @@ function CheckIn({ navigation, route }: Props<'Care'>) {
       <SoilLayersInput value={layers} onChange={setLayers} />
     </View>
 
-    {!!soil && <Animated.View entering={FadeIn.duration(260)} style={{ gap: space[3] }}>
+    {!!soil && <Animated.View entering={reduceMotion ? undefined : enter.fade()} style={{ gap: space[3] }}>
       <T v="headline">{t("Did you water it just now?")}</T>
       <View style={{ flexDirection: 'row', gap: space[2] }}>
         <Chip label={t("Yes, just now")} selected={watered === 'yes'} onPress={() => setWatered('yes')} />
         <Chip label={t("No")} selected={watered === 'no'} onPress={() => setWatered('no')} />
       </View>
-      {watered === 'yes' && <Animated.View entering={FadeIn.duration(200)} style={{ gap: space[2] }}>
+      {watered === 'yes' && <Animated.View entering={reduceMotion ? undefined : enter.fade()} style={{ gap: space[2] }}>
         <T v="footnote" tone="ink2">{t("Roughly how much? Optional.")}</T>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>{AMOUNTS.filter(a => a !== 'Other').map(a => <Chip key={a} label={amountLabel(a)} selected={amount === a} onPress={() => setAmount(a)} />)}</View>
       </Animated.View>}
     </Animated.View>}
 
-    {!!watered && <Animated.View entering={FadeIn.duration(260)} style={{ gap: space[3] }}>
+    {!!watered && <Animated.View entering={reduceMotion ? undefined : enter.fade()} style={{ gap: space[3] }}>
       <View style={{ gap: 2 }}>
         <T v="headline">{t("How do the leaves look?")}</T>
         <T v="footnote" tone="ink2">{t("Optional. This isn’t a diagnosis.")}</T>
@@ -131,7 +132,7 @@ function CheckIn({ navigation, route }: Props<'Care'>) {
       {(visual === 'different' || visual === 'unwell') && <Field label={t("What changed? (optional)")} value={note} onChangeText={setNote} placeholder={t("A lower leaf turning yellow")} maxLength={300} />}
     </Animated.View>}
 
-    {!!watered && <Animated.View entering={FadeIn.delay(120).duration(260)} style={{ gap: space[3] }}>
+    {!!watered && <Animated.View entering={reduceMotion ? undefined : enter.fade(timing.stagger)} style={{ gap: space[3] }}>
       <View style={{ gap: 2 }}>
         <T v="headline">{t("Growth stage")}</T>
         <T v="footnote" tone="ink2">{stage ? t(stageHints[stage as (typeof STAGES)[number]]) : t('Optional. Change it when your plant grows.')}</T>
@@ -149,7 +150,7 @@ export function Care(props: Props<'Care'>) {
 
 function SingleCare({ navigation, route }: Props<'Care'>) {
   const { garden, logCare } = useStore();
-  const { c } = useTheme();
+  const { c, reduceMotion } = useTheme();
   const plant = garden.plants.find(p => p.id === route.params.id);
   const mode = route.params.mode === 'checkin' ? 'soil' : route.params.mode;
   const [layers, setLayers] = useState<Partial<SoilLayers>>({});
@@ -209,14 +210,14 @@ function SingleCare({ navigation, route }: Props<'Care'>) {
     {mode === 'visual' && <>
       <Options values={['great', 'different', 'unwell', 'not_sure'] as Visual[]} value={visual} onChange={setVisual} label={v => visualLabel[v]} hint={v => t(visualHints[v])}
         lead={(v, on) => <View style={{ width: 30, alignItems: 'center' }}><Glyph name={visualGlyph[v]} size={22} tone={on ? c.ink : c.ink2} /></View>} />
-      {(visual === 'different' || visual === 'unwell') && <Animated.View entering={FadeIn.duration(200)}><Field label={t("What changed? (optional)")} value={note} onChangeText={setNote} placeholder={t("A lower leaf turning yellow")} maxLength={300} /></Animated.View>}
+      {(visual === 'different' || visual === 'unwell') && <Animated.View entering={reduceMotion ? undefined : enter.fade()}><Field label={t("What changed? (optional)")} value={note} onChangeText={setNote} placeholder={t("A lower leaf turning yellow")} maxLength={300} /></Animated.View>}
     </>}
 
     {mode === 'water' && <>
       <View style={{ gap: space[3] }}>
         <T v="headline">{t("Roughly how much?")}</T>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>{AMOUNTS.map(a => <Chip key={a} label={amountLabel(a)} selected={amount === a} onPress={() => setAmount(a)} />)}</View>
-        {amount === 'Other' && <Animated.View entering={FadeIn.duration(200)}><Field label={t("Amount in ml")} value={custom} onChangeText={v => setCustom(v.replace(/[^0-9]/g, ''))} numeric autoFocus maxLength={5} /></Animated.View>}
+        {amount === 'Other' && <Animated.View entering={reduceMotion ? undefined : enter.fade()}><Field label={t("Amount in ml")} value={custom} onChangeText={v => setCustom(v.replace(/[^0-9]/g, ''))} numeric autoFocus maxLength={5} /></Animated.View>}
         {invalid && !!custom && <T v="footnote" tone="danger">{t("Enter an amount between 1 and 20,000 ml.")}</T>}
       </View>
       <Field label={t("Note (optional)")} value={note} onChangeText={setNote} placeholder={t("Watered until it drained")} maxLength={300} />

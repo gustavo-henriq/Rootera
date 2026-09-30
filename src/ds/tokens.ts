@@ -132,6 +132,7 @@ export const springs = {
   smooth: { damping: 26, stiffness: 190, mass: 1 }, // layout, sheets, morphs
   bouncy: { damping: 11, stiffness: 170, mass: 1 }, // celebrations, plant settle
   gentle: { damping: 30, stiffness: 80, mass: 1.2 }, // ambient drift
+  sheet: { damping: 26, stiffness: 260, mass: 1, overshootClamping: true }, // bottom sheets coming in
 };
 export const timing = { exit: 160, fade: 220, stagger: 55 };
 
@@ -141,7 +142,8 @@ export const timing = { exit: 160, fade: 220, stagger: 55 };
  * is only for brand moments and those are always skippable.
  */
 export const motion = {
-  dur: { instant: 90, fast: 160, base: 240, slow: 380, story: 900 },
+  // `fill` is for a bar or a gauge filling to a value (the drying timeline, the depth hand).
+  dur: { instant: 90, fast: 160, base: 240, slow: 380, fill: 600, story: 900 },
   dist: { nudge: 2, step: 6, enter: 12 },
   /** How many rows animate in a list; the rest simply appear. */
   staggerMax: 3,

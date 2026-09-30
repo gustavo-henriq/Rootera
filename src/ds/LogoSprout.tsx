@@ -49,9 +49,10 @@ export function LogoSprout({ width = 260, run, variant = 'full', skip, onDone }:
     if (skip) return;
     if (reduceMotion) { letters.value = 1; stretch.value = 1; sprout.value = 1; finish(); return; }
     letters.value = 0; stretch.value = 1; sprout.value = 0; shake.value = 0;
-    letters.value = withTiming(1, { duration: 500 });
-    const tugs = variant === 'full' ? FULL : SHORT;
-    const beat = variant === 'full' ? 440 : 260;
+    const full = variant === 'full';
+    letters.value = withTiming(1, { duration: full ? 500 : 260 });
+    const tugs = full ? FULL : SHORT;
+    const beat = full ? 380 : 240;
     // Each tug: a hard pull up (fast, easing out), then the O resists and sinks back part
     // of the way (slower). The thorn comes out with the pull and slips back a little.
     const pull = tugs.flatMap(g => [
@@ -63,14 +64,14 @@ export function LogoSprout({ width = 260, run, variant = 'full', skip, onDone }:
       withTiming(g.thorn * .7, { duration: beat * .65, easing: Easing.inOut(Easing.quad) }),
     ]);
     // The tugs start once the wordmark has fully appeared; until then the O stays put.
-    const start = variant === 'full' ? 650 : 520;
+    const start = full ? 520 : 280;
     const burst = start + tugs.length * beat;
     // Release: the sprout breaks free and the O snaps back with a wobble.
     stretch.value = withDelay(start, withSequence(...pull, withTiming(1.22, { duration: 90, easing: Easing.out(Easing.quad) }), withSpring(1, { damping: 6, stiffness: 300 })));
     sprout.value = withDelay(start, withSequence(...thorn, withSpring(1, { damping: 9, stiffness: 200 })));
     shake.value = withDelay(burst + 140, withSequence(withTiming(-12, { duration: 110 }), withTiming(9, { duration: 140 }), withTiming(-5, { duration: 130 }), withSpring(0, { damping: 6, stiffness: 160 })));
     // Finish on a timer: spring callbacks inside sequences are not reliable on every platform.
-    const timer = setTimeout(finish, burst + 140 + 800);
+    const timer = setTimeout(finish, burst + 140 + (full ? 700 : 420));
     return () => { clearTimeout(timer); [letters, stretch, sprout, shake].forEach(cancelAnimation); };
   }, [run]);
 

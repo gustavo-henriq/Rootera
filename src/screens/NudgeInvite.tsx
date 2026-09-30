@@ -4,13 +4,14 @@
  * choices. The phone's own permission prompt only follows "Turn on nudges" (Apple HIG:
  * ask in context). Either answer is remembered on this device; You > Nudges changes it later.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
+import Animated, {  } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useStore } from '../store';
 import { useTheme } from '../ds/theme';
+import { useSheetPresence } from '../ds/motion';
 import { radius, space } from '../ds/tokens';
 import { Btn, Chip, T } from '../ds/components';
 import { Glyph } from '../ds/icons';
@@ -46,7 +47,12 @@ export function NudgeInvite() {
     return () => { live = false; };
   }, [garden.onboarded, !!first, off]);
 
-  if (!open || !first || profileAsking) return null;
+  const presence = useSheetPresence(open && !!first && !profileAsking);
+  // The plant named on the sheet stays while it leaves.
+  const named = useRef(first);
+  if (first) named.current = first;
+  const plant = named.current;
+  if (!presence.mounted || !plant) return null;
   const done = () => { setOpen(false); AsyncStorage.setItem(ASKED, '1').catch(() => undefined); };
   const turnOn = async () => {
     if (busy) return;
@@ -64,16 +70,16 @@ export function NudgeInvite() {
   const notNow = () => { track('nudge_invite_declined', {}); done(); };
 
   return <Modal transparent visible animationType="none" onRequestClose={notNow} statusBarTranslucent>
-    <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(180)} style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]}>
+    <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }, presence.backdrop]}>
       <Pressable accessibilityRole="button" accessibilityLabel={t('Not now')} onPress={notNow} style={StyleSheet.absoluteFill} />
     </Animated.View>
     <View pointerEvents="box-none" style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
-      <Animated.View accessibilityViewIsModal entering={reduceMotion ? undefined : SlideInDown.springify().damping(26).stiffness(260)}
-        style={{ width: '100%', maxWidth: 440, backgroundColor: c.raised, borderTopLeftRadius: radius.chrome, borderTopRightRadius: radius.chrome, padding: space.gutter, paddingBottom: insets.bottom + space[5], gap: space[4] }}>
+      <Animated.View accessibilityViewIsModal
+        style={[presence.panel, { width: '100%', maxWidth: 440, backgroundColor: c.raised, borderTopLeftRadius: radius.chrome, borderTopRightRadius: radius.chrome, padding: space.gutter, paddingBottom: insets.bottom + space[5], gap: space[4] }]}>
         <View style={{ flexDirection: 'row', gap: space[3], alignItems: 'flex-start' }}>
           <Glyph name="bell" size={24} tone={c.leafText} />
           <View style={{ flex: 1, gap: space[1] }}>
-            <T v="title2" accessibilityRole="header">{t('Want a nudge when your {name} needs you?', { name: first.name })}</T>
+            <T v="title2" accessibilityRole="header">{t('Want a nudge when your {name} needs you?', { name: plant.name })}</T>
             <T v="subhead" tone="ink2">{t('Only when a soil check would help.')}</T>
           </View>
         </View>

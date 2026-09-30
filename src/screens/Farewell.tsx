@@ -13,7 +13,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Plant } from '../model';
 import { useTheme } from '../ds/theme';
-import { radius, space } from '../ds/tokens';
+import { motion, radius, space } from '../ds/tokens';
 import { Btn, T, Tap, Toast } from '../ds/components';
 import { Glyph } from '../ds/icons';
 import { Ground, PlantArt } from '../ds/plant';
@@ -79,7 +79,7 @@ export function FarewellSheet({ plant, visible, onClose, onConfirm }: { plant: P
             </View>
             {!!error && <Toast tone="error" title={t('Not saved')} text={error} onClose={() => setError('')} />}
           </ScrollView>
-        : <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(500)} style={{ flex: 1, justifyContent: 'center', gap: space[6] }}>
+        : <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(motion.dur.slow)} style={{ flex: 1, justifyContent: 'center', gap: space[6] }}>
             <View style={{ alignItems: 'center' }}>
               {/* The plant as it was, quiet: no motion, a little softer when it died. */}
               <View style={{ opacity: reason === 'died' ? .75 : 1 }}><PlantArt kind={plant.kind} photo={plant.photo} size={180} /></View>

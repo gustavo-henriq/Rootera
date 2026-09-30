@@ -9,18 +9,18 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, Platform, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
-import Animated, { Easing, FadeIn, FadeInDown, FadeOut, FadeOutUp, LinearTransition, SharedValue, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeOut, FadeOutUp, LinearTransition, SharedValue, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { catalog, layerLabel, matchesSpecies, PlantKind, SoilLayers } from '../../model';
 import { layersComplete, SoilLayersInput } from '../../ds/SoilLayers';
 import { plantArt } from '../../ds/plant';
 import { useCompact, useTheme } from '../../ds/theme';
-import { fonts, radius, space, springs, type } from '../../ds/tokens';
+import { fonts, motion, radius, space, springs, type } from '../../ds/tokens';
 import { Glyph } from '../../ds/icons';
 import { Candidate } from '../../api';
 import { Chip, Glass, SourceMark, T, Tap } from '../../ds/components';
 import { t } from '../../i18n';
 import { IdentifyResult } from '../Identify';
-import { pivot } from '../../ds/motion';
+import { enter, pivot } from '../../ds/motion';
 
 export type Slot = 'light' | 'pot' | 'stage' | 'watered' | 'soil';
 // Soil comes last: it is the one thing you go and check, and it becomes the first observation.
@@ -54,7 +54,7 @@ function Note({ slot, side, top, value, active, onPress, anchor, width }: { slot
   return <>
     <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: top + 25, left: side === 'left' ? boxW : anchor, width: lineW, height: 1.5, backgroundColor: c.ink2 }, draw]} />
     <View pointerEvents="none" style={{ position: 'absolute', top: top + 21, left: anchor - 4, width: 9, height: 9, borderRadius: 5, backgroundColor: c.ink }} />
-    <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(320)} style={{ position: 'absolute', top, [side]: 0, width: boxW }}>
+    <Animated.View entering={reduceMotion ? undefined : enter.fade()} style={{ position: 'absolute', top, [side]: 0, width: boxW }}>
       <Tap label={value ? `${label}: ${value}. ${t('Change')}` : `${label}. ${t('Choose below')}`} onPress={onPress} ring={radius.input}>
         <Glass level="callout" r={radius.input} shadow={active} style={{ minHeight: 52, paddingVertical: 8, paddingHorizontal: 10, borderWidth: 1.5, borderColor: active ? c.ink : 'transparent', alignItems: side === 'left' ? 'flex-start' : 'flex-end' }}>
           <View style={{ flexDirection: side === 'left' ? 'row' : 'row-reverse', alignItems: 'center', gap: 6 }}>
@@ -161,7 +161,7 @@ export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing
   const plate = !!kind && answers.light !== undefined;
   const small = Math.min(210, width * .54), big = Math.min(320, width * .84);
   const size = useSharedValue(plate ? big : small);
-  useEffect(() => { size.value = reduceMotion ? (plate ? big : small) : withTiming(plate ? big : small, { duration: 520, easing: Easing.inOut(Easing.cubic) }); }, [plate, width]);
+  useEffect(() => { size.value = reduceMotion ? (plate ? big : small) : withTiming(plate ? big : small, { duration: motion.dur.slow, easing: Easing.inOut(Easing.cubic) }); }, [plate, width]);
   const areaStyle = useAnimatedStyle(() => ({ height: size.value + 18 }));
   const left = (width - big) / 2;
   const valueOf = (s: Slot) => answers[s] === undefined ? undefined : s === 'soil' && SOILS[answers[s]!].checked ? layersSummary(layers) : options(s)[answers[s]!];
@@ -175,11 +175,11 @@ export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing
   };
 
   return <View style={{ gap: space[4] }}>
-    {!plate && <Animated.View exiting={reduceMotion ? undefined : FadeOutUp.duration(260)}>
+    {!plate && <Animated.View exiting={reduceMotion ? undefined : FadeOutUp.duration(motion.dur.fast)}>
       <Finder q={q} setQ={setQ} choice={choice} onChoose={onChoose} photo={photo} idState={idState} matches={matches} attempt={attempt} onCamera={onCamera} />
     </Animated.View>}
 
-    <Animated.View layout={reduceMotion ? undefined : LinearTransition.duration(420)} style={[{ width, alignItems: 'center' }, areaStyle]}>
+    <Animated.View layout={reduceMotion ? undefined : LinearTransition.duration(motion.dur.slow)} style={[{ width, alignItems: 'center' }, areaStyle]}>
       <Specimen kind={kind} size={size} />
       {plate && !compact && ORDER.filter(visible).map(s => <Note key={s} slot={s} {...place[s]} value={valueOf(s)} active={s === slot} onPress={() => setEditing(s)} width={width} />)}
     </Animated.View>
@@ -193,7 +193,7 @@ export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing
       </Tap>)}
     </View>}
 
-    {slot && <Animated.View key={slot} entering={reduceMotion ? undefined : FadeIn.delay(questionDelay).duration(240)} exiting={reduceMotion ? undefined : FadeOut.duration(140)} style={{ gap: space[3] }}>
+    {slot && <Animated.View key={slot} entering={reduceMotion ? undefined : FadeIn.delay(questionDelay).duration(240)} exiting={reduceMotion ? undefined : FadeOut.duration(motion.dur.fast)} style={{ gap: space[3] }}>
       <T v="headline">{t(QUESTION[slot])}</T>
       {slot === 'soil'
         ? <>
@@ -207,7 +207,7 @@ export function FirstPlant({ width, choice, onChoose, answers, onAnswer, editing
           </View>}
     </Animated.View>}
 
-    {complete && <Animated.View entering={FadeInDown.delay(180).duration(420)} style={{ gap: space[1] }}>
+    {complete && <Animated.View entering={reduceMotion ? undefined : enter.rise(180)} style={{ gap: space[1] }}>
       <T v="headline">{!SOILS[answers.soil!].checked ? t('Its first soil check can wait.') : t('This is your first observation.')}</T>
       <T v="subhead" tone="ink2">{!SOILS[answers.soil!].checked
         ? t('Rootera will ask for one soon.')

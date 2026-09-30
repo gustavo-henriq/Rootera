@@ -4,9 +4,9 @@
  * does the upgrade (service.upgrade_art) and flags it; seeing this clears the flag.
  * Waits while the profile sheet is up, so only one sheet shows at a time.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, SlideInDown, ZoomIn } from 'react-native-reanimated';
+import Animated, {  } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../store';
@@ -14,7 +14,7 @@ import { useTheme } from '../ds/theme';
 import { radius, space } from '../ds/tokens';
 import { Btn, T } from '../ds/components';
 import { Ground, PlantArt } from '../ds/plant';
-import { LeafBurst } from '../ds/motion';
+import { enter, LeafBurst, useSheetPresence } from '../ds/motion';
 import { useProfileAsking } from './ProfileInvite';
 import { t } from '../i18n';
 
@@ -25,8 +25,13 @@ export function ArtUpdate() {
   const navigation = useNavigation<any>();
   const profileAsking = useProfileAsking();
   const [closed, setClosed] = useState<string[]>([]);
-  const plant = garden.plants.find(p => p.art_new && !closed.includes(p.id));
-  if (!plant || !garden.onboarded || profileAsking) return null;
+  const next = garden.plants.find(p => p.art_new && !closed.includes(p.id));
+  const presence = useSheetPresence(!!next && garden.onboarded && !profileAsking);
+  // The plant stays on the sheet while it leaves.
+  const shown = useRef(next);
+  if (next) shown.current = next;
+  const plant = shown.current;
+  if (!presence.mounted || !plant) return null;
 
   const seen = (open: boolean) => {
     setClosed(x => [...x, plant.id]);
@@ -35,14 +40,14 @@ export function ArtUpdate() {
   };
 
   return <Modal transparent visible animationType="none" onRequestClose={() => seen(false)} statusBarTranslucent>
-    <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(180)} style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]}>
+    <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }, presence.backdrop]}>
       <Pressable accessibilityRole="button" accessibilityLabel={t('Close')} onPress={() => seen(false)} style={StyleSheet.absoluteFill} />
     </Animated.View>
     <View pointerEvents="box-none" style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
-      <Animated.View accessibilityViewIsModal entering={reduceMotion ? undefined : SlideInDown.springify().damping(26).stiffness(260)}
-        style={{ width: '100%', maxWidth: 440, backgroundColor: c.raised, borderTopLeftRadius: radius.chrome, borderTopRightRadius: radius.chrome, padding: space.gutter, paddingBottom: insets.bottom + space[5], gap: space[4], alignItems: 'center' }}>
+      <Animated.View accessibilityViewIsModal
+        style={[presence.panel, { width: '100%', maxWidth: 440, backgroundColor: c.raised, borderTopLeftRadius: radius.chrome, borderTopRightRadius: radius.chrome, padding: space.gutter, paddingBottom: insets.bottom + space[5], gap: space[4], alignItems: 'center' }]}>
         <View style={{ alignItems: 'center' }}>
-          <Animated.View entering={reduceMotion ? undefined : ZoomIn.delay(250).springify().damping(12)}><PlantArt kind={plant.kind} size={150} /></Animated.View>
+          <Animated.View entering={reduceMotion ? undefined : enter.pop(250)}><PlantArt kind={plant.kind} size={150} /></Animated.View>
           <Ground width={120} style={{ marginTop: -12 }} />
           <LeafBurst run={1} />
         </View>

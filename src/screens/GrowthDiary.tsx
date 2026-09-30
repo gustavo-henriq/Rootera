@@ -5,10 +5,11 @@
  */
 import { useEffect, useState } from 'react';
 import { Image, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ds/theme';
+import { enter } from '../ds/motion';
 import { fonts, radius, space } from '../ds/tokens';
 import { Btn, T, Tap } from '../ds/components';
 import { Glyph } from '../ds/icons';
@@ -63,7 +64,7 @@ export function GrowthDiary({ plantId, plantName, plus, onUpgrade }: { plantId: 
     </View>
     {!!error && <T v="subhead" tone="danger">{error}</T>}
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.gutter, flexGrow: 0 }} contentContainerStyle={{ gap: space[2], paddingHorizontal: space.gutter }}>
-      {entries.map((e, i) => <Animated.View key={e.id} entering={reduceMotion || i < entries.length - 1 ? undefined : ZoomIn.springify().damping(16)}>
+      {entries.map((e, i) => <Animated.View key={e.id} entering={reduceMotion || i < entries.length - 1 ? undefined : enter.pop()}>
         <Tap label={t('Photo from {date}', { date: date(e.at) })} onPress={() => setOpen(e)} ring={radius.control} scaleTo={.97}>
           <Image source={{ uri: e.uri }} accessibilityIgnoresInvertColors style={{ width: TILE.w, height: TILE.h, borderRadius: radius.control, backgroundColor: c.sunken }} />
           <T v="caption" tone="ink2" style={{ marginTop: 4 }}>{date(e.at)}</T>
@@ -82,7 +83,7 @@ export function GrowthDiary({ plantId, plantName, plus, onUpgrade }: { plantId: 
       { label: t('Choose from your photos'), icon: 'leaf', onPress: () => void pick(false) },
     ]} />
     {open && <Modal transparent visible animationType="none" onRequestClose={() => setOpen(null)} statusBarTranslucent>
-      <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(180)} style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(8,10,6,0.92)', paddingTop: insets.top + space[3], paddingBottom: insets.bottom + space[4], paddingHorizontal: space.gutter, gap: space[3] }]}>
+      <Animated.View entering={reduceMotion ? undefined : enter.fade()} style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(8,10,6,0.92)', paddingTop: insets.top + space[3], paddingBottom: insets.bottom + space[4], paddingHorizontal: space.gutter, gap: space[3] }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <T v="headline" style={{ color: '#EEF2E6' }}>{date(open.at)}</T>
           <Tap label={t("Close")} onPress={() => setOpen(null)} ring={22} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Glyph name="close" size={20} tone="#EEF2E6" /></Tap>

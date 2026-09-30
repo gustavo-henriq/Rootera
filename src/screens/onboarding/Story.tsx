@@ -11,12 +11,12 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, View } from 'react-native';
-import Animated, { cancelAnimation, Easing, FadeInDown, SharedValue, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import Animated, { cancelAnimation, Easing, SharedValue, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Ellipse, Path } from 'react-native-svg';
 import { useTheme } from '../../ds/theme';
 import { radius, space } from '../../ds/tokens';
 import { SourceMark, T } from '../../ds/components';
-import { pivot } from '../../ds/motion';
+import { enter, pivot } from '../../ds/motion';
 import { t } from '../../i18n';
 
 const SOURCES = [
@@ -160,7 +160,7 @@ export function Story({ start, onComplete }: { start: number; onComplete: () => 
       </View>}
       {SOURCES.map((s, i) => <Card key={s.key} clock={clock} at={rootAt(i) + CARD} source={s} onLayout={place(i)} />)}
     </View>
-    {ended && <Animated.View entering={reduceMotion ? undefined : FadeInDown.duration(300)} style={{ gap: space[2], alignItems: 'flex-start' }}>
+    {ended && <Animated.View entering={reduceMotion ? undefined : enter.rise()} style={{ gap: space[2], alignItems: 'flex-start' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.input, backgroundColor: c.successSoft }}>
         <SourceMark kind="suggested" /><T v="caption" tone="leafText">{t("Rootera suggests")}</T>
       </View>

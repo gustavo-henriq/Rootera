@@ -7,7 +7,8 @@ import { useStore } from '../store';
 import { ApiError } from '../api';
 import { known, newId, Plant, PlantKind } from '../model';
 import { useTheme } from '../ds/theme';
-import { radius, space } from '../ds/tokens';
+import { enter } from '../ds/motion';
+import { motion, radius, space } from '../ds/tokens';
 import { Btn, Chip, Field, T, Tap, Toast } from '../ds/components';
 import { Glyph } from '../ds/icons';
 import { Page } from '../ds/Page';
@@ -34,7 +35,7 @@ function Choices<V extends string>({ label, values, value, onChange, labels }: {
 
 export function PlantForm({ navigation, route }: Props<'PlantForm'>) {
   const { garden, addPlant, updatePlant } = useStore();
-  const { c } = useTheme();
+  const { c, reduceMotion } = useTheme();
   const editing = 'editId' in route.params ? garden.plants.find(p => p.id === (route.params as { editId: string }).editId) : undefined;
   const base = 'editId' in route.params ? null : route.params;
   const kind: PlantKind = editing?.kind ?? base?.kind ?? 'other';
@@ -68,7 +69,7 @@ export function PlantForm({ navigation, route }: Props<'PlantForm'>) {
         const routes: any[] = [...state.routes.slice(0, start < 0 ? 1 : start), { name: 'Plant', params: { id: planted } }];
         return CommonActions.reset({ ...state, routes, index: routes.length - 1 });
       }), 900)} />
-      <Animated.View entering={FadeIn.delay(900)}><T v="hero" center>{t('{name} is in your garden.', { name: name.trim() || base?.name })}</T></Animated.View>
+      <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(motion.dur.story)}><T v="hero" center>{t('{name} is in your garden.', { name: name.trim() || base?.name })}</T></Animated.View>
     </View>;
   }
 
@@ -131,7 +132,7 @@ export function PlantForm({ navigation, route }: Props<'PlantForm'>) {
         <View style={{ transform: [{ rotate: more ? '-90deg' : '90deg' }] }}><Glyph name="forward" size={18} tone={c.ink2} /></View>
       </Tap>
     </View>
-    {more && <Animated.View entering={FadeIn.duration(220)} style={{ gap: space[6] }}>
+    {more && <Animated.View entering={reduceMotion ? undefined : enter.fade()} style={{ gap: space[6] }}>
       <Choices label={t("Drainage hole?")} values={YES_NO} value={drainage} onChange={setDrainage} />
       <Choices label={t("Self-watering pot?")} values={YES_NO} value={selfWatering} onChange={setSelfWatering} />
       <Choices label={t("Pot size")} values={POT} value={pot} onChange={setPot} />

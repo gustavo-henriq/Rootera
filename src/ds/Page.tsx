@@ -9,7 +9,7 @@ import Animated, { FadeIn, interpolate, LinearTransition, useAnimatedScrollHandl
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './theme';
-import { radius, space } from './tokens';
+import { motion, radius, space } from './tokens';
 import { Glass, GlassIcon, T } from './components';
 import { GlyphName } from './icons';
 import { t } from '../i18n';
@@ -48,7 +48,7 @@ export function Page({ title, back, close, actions, footer, tab, children, gap =
   // The floating bar comes first in the tree so keyboard and screen-reader order start at
   // the top of the screen (back, then actions), and zIndex keeps it painted above content.
   return <View style={{ flex: 1, backgroundColor: c.canvas }}>
-    {!!glow && <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(900)} pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 }}>
+    {!!glow && <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(motion.dur.story)} pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 }}>
       <LinearGradient colors={[glow, 'transparent']} style={{ flex: 1 }} />
     </Animated.View>}
     {hasBar && <View pointerEvents="box-none" style={{ position: 'absolute', zIndex: 10, top: insets.top + 6, left: space.gutter - 4, right: space.gutter - 4, height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

@@ -2,11 +2,58 @@
  * Motion primitives. Springs on the UI thread, transform/opacity only, and a
  * Reduce Motion path that shows the final state immediately.
  */
-import React, { useEffect } from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import Animated, { Easing, FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming, ZoomIn } from 'react-native-reanimated';
+import React, { useEffect, useState } from 'react';
+import { StyleProp, StyleSheet, useWindowDimensions, View, ViewStyle } from 'react-native';
+import Animated, { Easing, FadeIn, FadeInDown, Keyframe, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useTheme } from './theme';
-import { springs } from './tokens';
+import { motion, springs, timing } from './tokens';
+
+/**
+ * Entrances on the tokens' scale (motion.dur, motion.dist), so the same kind of thing always
+ * moves the same way. Callers pass `undefined` instead when Reduce Motion is on.
+ * - fade: something appears in place (a tab's content, a panel, a line of text).
+ * - rise: something new arrives under what was there (a card, a button, a row); it comes up
+ *   by one `enter` step while it fades in.
+ * - pop: a small thing that deserves a moment (a check mark, a new photo, a new drawing). It
+ *   grows from 85% with a slight overshoot, never from zero: scaling up from zero flickers on
+ *   the iPhone.
+ */
+export const enter = {
+  fade: (delay = 0) => FadeIn.delay(delay).duration(motion.dur.base),
+  rise: (delay = 0) => FadeInDown.delay(delay).duration(motion.dur.base).easing(Easing.out(Easing.cubic))
+    .withInitialValues({ transform: [{ translateY: motion.dist.enter }] }),
+  pop: (delay = 0) => new Keyframe({
+    0: { opacity: 0, transform: [{ scale: .85 }] },
+    60: { opacity: 1, transform: [{ scale: 1.04 }], easing: Easing.out(Easing.cubic) },
+    100: { opacity: 1, transform: [{ scale: 1 }], easing: Easing.inOut(Easing.quad) },
+  }).delay(delay).duration(motion.dur.slow),
+};
+
+/**
+ * A bottom sheet's presence: mounted while it shows and while it leaves. Backdrop and panel
+ * come in on the sheet spring and leave faster than they came (motion.dur.fast), so closing
+ * never just cuts. With Reduce Motion the sheet appears and goes at once.
+ */
+export function useSheetPresence(visible: boolean) {
+  const { reduceMotion } = useTheme();
+  const { height } = useWindowDimensions();
+  const [mounted, setMounted] = useState(visible);
+  const p = useSharedValue(0);
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      p.value = reduceMotion ? 1 : withSpring(1, springs.sheet);
+      return;
+    }
+    if (reduceMotion) { p.value = 0; setMounted(false); return; }
+    p.value = withTiming(0, { duration: motion.dur.fast, easing: Easing.in(Easing.quad) });
+    const timer = setTimeout(() => setMounted(false), motion.dur.fast + 40);
+    return () => clearTimeout(timer);
+  }, [visible, reduceMotion]);
+  const backdrop = useAnimatedStyle(() => ({ opacity: p.value }));
+  const panel = useAnimatedStyle(() => ({ transform: [{ translateY: (1 - p.value) * height }] }));
+  return { mounted, backdrop, panel };
+}
 
 type Step = { translateX: number } | { translateY: number } | { scale: number } | { scaleX: number } | { scaleY: number } | { rotate: string };
 
@@ -26,12 +73,13 @@ export function pivot(w: number, h: number, ox: number, oy: number, steps: Step[
 /** List items rise in one after another, once per mount. */
 export function Stagger({ index, children, style }: React.PropsWithChildren<{ index: number; style?: StyleProp<ViewStyle> }>) {
   const { reduceMotion } = useTheme();
-  return <Animated.View entering={reduceMotion ? undefined : FadeInDown.delay(Math.min(index, 8) * 55).springify().damping(18).stiffness(160)} style={style}>{children}</Animated.View>;
+  // Only the first rows animate (motion.staggerMax); the rest simply appear.
+  return <Animated.View entering={reduceMotion || index >= motion.staggerMax ? undefined : enter.rise(index * timing.stagger)} style={style}>{children}</Animated.View>;
 }
 
 export function Pop({ delay = 0, children, style }: React.PropsWithChildren<{ delay?: number; style?: StyleProp<ViewStyle> }>) {
   const { reduceMotion } = useTheme();
-  return <Animated.View entering={reduceMotion ? undefined : ZoomIn.delay(delay).springify().damping(12).stiffness(190)} style={style}>{children}</Animated.View>;
+  return <Animated.View entering={reduceMotion ? undefined : enter.pop(delay)} style={style}>{children}</Animated.View>;
 }
 
 /** One gentle settle when a plant appears; never loops. */

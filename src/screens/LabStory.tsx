@@ -15,12 +15,12 @@
  */
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import Animated, { cancelAnimation, Easing, FadeIn, SharedValue, useAnimatedProps, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { cancelAnimation, Easing, SharedValue, useAnimatedProps, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Line, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { pivot } from '../ds/motion';
+import { enter, pivot } from '../ds/motion';
 import { PlantArt } from '../ds/plant';
 import { useTheme } from '../ds/theme';
-import { fonts, radius, space } from '../ds/tokens';
+import { fonts, motion, radius, space } from '../ds/tokens';
 import { T, Tap } from '../ds/components';
 import { t } from '../i18n';
 
@@ -317,7 +317,7 @@ export function WaterWeatherScene() {
           <View style={{ height: 176 }}>{CAPTIONS.map((_, i) => <Caption key={i} ms={ms} i={i} />)}</View>
           {/* Room kept for "See again", so nothing moves when it appears. */}
           <View style={{ height: 44 }}>
-            {done && <Animated.View entering={FadeIn.duration(500)} style={{ alignSelf: 'flex-start' }}>
+            {done && <Animated.View entering={enter.fade()} style={{ alignSelf: 'flex-start' }}>
               <Tap label={t('See again')} onPress={play} ring={radius.inner} style={{ minHeight: 44, justifyContent: 'center' }}>
                 <T v="subhead" style={{ color: STAGE.leaf, fontFamily: fonts.medium }}>{t('See again')}</T>
               </Tap>
@@ -339,7 +339,7 @@ export function CyclesScene() {
   }, []);
   // The window narrows as cycles come in: wide estimate, then this plant's own.
   const width = useSharedValue(1);
-  useEffect(() => { width.value = withTiming([1, .72, .5, .26][filled], { duration: 600, easing: Easing.inOut(Easing.cubic) }); }, [filled]);
+  useEffect(() => { width.value = withTiming([1, .72, .5, .26][filled], { duration: motion.dur.fill, easing: Easing.inOut(Easing.cubic) }); }, [filled]);
   const band = useAnimatedStyle(() => ({ width: `${width.value * 100}%` }));
   return <View accessible accessibilityRole="image" accessibilityLabel={t('Three cycles: the window narrows onto this plant')} style={{ gap: space[5], paddingVertical: space[3] }}>
     <View style={{ flexDirection: 'row', justifyContent: 'center', gap: space[5] }}>

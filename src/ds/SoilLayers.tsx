@@ -9,9 +9,10 @@
  */
 import { useState } from 'react';
 import { View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { Layer, LayerKey, SoilLayers, layerLabel } from '../model';
 import { useTheme } from './theme';
+import { enter } from './motion';
 import { fonts, radius, space } from './tokens';
 import { Chip, T, Tap } from './components';
 import { DepthRuler } from './DepthRuler';
@@ -34,7 +35,7 @@ const HINT: Record<Layer | 'unreached', string> = {
 export const layersComplete = (v: Partial<SoilLayers>): v is SoilLayers => LAYER_KEYS.every(k => !!v[k]);
 
 export function SoilLayersInput({ value, onChange }: { value: Partial<SoilLayers>; onChange: (v: Partial<SoilLayers>) => void }) {
-  const { c } = useTheme();
+  const { c, reduceMotion } = useTheme();
   const [editing, setEditing] = useState<LayerKey | null>(null);
   const next = LAYER_KEYS.find(k => !value[k]) ?? null;
   const focus = editing ?? next;
@@ -50,7 +51,7 @@ export function SoilLayersInput({ value, onChange }: { value: Partial<SoilLayers
         const open = k === focus;
         const v = value[k];
         const options = (k === 'bottom' ? ['dry', 'moist', 'wet', 'unreached'] : ['dry', 'moist', 'wet']) as SoilLayers[LayerKey][];
-        return <Animated.View key={k} entering={FadeIn.duration(220)} style={{ paddingVertical: space[3], gap: space[2], borderBottomWidth: 1, borderColor: c.hairline }}>
+        return <Animated.View key={k} entering={reduceMotion ? undefined : enter.fade()} style={{ paddingVertical: space[3], gap: space[2], borderBottomWidth: 1, borderColor: c.hairline }}>
           {open
             ? <>
                 <T v="headline">{t(INFO[k].name)}</T>

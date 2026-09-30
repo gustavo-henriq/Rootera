@@ -16,8 +16,8 @@ import { Btn, Chip, FloatingTabBar, Group, Row, SourceLabel, T, Tap, Toast } fro
 import { Glyph, GlyphName } from '../ds/icons';
 import { Page } from '../ds/Page';
 import { Ground, PlantArt, plantArt } from '../ds/plant';
-import Animated, { FadeIn } from 'react-native-reanimated';
-import { Settle } from '../ds/motion';
+import Animated from 'react-native-reanimated';
+import { enter, Settle } from '../ds/motion';
 import { PickerSheet } from '../ds/PickerSheet';
 import { ActionSheet } from '../ds/ActionSheet';
 import { measure, Rect } from '../ds/Flight';
@@ -232,7 +232,7 @@ function RoundCard({ count, onStart }: { count: number; onStart: () => void }) {
 
 /** A plant rising out of its tile, like a pot on the edge of a shelf. */
 const Tile = memo(function Tile({ plant, width, onPress, needs, where, animate }: { plant: Plant; width: number; onPress: (p: Plant, from?: Rect) => void; needs: boolean; where: string | null; animate: number | null }) {
-  const { c } = useTheme();
+  const { c, reduceMotion } = useTheme();
   const artRef = useRef<View>(null);
   // The illustration's position is measured on tap so it can fly into the plant page.
   const art = <View ref={artRef} collapsable={false}><PlantArt kind={plant.kind} photo={plant.photo} size={width * .8} /></View>;
@@ -248,7 +248,7 @@ const Tile = memo(function Tile({ plant, width, onPress, needs, where, animate }
     </View>
     {/* The first screenful fades in, one after another, without a spring: the plants used to
         bounce before settling on their cards. Tiles further down just appear. */}
-    <Animated.View entering={animate !== null ? FadeIn.delay(animate).duration(220) : undefined} style={{ position: 'absolute', top: 0, left: width * .1, right: width * .1, alignItems: 'center' }}>{art}</Animated.View>
+    <Animated.View entering={animate !== null && !reduceMotion ? enter.fade(animate) : undefined} style={{ position: 'absolute', top: 0, left: width * .1, right: width * .1, alignItems: 'center' }}>{art}</Animated.View>
   </Tap>;
 });
 

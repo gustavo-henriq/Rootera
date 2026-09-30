@@ -13,7 +13,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Pressable, ScrollView, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Props } from '../navigation';
 import { useStore } from '../store';
@@ -22,7 +22,8 @@ import { track } from '../analytics';
 import { photoData } from './Camera';
 import { Experience, experienceHint, experienceLabel, newId, Plant, SoilLayers } from '../model';
 import { useTheme } from '../ds/theme';
-import { radius, space } from '../ds/tokens';
+import { enter } from '../ds/motion';
+import { motion, radius, space, timing } from '../ds/tokens';
 import { Btn, T, Tap, Toast } from '../ds/components';
 import { Glyph } from '../ds/icons';
 import { SeedDrop } from '../ds/SeedDrop';
@@ -161,8 +162,8 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   if (phase === 'celebrate') {
     return <Pressable accessibilityRole="button" accessibilityLabel={t("Continue to your plan")} onPress={toPlan}
       style={{ flex: 1, backgroundColor: c.canvas, alignItems: 'center', justifyContent: 'center', padding: space.gutter, gap: space[6] }}>
-      <SeedDrop size={290} run={1} kind={kind!} onDone={() => setTimeout(toPlan, reduceMotion ? 700 : 1200)} />
-      <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(900)} style={{ alignItems: 'center', gap: space[1] }}>
+      <SeedDrop size={290} run={1} kind={kind!} onDone={() => setTimeout(toPlan, reduceMotion ? 700 : 900)} />
+      <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(motion.dur.story)} style={{ alignItems: 'center', gap: space[1] }}>
         <T v="hero" center>{t('{name} is in your garden.', { name: choice?.name ?? '' })}</T>
         <T v="callout" tone="ink2" center>{soilChecked ? t('Your first check is saved.') : t('Its first soil check is waiting for you.')}</T>
       </Animated.View>
@@ -217,7 +218,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
         {step === 1
           ? <><TextReveal text={titles[step][0]} v="hero" delay={titleDelay} />
               {!!titles[step][1] && <TextReveal text={titles[step][1]} v="callout" tone="ink2" delay={titleTime - 300} perWord={30} />}</>
-          : <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(180)} style={{ gap: space[2] }}>
+          : <Animated.View entering={reduceMotion ? undefined : enter.fade()} style={{ gap: space[2] }}>
               <T v="hero" accessibilityRole="header">{titles[step][0]}</T>
               <T v="callout" tone="ink2">{titles[step][1]}</T>
             </Animated.View>}
@@ -225,9 +226,9 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
       {/* Content rises only once the title has gone, so the two never overlap. */}
       {/* Keyed by step: a new step's content mounts in place (a layout transition carried over
           from the last step slid it up over the new title). */}
-      <Animated.View key={'content-' + step} layout={reduceMotion ? undefined : LinearTransition.delay(140).duration(380)} onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ paddingTop: hideTitle ? space[3] : 0 }}>
+      <Animated.View key={'content-' + step} layout={reduceMotion ? undefined : LinearTransition.delay(timing.stagger * 2).duration(motion.dur.slow)} onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ paddingTop: hideTitle ? space[3] : 0 }}>
         {step === 1 && <Story start={titleTime} onComplete={() => setStoryDone(true)} />}
-        {step === 2 && <Animated.View entering={reduceMotion ? undefined : FadeInDown.delay(140).duration(320)} style={{ gap: space[3] }}>
+        {step === 2 && <Animated.View entering={reduceMotion ? undefined : enter.rise(timing.stagger * 2)} style={{ gap: space[3] }}>
           <View style={{ flexDirection: 'row', gap: space[3] }}>
             {experiences.slice(0, 2).map(o => <GlassChoice key={o.value} on={experience === o.value} onPress={() => chooseExperience(o.value)} label={experienceLabel[o.value]} hint={experienceHint[o.value]} art={o.art} scene={o.scene} />)}
           </View>
@@ -239,7 +240,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
       </View>
     </ScrollView>
     {/* The action appears only once it can be taken: no disabled "Plant it" waiting at the bottom. */}
-    {showCta && <Animated.View key={step} entering={reduceMotion || step === 2 ? undefined : FadeInDown.duration(380)}
+    {showCta && <Animated.View key={step} entering={reduceMotion || step === 2 ? undefined : enter.rise()}
       style={{ paddingHorizontal: space.gutter, paddingBottom: insets.bottom + space[4], paddingTop: space[3], gap: space[2] }}>
       {!!error && <Toast tone="error" title={t("Not saved")} text={error} onClose={() => setError('')} />}
       <Btn title={step === 3 ? t('Plant it') : t('Continue')} busy={busy} disabled={!canNext} hint={step === 2 ? t('Choose the one closest to you to continue.') : undefined} onPress={() => step === 3 ? void plant() : next()} />

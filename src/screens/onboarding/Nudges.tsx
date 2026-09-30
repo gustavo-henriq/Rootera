@@ -5,14 +5,14 @@
  */
 import React, { useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { FadeOut, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { NudgeKind } from '../../model';
 import { useTheme } from '../../ds/theme';
-import { fonts, radius, space, springs } from '../../ds/tokens';
+import { fonts, motion, radius, space, springs } from '../../ds/tokens';
 import { Chip, Glass, T, Tap } from '../../ds/components';
 import { Glyph } from '../../ds/icons';
 import { t } from '../../i18n';
-import { pivot } from '../../ds/motion';
+import { enter, pivot } from '../../ds/motion';
 
 /**
  * Asks the OS for notification permission. Returns whether nudges can reach the phone.
@@ -72,7 +72,7 @@ function DetailSwitch({ detail, onDetail }: { detail: 'Guided' | 'Concise'; onDe
     <Glass level="control" r={radius.card} shadow={false} style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], padding: space[3], minHeight: 72 }}>
       <MessageGlyph on={on} />
       <View style={{ flex: 1, gap: 2 }}>
-        <Animated.View key={title} entering={reduceMotion ? undefined : FadeIn.duration(220)} exiting={reduceMotion ? undefined : FadeOut.duration(120)}>
+        <Animated.View key={title} entering={reduceMotion ? undefined : enter.fade()} exiting={reduceMotion ? undefined : FadeOut.duration(motion.dur.fast)}>
           <T v="headline" style={{ fontFamily: fonts.medium }}>{title}</T>
           <T v="footnote" tone="ink2">{hint}</T>
         </Animated.View>
@@ -86,13 +86,13 @@ function DetailSwitch({ detail, onDetail }: { detail: 'Guided' | 'Concise'; onDe
 }
 
 export function NudgePicker({ selected, onToggle, detail, onDetail, time, onTime }: { selected: NudgeKind[]; onToggle: (k: NudgeKind) => void; detail: 'Guided' | 'Concise'; onDetail: (d: 'Guided' | 'Concise') => void; time: string; onTime: (t: string) => void }) {
-  const { c } = useTheme();
+  const { c, reduceMotion } = useTheme();
   const [focus, setFocus] = useState<NudgeKind>(selected[0] ?? 'soil_check');
   const copy = nudgeCopy[focus];
   // The watering tip only appears when it is useful: nudges set for late afternoon or evening.
   const late = Number(time.slice(0, 2)) >= 16;
   return <View style={{ gap: space[5] }}>
-    <Animated.View key={focus + detail + time} entering={FadeIn.duration(220)}>
+    <Animated.View key={focus + detail + time} entering={reduceMotion ? undefined : enter.fade()}>
       <Glass level="control" r={radius.card} style={{ padding: space[4], gap: space[2] }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
           <Glyph name="sprout" size={16} tone={c.leafMark} />
@@ -133,7 +133,7 @@ export function NudgePicker({ selected, onToggle, detail, onDetail, time, onTime
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
         {['07:00', '08:00', '09:00', '19:00'].map(h => <Chip key={h} label={h} selected={time === h} onPress={() => onTime(h)} />)}
       </View>
-      {late && <Animated.View entering={FadeIn.duration(240)} style={{ flexDirection: 'row', gap: space[2], alignItems: 'center' }}>
+      {late && <Animated.View entering={reduceMotion ? undefined : enter.fade()} style={{ flexDirection: 'row', gap: space[2], alignItems: 'center' }}>
         <Glyph name="light" size={18} tone={c.amber} />
         <T v="subhead" style={{ flex: 1 }}>{t("Morning is best for watering: the soil dries during the day.")}</T>
       </Animated.View>}

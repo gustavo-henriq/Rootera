@@ -4,10 +4,11 @@
  * The same picture people learned on day one, so explanations always look the same.
  */
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, SlideInDown } from 'react-native-reanimated';
+import Animated, {  } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './theme';
-import { fonts, radius, space } from './tokens';
+import { fonts, radius, space, timing } from './tokens';
+import { enter, useSheetPresence } from './motion';
 import { Source, SourceMark, T, Tap } from './components';
 import { Glyph } from './icons';
 import { t } from '../i18n';
@@ -20,15 +21,16 @@ const GROUPS: { kind: Source; title: string; match: RegExp; empty: string }[] = 
 
 export function WhySheet({ visible, onClose, title, reason, basis }: { visible: boolean; onClose: () => void; title: string; reason: string; basis: string[] }) {
   const { c, reduceMotion } = useTheme();
+  const presence = useSheetPresence(visible);
   const insets = useSafeAreaInsets();
-  if (!visible) return null;
+  if (!presence.mounted) return null;
   return <Modal transparent visible animationType="none" onRequestClose={onClose} statusBarTranslucent>
-    <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(160)} style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]}>
+    <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }, presence.backdrop]}>
       <Pressable accessibilityRole="button" accessibilityLabel={t("Close")} onPress={onClose} style={StyleSheet.absoluteFill} />
     </Animated.View>
     <View pointerEvents="box-none" style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
-      <Animated.View accessibilityViewIsModal entering={reduceMotion ? undefined : SlideInDown.springify().damping(26).stiffness(260)}
-        style={{ width: '100%', maxWidth: 440, maxHeight: '85%', backgroundColor: c.raised, borderTopLeftRadius: radius.chrome, borderTopRightRadius: radius.chrome }}>
+      <Animated.View accessibilityViewIsModal
+        style={[presence.panel, { width: '100%', maxWidth: 440, maxHeight: '85%', backgroundColor: c.raised, borderTopLeftRadius: radius.chrome, borderTopRightRadius: radius.chrome }]}>
         <ScrollView contentContainerStyle={{ padding: space.gutter, paddingBottom: insets.bottom + space[6], gap: space[4] }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[2] }}>
             <T v="title2" style={{ flex: 1 }} accessibilityRole="header">{t("Why Rootera suggests this")}</T>
@@ -38,7 +40,7 @@ export function WhySheet({ visible, onClose, title, reason, basis }: { visible: 
             {GROUPS.map((gr, i) => {
               const used = basis.filter(b => gr.match.test(b));
               const on = used.length > 0;
-              return <Animated.View key={gr.kind} entering={reduceMotion ? undefined : FadeInDown.delay(80 + i * 90).duration(260)}
+              return <Animated.View key={gr.kind} entering={reduceMotion ? undefined : enter.rise(80 + i * timing.stagger)}
                 style={{ flexDirection: 'row', gap: space[3], opacity: on ? 1 : .55 }}>
                 {/* the rail joins every used source down into the suggestion */}
                 <View style={{ alignItems: 'center', width: 18 }}>
@@ -51,7 +53,7 @@ export function WhySheet({ visible, onClose, title, reason, basis }: { visible: 
                 </View>
               </Animated.View>;
             })}
-            <Animated.View entering={reduceMotion ? undefined : FadeInDown.delay(380).duration(280)}
+            <Animated.View entering={reduceMotion ? undefined : enter.rise(80 + GROUPS.length * timing.stagger)}
               style={{ flexDirection: 'row', gap: space[3] }}>
               <View style={{ width: 18, alignItems: 'center' }}><View style={{ marginTop: 6 }}><SourceMark kind="suggested" size={10} /></View></View>
               <View style={{ flex: 1, gap: space[1], padding: space[3], borderRadius: radius.control, backgroundColor: c.successSoft }}>
