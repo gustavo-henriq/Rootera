@@ -40,6 +40,9 @@ export function StoreProvider({ children }: React.PropsWithChildren) {
   const [source, setSource] = useState<Store['source']>('none');
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const writes = useRef(0);
+  // Every garden request takes a number and only the newest may reach the screen. A write
+  // takes one too, so a refresh that left before it can't paint the garden it replaced.
+  const loads = useRef(0);
 
   const apply = useCallback(async (next: Garden) => {
     setGarden(next);
@@ -48,10 +51,15 @@ export function StoreProvider({ children }: React.PropsWithChildren) {
     try { await AsyncStorage.setItem(KEY, JSON.stringify(next)); } catch { /* cache is optional */ }
   }, []);
 
-  const refresh = useCallback(async () => {
-    if (writes.current) return;
-    try { await apply(await api.garden()); } catch { setOffline(true); }
+  const load = useCallback(async () => {
+    const n = ++loads.current;
+    try {
+      const next = await api.garden();
+      if (n === loads.current) await apply(next);
+    } catch { if (n === loads.current) setOffline(true); }
   }, [apply]);
+
+  const refresh = useCallback(async () => { if (!writes.current) await load(); }, [load]);
 
   useEffect(() => {
     (async () => {
@@ -73,11 +81,12 @@ export function StoreProvider({ children }: React.PropsWithChildren) {
 
   const write = useCallback(<T,>(run: () => Promise<T>): Promise<T> => {
     writes.current++;
+    loads.current++;
     const op = queue.current.then(async () => {
       try {
         const result = await run();
         // The write succeeded; a failed reload must not look like a failed save.
-        try { await apply(await api.garden()); } catch { setOffline(true); }
+        await load();
         return result;
       } finally {
         writes.current--;
@@ -85,7 +94,7 @@ export function StoreProvider({ children }: React.PropsWithChildren) {
     });
     queue.current = op.catch(() => undefined);
     return op;
-  }, [apply]);
+  }, [load]);
 
   const value = useMemo<Store>(() => ({
     garden, ready, source, offline, refresh,

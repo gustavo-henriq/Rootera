@@ -184,8 +184,8 @@ export function Field({ label, value, onChangeText, placeholder, numeric, autoFo
  * Where a fact comes from, as a catalogue legend: one small geometric mark per source
  * (● observed, ○ told, ■ species, ◆ suggested, a short rule for not connected) and quiet text.
  */
-export type Source = 'observed' | 'told' | 'species' | 'suggested' | 'off';
-const sourceText: Record<Source, string> = { observed: 'You observed', told: 'You told us', species: 'Species note', suggested: 'Rootera suggests', off: 'Not connected' };
+export type Source = 'observed' | 'told' | 'species' | 'suggested' | 'outside' | 'off';
+const sourceText: Record<Source, string> = { observed: 'You observed', told: 'You told us', species: 'Species note', suggested: 'Rootera suggests', outside: 'Weather or photo', off: 'Not connected' };
 export function SourceMark({ kind, size = 8 }: { kind: Source; size?: number }) {
   const { c } = useTheme();
   const tone = kind === 'observed' ? c.leafMark : kind === 'off' ? c.ink3 : c.ink2;
@@ -193,6 +193,7 @@ export function SourceMark({ kind, size = 8 }: { kind: Source; size?: number }) 
   if (kind === 'observed') return <View style={[base, { borderRadius: size, backgroundColor: tone }]} />;
   if (kind === 'told') return <View style={[base, { borderRadius: size, borderWidth: 1.5, borderColor: tone }]} />;
   if (kind === 'species') return <View style={[base, { backgroundColor: tone }]} />;
+  if (kind === 'outside') return <View style={[base, { borderWidth: 1.5, borderColor: tone }]} />;
   if (kind === 'suggested') return <View style={[base, { backgroundColor: tone, transform: [{ rotate: '45deg' }, { scale: .85 }] }]} />;
   return <View style={{ width: size + 2, height: 1.5, backgroundColor: tone }} />;
 }

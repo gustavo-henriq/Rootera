@@ -1,7 +1,7 @@
 """Relational storage. SQLite locally; PostgreSQL through DATABASE_URL."""
 import os
 from pathlib import Path
-from sqlalchemy import JSON, Boolean, Float, ForeignKey, Integer, String, UniqueConstraint, create_engine, event
+from sqlalchemy import JSON, Float, ForeignKey, Integer, String, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 class Base(DeclarativeBase):
@@ -38,41 +38,6 @@ class ProductEvent(Base):
     name: Mapped[str] = mapped_column(String(60), index=True)
     props: Mapped[dict] = mapped_column(JSON)
     at: Mapped[str] = mapped_column(String(40))
-
-class Device(Base):
-    __tablename__ = 'devices'
-    id: Mapped[str] = mapped_column(String(80), primary_key=True)
-    plant_id: Mapped[str] = mapped_column(ForeignKey('plants.id'), index=True)
-    owner_id: Mapped[str] = mapped_column(ForeignKey('profiles.id'), index=True)
-    name: Mapped[str] = mapped_column(String(120))
-    token_hash: Mapped[str] = mapped_column(String(64))
-    demo: Mapped[bool] = mapped_column(Boolean, default=False)
-    active: Mapped[bool] = mapped_column(Boolean, default=True)
-
-class Calibration(Base):
-    __tablename__ = 'calibrations'
-    __table_args__ = (UniqueConstraint('device_id', 'version'),)
-    id: Mapped[str] = mapped_column(String(80), primary_key=True)
-    device_id: Mapped[str] = mapped_column(ForeignKey('devices.id'), index=True)
-    version: Mapped[int] = mapped_column(Integer)
-    dry: Mapped[int] = mapped_column(Integer)
-    wet: Mapped[int] = mapped_column(Integer)
-    created_at: Mapped[str] = mapped_column(String(40))
-
-class SensorObservation(Base):
-    __tablename__ = 'sensor_observations'
-    __table_args__ = (UniqueConstraint('device_id', 'message_id'),)
-    id: Mapped[str] = mapped_column(String(80), primary_key=True)
-    plant_id: Mapped[str] = mapped_column(ForeignKey('plants.id'), index=True)
-    device_id: Mapped[str] = mapped_column(ForeignKey('devices.id'), index=True)
-    message_id: Mapped[str] = mapped_column(String(100))
-    calibration_id: Mapped[str] = mapped_column(ForeignKey('calibrations.id'))
-    raw_adc: Mapped[int] = mapped_column(Integer)
-    normalized: Mapped[float] = mapped_column(Float)
-    quality: Mapped[float] = mapped_column(Float)
-    observed_at: Mapped[str] = mapped_column(String(40), index=True)
-    received_at: Mapped[str] = mapped_column(String(40))
-    demo: Mapped[bool] = mapped_column(Boolean)
 
 class DomainEvent(Base):
     __tablename__ = 'domain_events'

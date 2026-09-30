@@ -6,7 +6,7 @@ from datetime import timedelta
 
 import pytest
 
-from app.domain import Evidence, PlantTwinEngine
+from app.domain import Evidence
 from app.guidance import SensorlessGuidance
 from app.i18n import PT
 from app.species import SPECIES_NOTES
@@ -48,8 +48,6 @@ def random_history(rng):
         if kind == 'Watered' and rng.random() < .5:
             value['amount_ml'] = rng.choice([None, 100, 250])
         events.append(Evidence(f'e{i}', 'USER', kind, value, at, .65))
-    if rng.random() < .2:
-        events.append(Evidence('s', 'SENSOR', 'SoilMoistureMeasured', {'moisture': rng.uniform(0, 100)}, NOW.isoformat(), .9))
     return events
 
 
@@ -65,7 +63,6 @@ def test_random_histories_hold_the_invariants(seed):
         caregiver = {'detail': rng.choice(['Guided', 'Concise'])}
         en = SensorlessGuidance().project(plant, caregiver, events, NOW)
         pt = SensorlessGuidance().project(plant, caregiver, events, NOW, lang='pt')
-        PlantTwinEngine().project('p', events, NOW)
         # The language changes words only.
         assert (en['action'], en['basis'], en['state'], en['forecast']) == (pt['action'], pt['basis'], pt['state'], pt['forecast'])
         assert en['action'] in ACTIONS and set(en['basis']) <= BASIS and en['basis']

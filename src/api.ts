@@ -92,7 +92,7 @@ export const api = {
   syncBilling: () => request<{ plan: Plan }>('/v1/billing/sync', 'POST'),
   identify: (image_base64: string) => request<{ results: Candidate[] }>('/v1/identify', 'POST', { image_base64 }, 30000),
   /** Older care records, newest first, beyond what the garden snapshot carries. */
-  journal: (q: { before?: string; limit?: number; plant?: string }) => {
+  journal: (q: { before?: string; before_id?: string; limit?: number; plant?: string }) => {
     const params = Object.entries(q).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&');
     return request<{ events: CareEvent[]; more: boolean }>(`/v1/journal${params ? `?${params}` : ''}`);
   },

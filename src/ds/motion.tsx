@@ -4,7 +4,7 @@
  */
 import React, { useEffect } from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import Animated, { Easing, FadeInDown, FadeInUp, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming, ZoomIn } from 'react-native-reanimated';
+import Animated, { Easing, FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming, ZoomIn } from 'react-native-reanimated';
 import { useTheme } from './theme';
 import { springs } from './tokens';
 
@@ -29,25 +29,9 @@ export function Stagger({ index, children, style }: React.PropsWithChildren<{ in
   return <Animated.View entering={reduceMotion ? undefined : FadeInDown.delay(Math.min(index, 8) * 55).springify().damping(18).stiffness(160)} style={style}>{children}</Animated.View>;
 }
 
-export function Appear({ delay = 0, children, style }: React.PropsWithChildren<{ delay?: number; style?: StyleProp<ViewStyle> }>) {
-  const { reduceMotion } = useTheme();
-  return <Animated.View entering={reduceMotion ? undefined : FadeInUp.delay(delay).duration(320)} style={style}>{children}</Animated.View>;
-}
-
 export function Pop({ delay = 0, children, style }: React.PropsWithChildren<{ delay?: number; style?: StyleProp<ViewStyle> }>) {
   const { reduceMotion } = useTheme();
   return <Animated.View entering={reduceMotion ? undefined : ZoomIn.delay(delay).springify().damping(12).stiffness(190)} style={style}>{children}</Animated.View>;
-}
-
-/** A leader line that draws itself by scaling from its origin (never animates width). */
-export function DrawLine({ x, y, length, vertical, delay, tone, from = 'start' }: { x: number; y: number; length: number; vertical?: boolean; delay: number; tone: string; from?: 'start' | 'end' }) {
-  const { reduceMotion } = useTheme();
-  const p = useSharedValue(reduceMotion ? 1 : 0);
-  useEffect(() => { if (!reduceMotion) p.value = withDelay(delay, withSpring(1, springs.smooth)); }, [reduceMotion]);
-  const w = vertical ? 1.5 : Math.max(0, length), h = vertical ? Math.max(0, length) : 1.5;
-  const end = from === 'start' ? 0 : 1;
-  const style = useAnimatedStyle(() => ({ transform: vertical ? pivot(w, h, .5, end, [{ scaleY: p.value }]) : pivot(w, h, end, .5, [{ scaleX: p.value }]) }));
-  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: x, top: y, width: w, height: h, backgroundColor: tone }, style]} />;
 }
 
 /** One gentle settle when a plant appears; never loops. */

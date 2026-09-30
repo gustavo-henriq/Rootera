@@ -50,11 +50,10 @@ export interface Guidance {
 }
 export interface Twin {
   guidance: Guidance;
-  measured: { soil_moisture_percent: number; stale: boolean; observed_at: string } | null;
-  sources: { user: { observations: number }; sensor: { connected: boolean; readings: number }; external: { weather: boolean; identification: boolean }; reference: { species_notes: boolean } };
+  sources: { user: { observations: number }; external: { weather: boolean; identification: boolean }; reference: { species_notes: boolean } };
 }
 export interface Caregiver { experience: Experience; detail: 'Guided' | 'Concise' }
-export type NudgeKind = 'soil_check' | 'pattern' | 'leaves' | 'weekly';
+export type NudgeKind = 'soil_check' | 'leaves';
 export interface Nudges { kinds: NudgeKind[]; time: string }
 export interface Integrations { billing: boolean; identification: boolean; weather: boolean; demo: boolean }
 export interface Garden {

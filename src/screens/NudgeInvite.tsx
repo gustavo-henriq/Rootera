@@ -19,6 +19,7 @@ import { scheduleNudges } from '../nudges';
 import { track } from '../analytics';
 import { useProfileAsking } from './ProfileInvite';
 import { t } from '../i18n';
+import { supportedNudges } from '../nudges';
 
 const ASKED = 'rootera:nudge-invite:asked';
 const TIMES = ['07:00', '08:00', '09:00', '19:00'];
@@ -31,7 +32,7 @@ export function NudgeInvite() {
   const [time, setTime] = useState(garden.nudges?.time ?? '08:00');
   const [busy, setBusy] = useState(false);
   const first = garden.plants.find(p => !p.example);
-  const off = !garden.reminders || !garden.nudges?.kinds.length;
+  const off = !garden.reminders || !supportedNudges(garden.nudges?.kinds).length;
   // One sheet at a time: the profile comes first.
   const profileAsking = useProfileAsking();
 
@@ -51,7 +52,8 @@ export function NudgeInvite() {
     if (busy) return;
     setBusy(true);
     try {
-      const nudges = { kinds: garden.nudges?.kinds.length ? garden.nudges.kinds : ['soil_check' as const], time };
+      const kept = supportedNudges(garden.nudges?.kinds);
+      const nudges = { kinds: kept.length ? kept : ['soil_check' as const], time };
       await saveProfile({ reminders: true, nudges });
       const granted = await requestNudgePermission();
       track('notification_permission', { granted, from: 'invite' });

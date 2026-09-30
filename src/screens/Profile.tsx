@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Linking, Platform, StyleSheet, View } from 'react-native';
 import { Props } from '../navigation';
 import { useStore } from '../store';
+import { supportedNudges } from '../nudges';
 import { Experience as ExperienceT, experienceHint, experienceLabel, NudgeKind } from '../model';
 import { useTheme } from '../ds/theme';
 import { fonts, radius, space } from '../ds/tokens';
@@ -71,7 +72,7 @@ function PhonePermission() {
 
 export function Nudges({ navigation }: Props<'Nudges'>) {
   const { garden, saveProfile } = useStore();
-  const [kinds, setKinds] = useState<NudgeKind[]>(garden.nudges?.kinds ?? ['soil_check']);
+  const [kinds, setKinds] = useState<NudgeKind[]>(garden.nudges ? supportedNudges(garden.nudges.kinds) : ['soil_check']);
   const [time, setTime] = useState(garden.nudges?.time ?? '08:00');
   const [detail, setDetail] = useState<'Guided' | 'Concise'>(garden.caregiver?.detail ?? 'Guided');
   const [busy, setBusy] = useState(false);
@@ -98,7 +99,7 @@ const layers: { kind: Source; title: string; text: string }[] = [
   { kind: 'told', title: 'What you tell us', text: 'Its spot, light, pot and soil. Optional.' },
   { kind: 'species', title: 'General species notes', text: 'What the species usually likes. A start, not a rule for your plant.' },
   { kind: 'suggested', title: 'What Rootera suggests', text: 'Rules that combine the three sources. After three cycles, Rootera shows how long your plant takes to dry. It’s not a watering schedule.' },
-  { kind: 'off', title: 'Not connected yet', text: 'Soil sensors, local weather and photo ID. Each will be its own source.' },
+  { kind: 'outside', title: 'Local weather and photo ID', text: 'Once you turn it on, this week’s weather nudges the drying window a little. A photo only suggests the species; you confirm it.' },
 ];
 
 export function About({ navigation }: Props<'About'>) {

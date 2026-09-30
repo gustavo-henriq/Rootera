@@ -66,7 +66,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const leftCelebration = useRef(false);
-  const ids = useRef({ plant: newId('plant'), soil: newId('care'), water: newId('water'), soilAt: '' });
+  const ids = useRef({ plant: newId('plant'), soil: newId('care'), water: newId('water'), soilAt: '', waterAt: '' });
   const tr = (name: string, props: Record<string, string | number | boolean> = {}) => { if (!preview) track(name, props); };
 
   useEffect(() => {
@@ -110,7 +110,12 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
     setStep(step + 1);
   };
 
-  /** Plants the first plant. The profile is marked onboarded here, so the plant is never planted twice. */
+  /**
+   * Plants the first plant, then its first records, and marks setup done last, so an
+   * interrupted setup is never skipped. Every step keeps its id and time: trying again after
+   * a failure repeats nothing and conflicts with nothing. (A garden that already holds its
+   * first plant opens on Today even if the last step never arrived; see App.)
+   */
   const plant = async () => {
     if (busy || !choice) return;
     tr('onboarding_step_completed', { step: 'plant' });
@@ -118,23 +123,23 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
     if (preview) { setPhase('celebrate'); return; }
     setBusy(true); setError('');
     try {
-      // Nudges start off; Today offers them once the plant is in (see NudgeInvite).
-      await saveProfile({ name: garden.name, onboarded: true, reminders: false, caregiver: { experience: experience || 'first', detail }, nudges: { kinds: ['soil_check'], time: garden.nudges?.time ?? '08:00' } });
       const light = answers.light !== undefined ? LIGHT[answers.light].value : 'Not sure';
       const pot = answers.pot !== undefined ? POTS[answers.pot] : POTS[3];
-      const p: Plant = { id: ids.current.plant, kind: choice.kind, species: choice.latin, name: choice.name, photo: null, room: 'Not sure', pot: 'Not sure', light, stage: answers.stage !== undefined ? STAGES[answers.stage].value : 'Not sure', drainage: pot.drainage, self_watering: pot.self, environment: { location: 'Indoors', near_window: 'Not sure' } };
+      const p: Plant = { id: ids.current.plant, kind: choice.kind, species: choice.latin, name: choice.name, photo: null, room: 'Not sure', pot: 'Not sure', light, stage: answers.stage !== undefined ? STAGES[answers.stage].value : 'Not sure', drainage: pot.drainage, self_watering: pot.self, environment: { location: 'Not sure', near_window: 'Not sure' } };
       if (!garden.plants.some(x => x.id === p.id)) await addPlant(p);
       // A remembered watering is kept as approximate, and always before today's soil check.
       const days = answers.watered !== undefined ? WATERED[answers.watered].days : null;
       if (days !== null) {
-        const at = new Date(Date.now() - (days ? days * 86400000 : 60000)).toISOString();
-        await logCare({ id: ids.current.water, plantId: p.id, type: 'Watered', note: t('Approximate date, from setup'), approximate: true, at, source: 'USER' });
+        ids.current.waterAt ||= new Date(Date.now() - (days ? days * 86400000 : 60000)).toISOString();
+        await logCare({ id: ids.current.water, plantId: p.id, type: 'Watered', note: t('Approximate date, from setup'), approximate: true, at: ids.current.waterAt, source: 'USER' });
       }
       // "Check later" is not an observation: the plant starts without a soil check instead.
       if (soilChecked) {
         ids.current.soilAt ||= new Date().toISOString();
         await logCare({ id: ids.current.soil, plantId: p.id, type: 'Soil check', layers: layers as SoilLayers, note: '', at: ids.current.soilAt, source: 'USER' });
       }
+      // Nudges start off; Today offers them once the plant is in (see NudgeInvite).
+      await saveProfile({ name: garden.name, onboarded: true, reminders: false, caregiver: { experience: experience || 'first', detail }, nudges: { kinds: ['soil_check'], time: garden.nudges?.time ?? '08:00' } });
       setPhase('celebrate');
     } catch (e) {
       setError(e instanceof ApiError && e.offline ? e.message : e instanceof Error ? e.message : t('Could not save. Please try again.'));

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Platform, Text, useWindowDimensions, View } from 'react-native';
-import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { createNavigationContainerRef, DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -26,7 +26,7 @@ import { ThemeProvider } from './src/ds/theme';
 import { Gallery } from './src/ds/Gallery';
 import { preloadImages } from './src/ds/preload';
 import { TodaySkeleton, Unreachable } from './src/ds/states';
-import { scheduleNudges } from './src/nudges';
+import { onNudgeOpen, scheduleNudges } from './src/nudges';
 import { ProfileInvite } from './src/screens/ProfileInvite';
 import { Lab } from './src/screens/Lab';
 import { ArtUpdate } from './src/screens/ArtUpdate';
@@ -51,7 +51,7 @@ function Launch({ onDone }: { onDone: () => void }) {
 }
 
 function Navigator() {
-  const { ready, garden, source, refresh } = useStore();
+  const { ready, garden, source, refresh, saveProfile } = useStore();
   const { c, scheme, reduceMotion: reduce } = useTheme();
   // Phone nudges follow the garden: rescheduled when records, plants or settings change.
   const twinKey = Object.values(garden.twins).map(x => x.guidance.action).join('');
@@ -70,15 +70,29 @@ function Navigator() {
   // Decided once, when the garden first loads: the short sprout plays only if the app
   // opened on an existing garden, never in the middle of onboarding.
   const [launch, setLaunch] = React.useState<'pending' | 'play' | 'done'>('pending');
+  // Setup counts as done once the first plant exists, even if its last step never reached the
+  // server (the app then finishes it quietly), so nobody is sent through setup twice.
+  const setUp = React.useRef(false);
   // Never decide "new user" without knowing: with no cache and no server there is no garden to judge.
-  React.useEffect(() => { if (ready && source !== 'none' && launch === 'pending') setLaunch(garden.onboarded ? 'play' : 'done'); }, [ready, source]);
+  React.useEffect(() => {
+    if (!ready || source === 'none' || launch !== 'pending') return;
+    setUp.current = garden.onboarded || garden.plants.some(p => !p.example);
+    if (setUp.current && !garden.onboarded && source === 'server') void saveProfile({ onboarded: true }).catch(() => undefined);
+    setLaunch(setUp.current ? 'play' : 'done');
+  }, [ready, source]);
+  // A tapped nudge opens that plant's check (three layers, like every check).
+  const nav = React.useMemo(() => createNavigationContainerRef<Routes>(), []);
+  const plantIds = React.useRef<string[]>([]);
+  plantIds.current = garden.plants.map(p => p.id);
+  const [navReady, setNavReady] = React.useState(false);
+  React.useEffect(() => navReady ? onNudgeOpen(id => { if (id && plantIds.current.includes(id) && nav.isReady()) nav.navigate('Care', { id, mode: 'checkin' }); }) : undefined, [navReady]);
   if (!ready) return <TodaySkeleton />;
   if (source === 'none') return <Unreachable onRetry={refresh} />;
   if (launch === 'pending') return <TodaySkeleton />;
   if (launch === 'play') return <Launch onDone={() => setLaunch('done')} />;
   const modal = { presentation: 'modal' as const, animation: reduce ? 'none' as const : 'slide_from_bottom' as const };
-  return <NavigationContainer key={langKey} theme={{ ...(scheme === 'dark' ? DarkTheme : DefaultTheme), colors: { ...(scheme === 'dark' ? DarkTheme : DefaultTheme).colors, background: c.canvas, card: c.canvas, text: c.ink, primary: c.action, border: c.hairline } }}>
-    <Stack.Navigator initialRouteName={garden.onboarded ? 'Main' : 'Welcome'} screenOptions={{ headerShown: false, animation: reduce ? 'none' : 'slide_from_right', contentStyle: { backgroundColor: c.canvas } }}>
+  return <NavigationContainer key={langKey} ref={nav} onReady={() => setNavReady(true)} theme={{ ...(scheme === 'dark' ? DarkTheme : DefaultTheme), colors: { ...(scheme === 'dark' ? DarkTheme : DefaultTheme).colors, background: c.canvas, card: c.canvas, text: c.ink, primary: c.action, border: c.hairline } }}>
+    <Stack.Navigator initialRouteName={garden.onboarded || setUp.current ? 'Main' : 'Welcome'} screenOptions={{ headerShown: false, animation: reduce ? 'none' : 'slide_from_right', contentStyle: { backgroundColor: c.canvas } }}>
       <Stack.Screen name="Welcome" component={Onboarding} options={{ animation: 'fade' }} />
       <Stack.Screen name="Main" component={Main} options={{ animation: 'fade' }} initialParams={langKey !== firstLang ? { tab: 'You' } : undefined} />
       <Stack.Screen name="AddPlant" component={AddPlant} />

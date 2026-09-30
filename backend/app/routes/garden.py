@@ -2,7 +2,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
-from ..db import DomainEvent, SensorObservation, UserObservation
+from ..db import DomainEvent, UserObservation
 from ..deps import service
 from ..schemas import LocationIn, PlantIn, PlantUpdate, ProfileIn, UserObservationIn
 
@@ -58,8 +58,8 @@ def remove_observation(plant_id: str, observation_id: str, s=Depends(service)):
 
 
 @router.get('/journal')
-def journal(before: str | None = None, limit: int = Query(100, ge=1, le=500), plant: str | None = None, s=Depends(service)):
-    return s.journal(before, limit, plant)
+def journal(before: str | None = None, before_id: str | None = None, limit: int = Query(100, ge=1, le=500), plant: str | None = None, s=Depends(service)):
+    return s.journal(before, limit, plant, before_id)
 
 
 @router.get('/plants/{plant_id}/user-observations')
@@ -67,13 +67,6 @@ def user_history(plant_id: str, s=Depends(service)):
     s.plant(plant_id)
     rows = s.db.scalars(select(UserObservation).where(UserObservation.plant_id == plant_id).order_by(UserObservation.observed_at)).all()
     return [{'id': r.id, 'type': r.kind, 'source': 'USER', 'value': r.value, 'observed_at': r.observed_at, 'confidence': r.confidence} for r in rows]
-
-
-@router.get('/plants/{plant_id}/sensor-observations')
-def sensor_history(plant_id: str, s=Depends(service)):
-    s.plant(plant_id)
-    rows = s.db.scalars(select(SensorObservation).where(SensorObservation.plant_id == plant_id).order_by(SensorObservation.observed_at)).all()
-    return [{'id': r.id, 'source': 'SENSOR', 'device_id': r.device_id, 'raw_adc': r.raw_adc, 'normalized_percent': r.normalized, 'calibration_id': r.calibration_id, 'observed_at': r.observed_at, 'quality': r.quality, 'demo': r.demo} for r in rows]
 
 
 @router.get('/plants/{plant_id}/twin')

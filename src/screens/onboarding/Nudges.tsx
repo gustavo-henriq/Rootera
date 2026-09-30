@@ -34,9 +34,7 @@ export async function requestNudgePermission(): Promise<boolean> {
 
 const nudgeCopy: Record<NudgeKind, { label: string; title: string; guided: string; concise: string }> = {
   soil_check: { label: 'When a soil check would help', title: 'Worth a soil check', guided: 'Watered 5 days ago. Last time it dried around day 6. Worth a soil check.', concise: 'Last watered 5 days ago. Check the soil.' },
-  pattern: { label: 'When a pattern appears', title: 'A pattern is forming', guided: 'Over 3 cycles, the soil dried about 6 days after watering.', concise: 'Usually dry about 6 days after watering.' },
   leaves: { label: 'A reminder to look at the leaves', title: 'How do the leaves look?', guided: 'A quick look helps spot changes early.', concise: 'Take a quick look at the leaves.' },
-  weekly: { label: 'A weekly recap', title: 'Your week', guided: '4 checks and 2 waterings. The monstera dried a bit faster than usual.', concise: '4 checks, 2 waterings this week.' },
 };
 const kinds = Object.keys(nudgeCopy) as NudgeKind[];
 

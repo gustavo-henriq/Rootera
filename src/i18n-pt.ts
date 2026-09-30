@@ -144,7 +144,6 @@ export const PT: Record<string, string> = {
   "Worth an early check": "Vale uma checagem antecipada",
 
   // Phone nudges
-  "From a nudge": "Por um lembrete",
   "Worth a soil check: {name}": "Vale checar a terra: {name}",
   "Check the soil": "Cheque a terra",
   "+{n} more.": "+{n}.",
@@ -335,13 +334,7 @@ export const PT: Record<string, string> = {
   "When a soil check would help": "Quando uma checagem da terra ajudaria",
   "Worth a soil check": "Vale checar a terra",
   "Last watered 5 days ago. Check the soil.": "Última rega há 5 dias. Cheque a terra.",
-  "When a pattern appears": "Quando surgir um padrão",
-  "A pattern is forming": "Um padrão está se formando",
-  "Usually dry about 6 days after watering.": "Costuma secar uns 6 dias depois da rega.",
   "A reminder to look at the leaves": "Um lembrete para olhar as folhas",
-  "A weekly recap": "Um resumo semanal",
-  "Your week": "Sua semana",
-  "4 checks, 2 waterings this week.": "4 checagens, 2 regas nesta semana.",
 
   // Onboarding: opening, story, experience, plan
   "Get started": "Começar",
@@ -464,7 +457,6 @@ export const PT: Record<string, string> = {
   "What you tell us": "O que você nos conta",
   "General species notes": "Notas gerais da espécie",
   "What Rootera suggests": "O que o Rootera sugere",
-  "Not connected yet": "Ainda não conectado",
 
   // Round
   "End the round": "Encerrar a rodada",
@@ -525,6 +517,9 @@ export const PT: Record<string, string> = {
   "outdoors": "ao ar livre",
   "today": "hoje",
   "See again": "Ver de novo",
+  "Local weather and photo ID": "Clima local e identificação por foto",
+  "Once you turn it on, this week’s weather nudges the drying window a little. A photo only suggests the species; you confirm it.": "Quando você liga, o clima da semana ajusta um pouco a janela de secagem. A foto só sugere a espécie; quem confirma é você.",
+  "Weather or photo": "Clima ou foto",
   "A watering can waters the plant and turns into a rain cloud; then the sky clears and the sun comes out": "Um regador rega a planta e vira uma nuvem de chuva; depois o céu abre e o sol aparece",
   "Your checks and your local weather do the sums.": "Suas checagens e o clima da sua região fazem as contas.",
   "No need to work it out yourself": "Você não precisa se preocupar com o processo",
@@ -715,7 +710,6 @@ export const PT: Record<string, string> = {
   "A dated photo timeline for each plant, on your phone.": "Uma linha do tempo de fotos de cada planta, no seu celular.",
   "Checks, waterings and leaf notes show up here.": "Checagens, regas e notas das folhas aparecem aqui.",
   "Take a photo from the same spot every few weeks to see slow changes.": "Tire uma foto do mesmo lugar a cada poucas semanas para ver mudanças lentas.",
-  "4 checks and 2 waterings. The monstera dried a bit faster than usual.": "4 checagens e 2 regas. A costela-de-adão secou um pouco mais rápido.",
   "Notifications aren’t allowed yet. Until then, nudges show only in the app.": "Notificações ainda não permitidas. Até lá, os lembretes aparecem só no app.",
   "Notifications are off in your phone’s settings. Nudges show only in the app.": "Notificações desligadas nos ajustes do celular. Os lembretes aparecem só no app.",
   "Watered 5 days ago. Last time it dried around day 6. Worth a soil check.": "Regada há 5 dias. Da última vez, secou por volta do 6º dia. Vale checar a terra.",
@@ -723,13 +717,11 @@ export const PT: Record<string, string> = {
   "Morning is best for watering: the soil dries during the day.": "De manhã é melhor para regar: a terra seca durante o dia.",
   "A first soil check shows where this plant starts.": "A primeira checagem mostra de onde esta planta parte.",
   "Store payments aren’t connected in this preview. Prices are examples.": "Pagamentos da loja não estão conectados nesta prévia. Os preços são exemplos.",
-  "Over 3 cycles, the soil dried about 6 days after watering.": "Em 3 ciclos, a terra secou cerca de 6 dias após a rega.",
   "Dated photos show how {name} grows. Part of Rootera+; photos stay on this phone.": "Fotos com data mostram como {name} cresce. Faz parte do Rootera+; as fotos ficam no celular.",
   "These sources never mix. Each suggestion says which it used.": "Estas fontes nunca se misturam. Cada sugestão diz quais usou.",
   "Plants die even with attentive care. It says nothing bad about you. Its history stays and helps the next plant.": "Plantas morrem mesmo com cuidado atento. Isso não diz nada de ruim sobre você. O histórico fica e ajuda a próxima planta.",
   "The first start needs a connection. Check your Wi-Fi or data and try again.": "A primeira abertura precisa de internet. Confira o Wi-Fi ou os dados e tente de novo.",
   "Purchase complete. The server confirms it once its RevenueCat key is set.": "Compra concluída. O servidor confirma quando a chave do RevenueCat for configurada.",
-  "Soil sensors, local weather and photo ID. Each will be its own source.": "Sensores de solo, clima local e identificação por foto. Cada um será uma fonte separada.",
   "Each plant has a Plant Twin: its spot and your care, kept apart so every suggestion shows its source.": "Cada planta tem um Gêmeo: o lugar dela e o seu cuidado, separados para cada sugestão mostrar a fonte.",
   "Soil checks, waterings and leaf notes, kept as you described them. Never turned into percentages.": "Checagens, regas e notas das folhas, guardadas como você descreveu. Nunca viram porcentagem.",
   "The free plan keeps {n} plants. Rootera+ has no limit. Removing a plant frees a spot.": "O plano grátis guarda {n} plantas. O Rootera+ não tem limite. Remover uma planta libera uma vaga.",

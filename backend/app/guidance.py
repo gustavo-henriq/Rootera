@@ -1,11 +1,12 @@
-"""Sensorless guidance: the inferred layer of the Plant Twin.
+"""Guidance: the Plant Twin, projected from what the caregiver observes (no sensors).
 
 Inputs are kept apart and every suggestion lists the basis it came from:
-- USER evidence (soil checks, watering, appearance) reported by the caregiver,
-- the plant's declared context (pot, drainage, reservoir),
-- the species reference notes (general, not about this plant).
-Sensor readings, weather and photo analysis never feed this layer. A qualitative
-report such as "dry" is never turned into a percentage.
+- USER evidence (soil checks in three layers, waterings, appearance),
+- the plant's declared context (pot, drainage, reservoir, light, spot),
+- the species reference notes (general, not about this plant),
+- this week's local weather, only to nudge the drying window (forecast.py).
+One set of rules decides which check is current, so no part of the Twin can disagree
+about the soil. A qualitative report such as "dry" is never turned into a percentage.
 """
 from datetime import timedelta
 from statistics import median
@@ -94,7 +95,7 @@ class SensorlessGuidance:
         _ = lambda text, **values: tr(text, lang, **values)
         age = lambda e: max(0.0, (now - parse_time(e.at)).total_seconds())
         # Each timestamp is parsed once: long histories (years of daily checks) stay fast.
-        timed = sorted(((parse_time(e.at), e) for e in evidence if e.source == 'USER' and not e.demo), key=lambda p: (p[0], p[1].id))
+        timed = sorted(((parse_time(e.at), e) for e in evidence if e.source == 'USER'), key=lambda p: (p[0], p[1].id))
         timed = [(t, e) for t, e in timed if t <= now + CLOCK_SKEW]
         events = [e for _, e in timed]
         soils = [e for e in events if e.kind == 'Soil check' and e.value.get('soil') is not None]

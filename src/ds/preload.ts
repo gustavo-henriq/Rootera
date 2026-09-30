@@ -16,6 +16,8 @@ const modules = [
   require('../../assets/logo.png'),
   require('../../assets/flower/0-empty.webp'),
   require('../../assets/flower/seed-sprite.webp'),
+  require('../../assets/flower/1-seed.webp'),
+  require('../../assets/flower/2-sprout.webp'),
   require('../../assets/flower/5-bloom.webp'),
   require('../../assets/scenes/few.webp'),
   require('../../assets/scenes/garden-group.webp'),

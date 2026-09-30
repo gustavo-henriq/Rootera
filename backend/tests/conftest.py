@@ -36,15 +36,3 @@ def planted(client):
     response = client.post('/v1/plants', json=plant_payload(), headers=ALICE)
     assert response.status_code == 201, response.text
     return client
-
-
-@pytest.fixture
-def device(planted):
-    response = planted.post('/v1/devices', json={'plant_id': 'aloe-1', 'name': 'ESP32 kitchen'}, headers=ALICE)
-    assert response.status_code == 201, response.text
-    device = response.json()
-    response = planted.post(f'/v1/devices/{device["id"]}/calibrations', json={'dry': 3000, 'wet': 1000}, headers=ALICE)
-    assert response.status_code == 201, response.text
-    device['calibration'] = response.json()
-    device['headers'] = {'Authorization': f'Bearer {device["device_token"]}'}
-    return device

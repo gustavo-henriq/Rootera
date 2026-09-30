@@ -18,10 +18,9 @@ def test_every_plant_route_is_closed_to_other_owners(planted):
     for method, path, body in [
         ('get', '/v1/plants/aloe-1/twin', None), ('post', '/v1/plants/aloe-1/twin/rebuild', None),
         ('get', '/v1/plants/aloe-1/events', None), ('get', '/v1/plants/aloe-1/user-observations', None),
-        ('get', '/v1/plants/aloe-1/sensor-observations', None), ('patch', '/v1/plants/aloe-1', {'name': 'Mine now'}),
+        ('patch', '/v1/plants/aloe-1', {'name': 'Mine now'}),
         ('delete', '/v1/plants/aloe-1', None), ('delete', '/v1/plants/aloe-1/user-observations/a-care', None),
         ('post', '/v1/plants/aloe-1/user-observations', {'id': 'b-care', 'type': 'Watered', 'note': '', 'observed_at': now()}),
-        ('post', '/v1/devices', {'plant_id': 'aloe-1', 'name': 'Sneaky'}),
     ]:
         r = getattr(planted, method)(path, headers=BOB, **({'json': body} if body is not None else {}))
         assert r.status_code == 404, (method, path, r.status_code)

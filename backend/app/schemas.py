@@ -125,39 +125,6 @@ class UserObservationIn(Timed):
         return self
 
 
-class DeviceIn(StrictModel):
-    plant_id: str
-    name: str = Field(min_length=1, max_length=120)
-
-
-class CalibrationIn(StrictModel):
-    dry: int = Field(ge=0, le=4095)
-    wet: int = Field(ge=0, le=4095)
-
-    @model_validator(mode='after')
-    def order(self):
-        if self.dry <= self.wet:
-            raise ValueError('Dry must be greater than wet.')
-        return self
-
-
-class SensorIn(Timed):
-    message_id: str = Field(min_length=1, max_length=100)
-    raw_adc: int = Field(ge=0, le=4095)
-    calibration_version: int = Field(ge=1)
-    signal_quality: float = Field(default=1, ge=0, le=1)
-
-
-class DemoSensorIn(CalibrationIn):
-    id: str = Field(min_length=1, max_length=80)
-    plantId: str
-    name: str = Field(min_length=1, max_length=120)
-    moisture: float = Field(ge=0, le=100)
-    observedAt: datetime
-    source: Literal['SENSOR']
-    demo: Literal[True]
-
-
 NudgeKind = Literal['soil_check', 'pattern', 'leaves', 'weekly']
 
 

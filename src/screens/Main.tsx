@@ -375,8 +375,9 @@ function Journal({ navigation, route }: TabProps<'Journal'>) {
     if (!more || loading) return;
     setLoading(true);
     try {
-      const oldest = events[events.length - 1]?.at;
-      const page = await api.journal({ before: oldest, limit: 100, plant: plant === 'all' ? undefined : plant });
+      // The last record shown is the cursor: its time and id, so records sharing a time are not skipped.
+      const oldest = events[events.length - 1];
+      const page = await api.journal({ before: oldest?.at, before_id: oldest?.id, limit: 100, plant: plant === 'all' ? undefined : plant });
       setOlder(o => [...o, ...page.events]); setMore(page.more);
     } catch { setMore(false); } finally { setLoading(false); }
   };

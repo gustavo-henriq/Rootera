@@ -1,37 +1,32 @@
-import hashlib
-import secrets
 from collections import defaultdict
 from uuid import uuid4
 from fastapi import HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from .db import Calibration, Device, DomainEvent, Plant, Profile, SensorObservation, TwinSnapshot, UserObservation
-from .domain import Evidence, PlantTwinEngine, normalize_adc, utcnow
+from .db import DomainEvent, Plant, Profile, TwinSnapshot, UserObservation
+from .domain import Evidence, utcnow
 from .example import NAME as EXAMPLE_NAME, OLD_NAMES, example_id, is_example, seed_example
 from .guidance import SensorlessGuidance
 from .soil import summarize
 from .species import notes_for
 from .integrations.plantnet import kind_for
 from .integrations import weather as weather_api
-from .schemas import PLAN_CAPACITY, CaregiverProfile, NudgePrefs, CalibrationIn, PlantIn, PlantUpdate, SensorIn, UserObservationIn, normalize_plan
+from .schemas import PLAN_CAPACITY, CaregiverProfile, NudgePrefs, PlantIn, PlantUpdate, UserObservationIn, normalize_plan
 
 # The garden snapshot carries the most recent care records; older ones are paged by journal().
 EVENT_WINDOW = 400
-# What the app reads from a twin in the garden snapshot. The full twin (reported, inferred,
-# limitations, evidence ids) stays available per plant at /v1/plants/{id}/twin.
+# What the app reads from a twin in the garden snapshot. The full twin (every guidance field,
+# evidence ids, limitations) stays available per plant at /v1/plants/{id}/twin.
 LEAN_GUIDANCE = ('title', 'reason', 'action', 'tip', 'basis', 'state', 'learning', 'baseline_days', 'completed_cycles', 'pattern_cycles', 'cycle_days', 'forecast',
                  'baseline_note', 'soil', 'soil_layers', 'soil_checked_at', 'visual', 'last_watered_at', 'last_soil_check_at', 'reference')
 
 
 def lean_twin(state: dict) -> dict:
-    return {'guidance': {k: state['guidance'].get(k) for k in LEAN_GUIDANCE}, 'measured': state.get('measured'), 'sources': state.get('sources')}
+    return {'guidance': {k: state['guidance'].get(k) for k in LEAN_GUIDANCE}, 'sources': state.get('sources')}
 
 EVENT_TYPES = {'Watered': 'PlantWatered', 'Soil check': 'SoilConditionReported', 'Fertilized': 'PlantFertilized', 'Observation': 'PlantObserved'}
 
-
-def digest(token: str) -> str:
-    return hashlib.sha256(token.encode()).hexdigest()
 
 
 class GardenService:
@@ -40,7 +35,6 @@ class GardenService:
     def __init__(self, db: Session, owner: str, integrations: dict | None = None, lang: str = 'en', seed_example: bool = False):
         # `lang` words the garden snapshot's guidance; stored twins and change reports stay in English.
         self.db, self.owner, self.lang, self.seed_example = db, owner, lang, seed_example
-        self.engine = PlantTwinEngine()
         self.integrations = integrations or {}
 
     # ---- profile -----------------------------------------------------------
@@ -143,38 +137,36 @@ class GardenService:
     # ---- evidence and twin -------------------------------------------------
     def evidence(self, plant_id: str):
         user = self.db.scalars(select(UserObservation).where(UserObservation.plant_id == plant_id)).all()
-        sensor = self.db.scalars(select(SensorObservation).where(SensorObservation.plant_id == plant_id)).all()
-        return [Evidence(o.id, 'USER', o.kind, o.value, o.observed_at, o.confidence) for o in user] + \
-               [Evidence(o.id, 'SENSOR', 'SoilMoistureMeasured', {'moisture': o.normalized}, o.observed_at, o.quality, o.demo) for o in sensor]
+        return [Evidence(o.id, 'USER', o.kind, o.value, o.observed_at, o.confidence) for o in user]
 
     def project(self, plant_id: str, plant: Plant | None = None, evidence: list | None = None,
-                caregiver: dict | None = None, real_devices: list | None = None, lang: str = 'en') -> dict:
+                caregiver: dict | None = None, lang: str = 'en') -> dict:
         """Compute the Twin without writing. Used for reads. The snapshot passes preloaded
-        evidence, caregiver and devices so a garden costs a few queries, not a few per plant."""
+        evidence and caregiver so a garden costs a few queries, not a few per plant.
+        The Twin is the guidance and its sources: one set of rules decides which check is
+        current, so no two parts of it can disagree about the soil."""
         plant = plant or self.plant(plant_id)
         evidence = self.evidence(plant_id) if evidence is None else evidence
-        state = self.engine.project(plant_id, evidence)
         if caregiver is None:
             caregiver = self.db.get(Profile, self.owner).data.get('caregiver') or {}
         w = self.weather()
-        state['guidance'] = SensorlessGuidance().project({**plant.data, 'weather': w} if w else plant.data, caregiver, evidence, lang=lang)
-        if real_devices is None:
-            real_devices = self.db.scalars(select(Device).where(Device.plant_id == plant_id, Device.active == True, Device.demo == False)).all()
-        state['sources'] = {
-            'user': {'observations': sum(e.source == 'USER' for e in evidence)},
-            'sensor': {'connected': bool(real_devices), 'readings': sum(e.source == 'SENSOR' and not e.demo for e in evidence)},
-            'external': {'weather': bool(w), 'identification': bool(self.integrations.get('identification'))},
-            'reference': {'species_notes': plant.data.get('kind') != 'other'},
-        }
-        return state
+        guidance = SensorlessGuidance().project({**plant.data, 'weather': w} if w else plant.data, caregiver, evidence, lang=lang)
+        return {'plant_id': plant_id, 'engine_version': SensorlessGuidance.version, 'evaluated_at': utcnow().isoformat(),
+                'evidence_count': len(evidence), 'guidance': guidance,
+                'sources': {
+                    'user': {'observations': len(evidence)},
+                    'external': {'weather': bool(w), 'identification': bool(self.integrations.get('identification'))},
+                    'reference': {'species_notes': plant.data.get('kind') != 'other'},
+                },
+                'limitations': ['Rules from your checks and published care guidance; not a trained predictive model.']}
 
     def rebuild(self, plant_id: str):
         state = self.project(plant_id)
         row = self.db.get(TwinSnapshot, plant_id)
         if row is None:
-            self.db.add(TwinSnapshot(plant_id=plant_id, engine_version=self.engine.version, evaluated_at=state['evaluated_at'], state=state))
+            self.db.add(TwinSnapshot(plant_id=plant_id, engine_version=state['engine_version'], evaluated_at=state['evaluated_at'], state=state))
         else:
-            row.state, row.engine_version, row.evaluated_at = state, self.engine.version, state['evaluated_at']
+            row.state, row.engine_version, row.evaluated_at = state, state['engine_version'], state['evaluated_at']
         return state
 
     def add_user_observation(self, plant_id: str, payload: UserObservationIn):
@@ -226,69 +218,25 @@ class GardenService:
         change = None if (before['title'], before['action']) == (after['title'], after['action']) else {'from': before['title'], 'to': after['title']}
         return {'removed': True, 'twin': twin, 'change': change}
 
-    def journal(self, before: str | None = None, limit: int = 100, plant_id: str | None = None):
-        """Older care records, newest first, for paging past the snapshot window."""
-        ids = {p.id for p in self.active_plants()}
-        q = select(UserObservation).where(UserObservation.owner_id == self.owner)
+    def journal(self, before: str | None = None, limit: int = 100, plant_id: str | None = None, before_id: str | None = None):
+        """Older care records, newest first, for paging past the snapshot window.
+
+        The cursor is the last record shown (its time and id), so records that share a time
+        at a page boundary are neither skipped nor repeated. Records of plants that left the
+        garden are filtered before the limit, so a page is never short while `more` is true."""
+        U = UserObservation
+        ids = [p.id for p in self.active_plants()]
+        q = select(U).where(U.owner_id == self.owner, U.plant_id.in_(ids))
         if plant_id:
-            q = q.where(UserObservation.plant_id == plant_id)
+            q = q.where(U.plant_id == plant_id)
         if before:
-            q = q.where(UserObservation.observed_at < before)
-        rows = self.db.scalars(q.order_by(UserObservation.observed_at.desc()).limit(limit + 1)).all()
-        events = [self.event_view(o) for o in rows[:limit] if o.plant_id in ids]
-        return {'events': events, 'more': len(rows) > limit}
+            q = q.where(or_(U.observed_at < before, and_(U.observed_at == before, U.id < before_id)) if before_id else U.observed_at < before)
+        rows = self.db.scalars(q.order_by(U.observed_at.desc(), U.id.desc()).limit(limit + 1)).all()
+        return {'events': [self.event_view(o) for o in rows[:limit]], 'more': len(rows) > limit}
 
     @staticmethod
     def event_view(o):
         return {'id': o.id, 'plantId': o.plant_id, 'type': o.kind, 'note': o.value['note'], 'soil': o.value.get('soil'), 'layers': o.value.get('layers'), 'amount_ml': o.value.get('amount_ml'), 'visual': o.value.get('visual'), 'approximate': bool(o.value.get('approximate')), 'at': o.observed_at, 'source': 'USER'}
-
-    # ---- devices (kept for future hardware; not part of the MVP UI) ---------
-    def add_device(self, plant_id: str, name: str, demo: bool = False, device_id: str | None = None):
-        self.plant(plant_id, lock=True)
-        token = secrets.token_urlsafe(32)
-        device = Device(id=device_id or str(uuid4()), plant_id=plant_id, owner_id=self.owner, name=name, token_hash=digest(token), demo=demo, active=True)
-        self.db.add(device)
-        self.db.flush()
-        return device, token
-
-    def device(self, device_id: str):
-        device = self.db.get(Device, device_id)
-        if device is None or device.owner_id != self.owner:
-            raise HTTPException(404, 'Device not found')
-        return device
-
-    def calibrate(self, device_id: str, data: CalibrationIn):
-        device = self.device(device_id)
-        self.plant(device.plant_id, lock=True)
-        previous = self.db.scalar(select(Calibration).where(Calibration.device_id == device_id).order_by(Calibration.version.desc()))
-        calibration = Calibration(id=str(uuid4()), device_id=device_id, version=previous.version + 1 if previous else 1, dry=data.dry, wet=data.wet, created_at=utcnow().isoformat())
-        self.db.add(calibration)
-        self.db.flush()
-        return calibration
-
-    def ingest(self, device: Device, payload: SensorIn):
-        self.plant(device.plant_id, lock=True)
-        if not device.active:
-            raise HTTPException(403, 'Device revoked')
-        cal = self.db.scalar(select(Calibration).where(Calibration.device_id == device.id, Calibration.version == payload.calibration_version))
-        if cal is None:
-            raise HTTPException(409, 'Unknown calibration version. Calibrate the device first.')
-        at = payload.observed_at.isoformat()
-        old = self.db.scalar(select(SensorObservation).where(SensorObservation.device_id == device.id, SensorObservation.message_id == payload.message_id))
-        if old:
-            if old.raw_adc != payload.raw_adc or old.calibration_id != cal.id or old.observed_at != at or old.quality != payload.signal_quality:
-                raise HTTPException(409, 'Message ID reused with a different measurement')
-            return {'id': old.id, 'duplicate': True, 'normalized_percent': old.normalized}
-        value = normalize_adc(payload.raw_adc, cal.dry, cal.wet)
-        row = SensorObservation(id=str(uuid4()), plant_id=device.plant_id, device_id=device.id, message_id=payload.message_id, calibration_id=cal.id, raw_adc=payload.raw_adc, normalized=value, quality=payload.signal_quality, observed_at=at, received_at=utcnow().isoformat(), demo=device.demo)
-        self.db.add(row)
-        self.db.flush()
-        self.db.add(DomainEvent(id=f'sensor:{row.id}', plant_id=device.plant_id, type='SoilMoistureMeasured', source='SENSOR', observation_id=row.id, occurred_at=at, payload={'raw_adc': row.raw_adc, 'normalized_percent': value, 'calibration_version': cal.version, 'demo': device.demo}))
-        if value < 25 and not device.demo and payload.signal_quality >= .5:
-            self.db.add(DomainEvent(id=f'low:{row.id}', plant_id=device.plant_id, type='LowSoilMoistureDetected', source='SENSOR', observation_id=row.id, occurred_at=at, payload={'normalized_percent': value, 'provisional_threshold': 25}))
-        self.db.flush()
-        twin = self.rebuild(device.plant_id)
-        return {'id': row.id, 'duplicate': False, 'normalized_percent': value, 'twin': twin}
 
     def ensure_example(self, profile: Profile):
         """Add the example plant once. Its row (kept when archived) is the record that it was
@@ -331,28 +279,13 @@ class GardenService:
         # map costs more than the twins themselves. Rows keep the attribute names event_view reads.
         U = UserObservation
         observations = self.db.execute(select(U.id, U.plant_id, U.kind, U.value, U.observed_at, U.confidence)
-                                       .where(U.owner_id == self.owner).order_by(U.observed_at)).all()
-        # Batch everything the twins need: one pass over records, one query for sensor readings.
+                                       .where(U.owner_id == self.owner).order_by(U.observed_at, U.id)).all()
+        # Batch everything the twins need: one pass over the records.
         evidence = defaultdict(list)
         for o in observations:
             evidence[o.plant_id].append(Evidence(o.id, 'USER', o.kind, o.value, o.observed_at, o.confidence))
-        if ids:
-            for o in self.db.scalars(select(SensorObservation).where(SensorObservation.plant_id.in_(ids))).all():
-                evidence[o.plant_id].append(Evidence(o.id, 'SENSOR', 'SoilMoistureMeasured', {'moisture': o.normalized}, o.observed_at, o.quality, o.demo))
-        devices = self.db.scalars(select(Device).where(Device.owner_id == self.owner, Device.active == True)).all()
-        real = defaultdict(list)
-        for d in devices:
-            if not d.demo:
-                real[d.plant_id].append(d)
         caregiver = profile.data.get('caregiver') or {}
-        sensors = []
-        for d in devices:
-            if d.plant_id not in ids:
-                continue
-            cal = self.db.scalar(select(Calibration).where(Calibration.device_id == d.id).order_by(Calibration.version.desc()))
-            last = self.db.scalar(select(SensorObservation).where(SensorObservation.device_id == d.id).order_by(SensorObservation.observed_at.desc(), SensorObservation.id.desc()))
-            sensors.append({'id': d.id, 'plantId': d.plant_id, 'name': d.name, 'dry': cal.dry if cal else 3295, 'wet': cal.wet if cal else 1422, 'moisture': last.normalized if last else None, 'source': 'SENSOR', 'observedAt': last.observed_at if last else None, 'demo': d.demo, 'calibrationVersion': cal.version if cal else None})
-        twins = {p.id: lean_twin(self.project(p.id, p, evidence[p.id], caregiver, real[p.id], lang=self.lang)) for p in plants}
+        twins = {p.id: lean_twin(self.project(p.id, p, evidence[p.id], caregiver, lang=self.lang)) for p in plants}
         mine = [o for o in observations if o.plant_id in ids]
         view = self.profile_view(profile.data)
         capacity = PLAN_CAPACITY[view['plan']]
@@ -361,4 +294,4 @@ class GardenService:
         return {'version': 1, 'user_id': self.owner, **view, 'plan_capacity': capacity, 'plan_used': sum(not is_example(p) for p in plants),
                 'plants': [p.data for p in plants],
                 'events': [self.event_view(o) for o in mine[-EVENT_WINDOW:]], 'events_complete': len(mine) <= EVENT_WINDOW,
-                'sensors': sensors, 'twins': twins, 'integrations': self.integrations}
+                'twins': twins, 'integrations': self.integrations}

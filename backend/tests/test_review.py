@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from app.domain import Evidence, PlantTwinEngine
+from app.domain import Evidence
 from app.forecast import drying_window
 from app.guidance import SensorlessGuidance
 from app.main import create_app
@@ -28,8 +28,6 @@ def cycles(*days, start=None, approximate_first=False):
 def test_a_check_slightly_in_the_future_counts_now():
     g = project([e('soon', 'Soil check', {'soil': 'dry'}, hours=-3 / 60)], {'kind': 'monstera'})
     assert g['action'] == 'log_water' and g['soil'] == 'dry'
-    t = PlantTwinEngine().project('p', [e('soon', 'Soil check', {'soil': 'dry'}, hours=-3 / 60)], NOW)
-    assert t['reported'] is not None
 
 
 def test_far_future_records_still_wait():
@@ -85,11 +83,10 @@ def test_stale_dry_check_is_named():
     assert g['action'] == 'check_soil' and 'dry' in g['reason'] and 'yesterday' in g['reason']
 
 
-# 6. The twin's reported layer follows the latest check, whatever it said.
+# 6. The twin follows the latest check, whatever it said.
 def test_twin_reports_the_latest_check():
     events = [e('d', 'Soil check', {'soil': 'dry'}, 5), e('s', 'Soil check', {'soil': 'slightly_moist'}, 1)]
-    t = PlantTwinEngine().project('p', events, NOW)
-    assert t['reported']['soil_condition'] == 'slightly_moist'
+    assert project(events, {'kind': 'monstera'})['soil'] == 'slightly_moist'
 
 
 # 8. Small things.

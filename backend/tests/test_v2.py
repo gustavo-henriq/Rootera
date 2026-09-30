@@ -57,7 +57,7 @@ def test_soil_check_requires_a_condition(planted):
 
 def test_twin_lists_sources_separately(planted):
     twin = planted.get('/v1/garden', headers=ALICE).json()['twins']['aloe-1']
-    assert twin['sources']['sensor'] == {'connected': False, 'readings': 0}
+    assert twin['sources'].keys() == {'user', 'external', 'reference'}
     assert twin['sources']['external'] == {'weather': False, 'identification': False}
     assert twin['guidance']['reference']['summary']
 

@@ -14,8 +14,8 @@ def project(events, plant=None, caregiver=None):
     return SensorlessGuidance().project(plant or {'kind': 'aloe'}, caregiver or {}, events, NOW)
 
 
-def test_no_fake_metrics_or_sensor_dependency():
-    g = project([e('device', 'SoilMoistureMeasured', {'moisture': 5}, source='SENSOR')])
+def test_no_fake_metrics():
+    g = project([])
     assert g['state'] == 'NEW' and g['soil'] is None and g['action'] == 'check_soil'
     assert g['baseline_days'] is None and g['weather_connected'] is False
     assert '%' not in g['reason'] and 'Your soil check' not in g['basis']
@@ -101,7 +101,7 @@ def test_new_context_and_visual_observation_persist(client):
     assert garden['plants'][0]['environment']['near_window'] == 'Yes'
     assert garden['events'][0]['visual'] == 'different'
     assert garden['twins']['aloe-1']['guidance']['visual'] == 'different'
-    assert garden['twins']['aloe-1']['measured'] is None
+    assert 'measured' not in garden['twins']['aloe-1']
 
 
 def test_legacy_experience_values_remain_readable(client):

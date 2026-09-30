@@ -46,6 +46,33 @@ def test_snapshot_keeps_a_window_and_the_journal_pages_the_rest(planted, monkeyp
     assert [e['id'] for e in last['events']] == ['s2', 's1', 's0'] and last['more'] is False
 
 
+def test_the_journal_neither_skips_nor_repeats_records_that_share_a_time(planted):
+    same = (NOW - timedelta(hours=5)).isoformat()
+    for i in range(6):
+        body = {'id': f't{i}', 'type': 'Soil check', 'soil': 'moist', 'observed_at': same}
+        assert planted.post('/v1/plants/aloe-1/user-observations', json=body, headers=ALICE).status_code == 201
+    seen, cursor = [], {}
+    while True:
+        page = planted.get('/v1/journal', params={'limit': 4, **cursor}, headers=ALICE).json()
+        seen += [e['id'] for e in page['events']]
+        if not page['more']:
+            break
+        cursor = {'before': page['events'][-1]['at'], 'before_id': page['events'][-1]['id']}
+    assert sorted(seen) == [f't{i}' for i in range(6)] and len(seen) == 6
+
+
+def test_the_journal_leaves_out_plants_that_left_before_the_limit(client):
+    for pid in ('kept', 'gone'):
+        client.post('/v1/plants', json=plant_payload(pid), headers=ALICE)
+    for i in range(5):
+        client.post('/v1/plants/gone/user-observations', json=soil(f'g{i}', 1 + i), headers=ALICE)
+    client.post('/v1/plants/kept/user-observations', json=soil('k', 10), headers=ALICE)
+    assert client.delete('/v1/plants/gone', headers=ALICE).status_code == 200
+    page = client.get('/v1/journal', params={'limit': 1}, headers=ALICE).json()
+    # The newest records belong to the plant that left; the page still shows the kept one.
+    assert [e['id'] for e in page['events']] == ['k'] and page['more'] is False
+
+
 def test_garden_snapshot_query_count_does_not_grow_per_plant(client):
     for i in range(40):
         client.post('/v1/plants', json=plant_payload(f'p{i}'), headers=ALICE)
