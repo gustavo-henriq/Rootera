@@ -76,3 +76,26 @@ Em qualquer uma das duas: publique o Paywall e ative o Customer Center no painel
 - As cenas do vaso real precisam de luz de janela, fundo limpo e o celular num apoio.
 - Monte em 1080p (CapCut, iMovie, DaVinci), com legendas grandes e sem música com direitos.
 - Envie ao YouTube como **público** (ou não listado) e teste o link numa janela anônima.
+
+## Versão gravada (v1, 1:52)
+
+Arquivo: `docs/shipaton/video/rootera-shipaton.mp4` (1920×1080, 30 fps, sem áudio; fora do git).
+Gravado da versão web do app, em inglês, num ambiente separado (banco de cópia). As legendas já estão na imagem; a narração é opcional e cabe nos tempos abaixo (cerca de 2,5 palavras por segundo).
+
+| Tempo | Imagem | Legenda na tela | Narração sugerida (EN) |
+|---|---|---|---|
+| 0:00–0:07 | Tipografia | "Every plant care guide says it: check the soil, not the calendar." / "But what is the soil telling you?" | "Every care guide says: check the soil, not the calendar. But what is the soil telling you?" |
+| 0:07–0:19 | Abertura: semente, logo, mergulho, raízes | "Rootera learns each plant from your care." / "Three sources, always shown." | "Rootera learns each plant from your care. Three sources, and every suggestion says which one it came from." |
+| 0:19–0:31 | Checagem em 3 camadas → "The bottom is still wet" | "Check the soil in three layers." / "Dry on top, wet at the bottom?" | "Check three layers. Dry on top but wet at the bottom? Rootera says wait." |
+| 0:31–0:42 | Aba Ritmo: 3–4 dias, ciclos, clima | "Every watering starts a cycle." / "Local weather nudges it." | "Each watering starts a cycle. After three, the window is your plant's own, and local weather nudges it." |
+| 0:42–0:52 | Laboratório: regador → chuva → sol | "For the judges: the Shipaton lab." | "For the judges, a lab: a virtual plant run through the same engine." |
+| 0:52–1:14 | Simulação passo a passo, "Regar hoje", desfazer, ciclo fechando | "Step through a run." / "Water early, and see the difference." / "A cycle closes. The window narrows." | "Step through it. Water too early and Rootera shows it would have waited four more days. When a cycle closes, the window narrows." |
+| 1:14–1:24 | Rootera+ com as ofertas da RevenueCat | "Free keeps three plants." | "Free keeps three plants. Rootera+ removes the limit, with RevenueCat offerings." |
+| 1:24–1:36 | Diagrama app → RevenueCat → servidor | "The server has the final word." | "The server checks the entitlement with RevenueCat. The app never unlocks anything on its own." |
+| 1:36–1:44 | Números | "Built to be checked." | "48 of 48 lab runs inside the extension guides' ranges. 210 backend tests. MIT." |
+| 1:44–1:52 | Logo e slogan | "Your plant changes. Rootera learns the pattern." | "Your plant changes. Rootera learns the pattern." |
+
+**O que ainda vale a pena você fazer:**
+- Narração: grave a voz no celular e junte no CapCut (o vídeo não tem áudio). Se preferir, use só uma música da Biblioteca de Áudio do YouTube.
+- Um trecho do iPhone de verdade: o regulamento pede o app funcionando no aparelho. Grave uns 5 s da checagem ou do laboratório no iPhone e troque/insira no trecho 0:19–0:31 ou 0:42–0:52.
+- O endereço do GitHub no fim: quando o repositório estiver público, acrescente o link na descrição do YouTube (e, se quiser, no cartão final).

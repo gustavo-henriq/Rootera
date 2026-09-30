@@ -54,3 +54,6 @@ backend/backups/
 
 # Local screenshots kept for the demo video (not published)
 docs/prints/
+
+# Rendered demo video (large; uploaded to YouTube, not versioned)
+docs/shipaton/video/
