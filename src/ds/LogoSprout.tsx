@@ -5,7 +5,7 @@
  * shakes, and the O snaps back to its normal shape.
  * `full` is the first-launch version; `short` runs on every later launch (< 1 s).
  */
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useTheme } from './theme';

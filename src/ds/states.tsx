@@ -4,7 +4,7 @@
  * jump when content arrives and the wait feels shorter. Offline with nothing cached is
  * an honest dead end with a retry, never a silent fall into onboarding.
  */
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';

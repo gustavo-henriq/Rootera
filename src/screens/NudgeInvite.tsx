@@ -4,7 +4,7 @@
  * choices. The phone's own permission prompt only follows "Turn on nudges" (Apple HIG:
  * ask in context). Either answer is remembered on this device; You > Nudges changes it later.
  */
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

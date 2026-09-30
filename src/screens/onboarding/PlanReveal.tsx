@@ -4,7 +4,6 @@
  * your own answers is what makes the setup feel worth it (the "personal plan" moment).
  * Everything shown is either what the person said, or the Twin's suggestion with its basis.
  */
-import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

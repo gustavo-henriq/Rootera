@@ -6,7 +6,7 @@
  * Shipaton scope: the profile is only a name, and the sheet says so. Full accounts (email,
  * Sign in with Apple) come after, and would plug in here.
  */
-import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

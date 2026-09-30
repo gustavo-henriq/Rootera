@@ -1,11 +1,11 @@
 /** Living reference for the design system. Web preview: add `?gallery=1` (and `&scheme=dark`). */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Image, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './theme';
 import { Palette, radius, space, type } from './tokens';
 import { Glyph, glyphNames } from './icons';
-import { Btn, Chip, Field, Figure, FloatingTabBar, Glass, GlassIcon, Group, Row, Segmented, SourceLabel, T, Toast } from './components';
+import { Btn, Chip, Field, Figure, FloatingTabBar, GlassIcon, Group, Row, Segmented, SourceLabel, T, Toast } from './components';
 
 const swatches: (keyof Palette)[] = ['canvas', 'raised', 'sunken', 'ink', 'ink2', 'ink3', 'action', 'leaf', 'leafText', 'leafMark', 'clay', 'clayText', 'water', 'danger'];
 

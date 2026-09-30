@@ -3,7 +3,7 @@
  * sheet: familiar, accessible and dismissible by design. Elsewhere it is a bottom sheet
  * over a scrim, with its own focus scope (Modal), Escape and back to close, and a Cancel row.
  */
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { ActionSheetIOS, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

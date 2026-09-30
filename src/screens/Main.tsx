@@ -1,7 +1,7 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { askForLocalWeather, disableLocalWeather } from '../weather';
 import { billingEnabled, manageInStore, presentCustomerCenter } from '../billing';
-import { Image, Platform, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { Alert, Image, Platform, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { BottomTabScreenProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { CompositeScreenProps, useScrollToTop } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Props, Routes, Tabs } from '../navigation';
 import { useStore } from '../store';
 import { api } from '../api';
-import { atCapacity, byUrgency, CareEvent, describeEvent, experienceLabel, Garden, known, Plant, planUsed, searchText } from '../model';
+import { byUrgency, CareEvent, describeEvent, experienceLabel, Garden, known, Plant, planUsed, searchText } from '../model';
 import { useTheme } from '../ds/theme';
 import { fonts, radius, space, type } from '../ds/tokens';
 import { Btn, Chip, FloatingTabBar, Group, Row, SourceLabel, T, Tap, Toast } from '../ds/components';
@@ -326,20 +326,23 @@ const EventRow = memo(function EventRow({ event, plant, onPress, onLongPress }: 
     </View>
     <T v="footnote" tone="ink2">{new Date(event.at).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit' })}</T>
   </View>;
-  return onPress && plant ? <Tap label={`${describeEvent(event)}, ${plant.name}`} onPress={onPress} onLongPress={onLongPress} longPressLabel={t("Delete this record")} scaleTo={.99} ring={radius.inner}>{body}</Tap> : body;
+  return onPress && plant ? <Tap label={`${spoken(event)}, ${plant.name}`} onPress={onPress} onLongPress={onLongPress} longPressLabel={t("Delete this record")} scaleTo={.99} ring={radius.inner}>{body}</Tap> : body;
 });
 
-/** RevenueCat's Customer Center; the store's own page when it can't open (Expo Go, web). */
 /** Local weather on (asks for the approximate position) or off (the place is forgotten). */
 async function toggleWeather(on: boolean, refresh: () => Promise<unknown> | void) {
-  if (on) await disableLocalWeather().catch(() => undefined);
+  if (on) await disableLocalWeather().catch((e: unknown) => Alert.alert(t('Not saved'), e instanceof Error ? e.message : t('Could not save. Please try again.')));
   else await askForLocalWeather();
   await refresh();
 }
 
+/** RevenueCat's Customer Center; the store's own page when it can't open (Expo Go, web). */
 async function manageSubscription(userId: string) {
   if (!(await presentCustomerCenter(userId))) await manageInStore(userId).catch(() => undefined);
 }
+
+/** A record said before a plant's name: without its own closing full stop. */
+const spoken = (e: CareEvent) => describeEvent(e).replace(/\.$/, '');
 
 function dayLabel(iso: string) {
   const d = new Date(iso), now = new Date();
@@ -423,7 +426,7 @@ function Journal({ navigation, route }: TabProps<'Journal'>) {
     }}>
     <SourceLabel kind="observed" text={t("Everything here was recorded by you")} />
     <Offline />
-    {!!deleted && <Toast title={t("Record deleted")} text={`${describeEvent(deleted)}, ${index.get(deleted.plantId)?.name ?? ''}`} onClose={() => setDeleted(null)}
+    {!!deleted && <Toast title={t("Record deleted")} text={`${spoken(deleted)}, ${index.get(deleted.plantId)?.name ?? ''}`} onClose={() => setDeleted(null)}
       action={{ title: t('Undo'), onPress: () => { const e = deleted; setDeleted(null); void logCare(e).catch(() => undefined); } }} />}
     {!!editError && <Toast tone="error" title={t("Not deleted")} text={editError} onClose={() => setEditError('')} />}
     <ActionSheet visible={!!menuFor} title={menuFor ? describeEvent(menuFor) : undefined} onClose={() => setMenuFor(null)} actions={menuFor ? [

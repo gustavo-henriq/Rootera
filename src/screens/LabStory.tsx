@@ -13,7 +13,7 @@
  * same number of points, and on every frame the outline is drawn from points moved from
  * one to the other (an animated SVG prop, like the gauges in onboarding/shared.tsx).
  */
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import Animated, { cancelAnimation, Easing, FadeIn, SharedValue, useAnimatedProps, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Line, Path, RadialGradient, Rect, Stop } from 'react-native-svg';

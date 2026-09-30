@@ -3,7 +3,7 @@
  * last like a timeline, with one tile to add the next. On the free plan the same section
  * shows what it would hold and where to get it, without blocking anything else.
  */
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';

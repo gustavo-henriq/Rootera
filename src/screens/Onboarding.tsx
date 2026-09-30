@@ -11,7 +11,7 @@
  * Every step answers a touch; progress is a seed filling up. Nothing here is a paywall,
  * and identifying a plant from a photo is free.
  */
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Pressable, ScrollView, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

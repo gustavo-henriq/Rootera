@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, View } from 'react-native';
 import { Props } from '../navigation';
 import { useStore } from '../store';
@@ -69,21 +69,25 @@ export function Plans({ navigation, route }: Props<'Plans'>) {
   const saving = monthly && annual ? Math.round((1 - annual / (monthly * 12)) * 100) : 0;
   const price = billingEnabled ? offer?.price : previewPrice(period);
 
-  // The server decides who is Plus (it asks RevenueCat with its secret key).
-  const confirm = async () => {
-    try { await syncBilling(); }
+  // The server decides who is Plus (it asks RevenueCat with its secret key); this screen only
+  // says "Rootera+ is on" when the server says so.
+  const confirm = async (notYet: string) => {
+    let plan;
+    try { plan = await syncBilling(); }
     catch (e) {
       if (e instanceof ApiError && e.status === 503) throw new Error(t('Purchase complete. The server confirms it once its RevenueCat key is set.'));
       throw e;
     }
+    if (plan !== 'Plus') throw new Error(notYet);
     setDone(true);
   };
+  const notConfirmed = () => t('The store hasn’t confirmed the purchase yet. Try Restore purchases in a moment.');
   const openPaywall = async () => {
     if (busy) return;
     setBusy(true); setError('');
     try {
       const outcome = await presentPaywall(garden.user_id);
-      if (outcome === 'unlocked' || outcome === 'already') await confirm();
+      if (outcome === 'unlocked' || outcome === 'already') await confirm(notConfirmed());
       else if (outcome === 'unavailable') setPicker(true);
     } catch (e) { setError(e instanceof Error ? e.message : t('Something went wrong.')); }
     finally { setBusy(false); }
@@ -95,14 +99,15 @@ export function Plans({ navigation, route }: Props<'Plans'>) {
       if (billingEnabled) {
         if (!offer) throw new Error(t('This plan isn’t available in the store yet.'));
         if (!(await purchase(offer))) return;
-        await confirm();
+        await confirm(notConfirmed());
       } else { await setDemoPlan('Plus', period === 'annual'); setDone(true); }
     } catch (e) { setError(e instanceof Error ? e.message : t('Something went wrong.')); }
     finally { setBusy(false); }
   };
   const doRestore = async () => {
+    if (busy) return;
     setBusy(true); setError('');
-    try { await restore(garden.user_id); await confirm(); }
+    try { await restore(garden.user_id); await confirm(t('Nothing to restore.')); }
     catch (e) { setError(e instanceof Error ? e.message : t('Nothing to restore.')); }
     finally { setBusy(false); }
   };

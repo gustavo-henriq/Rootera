@@ -1,5 +1,5 @@
 /** Pieces shared by the onboarding steps: seed progress, the glass atmosphere, experience tiles. */
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import Animated, { cancelAnimation, Easing, useAnimatedProps, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { ClipPath, Defs, Path, Rect } from 'react-native-svg';

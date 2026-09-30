@@ -51,7 +51,7 @@ function Launch({ onDone }: { onDone: () => void }) {
 }
 
 function Navigator() {
-  const { ready, garden, source, refresh, saveProfile } = useStore();
+  const { ready, garden, source, refresh, saveProfile, syncBilling } = useStore();
   const { c, scheme, reduceMotion: reduce } = useTheme();
   // Phone nudges follow the garden: rescheduled when records, plants or settings change.
   const twinKey = Object.values(garden.twins).map(x => x.guidance.action).join('');
@@ -61,7 +61,6 @@ function Navigator() {
   React.useEffect(() => onLangChange(() => { setLangKey(lang()); void refresh(); }), [refresh]);
   // Renewals, expirations and purchases made elsewhere: when RevenueCat reports a change in the
   // "rootera" entitlement, the server checks it again (it alone decides the plan).
-  const { syncBilling } = useStore();
   const plus = garden.plan === 'Plus';
   React.useEffect(() => watchCustomerInfo(garden.user_id, entitled => { if (entitled !== plus) void syncBilling().catch(() => undefined); }), [garden.user_id, plus]);
   React.useEffect(() => { if (source === 'server' && garden.onboarded) void scheduleNudges(garden); },

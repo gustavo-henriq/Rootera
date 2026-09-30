@@ -23,7 +23,8 @@ interface Store {
   /** Undo a care record (it leaves the plant's history; the server keeps an audit entry). */
   removeCare: (plantId: string, id: string) => Promise<void>;
   setDemoPlan: (plan: Plan, annual: boolean) => Promise<void>;
-  syncBilling: () => Promise<void>;
+  /** Asks the server to check RevenueCat; resolves with the plan it decided. */
+  syncBilling: () => Promise<Plan>;
 }
 
 const Context = createContext<Store | null>(null);
@@ -105,7 +106,7 @@ export function StoreProvider({ children }: React.PropsWithChildren) {
     logCare: event => write(() => api.logCare(event)),
     removeCare: (plantId, id) => write(() => api.removeCare(plantId, id)).then(() => undefined),
     setDemoPlan: (plan, annual) => write(() => api.demoPlan(plan, annual)).then(() => undefined),
-    syncBilling: () => write(() => api.syncBilling()).then(() => undefined),
+    syncBilling: () => write(() => api.syncBilling()).then(r => r.plan),
   }), [garden, ready, source, offline, refresh, write]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

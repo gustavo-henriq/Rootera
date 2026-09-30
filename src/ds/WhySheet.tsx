@@ -3,7 +3,6 @@
  * suggestion actually used, each with the records behind it, joined into the suggestion.
  * The same picture people learned on day one, so explanations always look the same.
  */
-import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

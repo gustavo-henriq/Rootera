@@ -10,7 +10,7 @@
  * The drawing keeps room above the pot, so the whole hand is visible as it comes down
  * (a lone finger cut at the top edge did not read as a hand).
  */
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Line, Path, Rect } from 'react-native-svg';

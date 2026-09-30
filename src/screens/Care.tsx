@@ -12,7 +12,6 @@ import { Page } from '../ds/Page';
 import { PlantArt } from '../ds/plant';
 import { haptic } from '../ds/feedback';
 import { layersComplete, SoilLayersInput } from '../ds/SoilLayers';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { t } from '../i18n';
 
 const visualGlyph: Record<Visual, GlyphName> = { great: 'leaf', different: 'spark', unwell: 'alert', not_sure: 'info' };
@@ -152,7 +151,6 @@ function SingleCare({ navigation, route }: Props<'Care'>) {
   const { garden, logCare } = useStore();
   const { c } = useTheme();
   const plant = garden.plants.find(p => p.id === route.params.id);
-  const g = garden.twins[route.params.id]?.guidance;
   const mode = route.params.mode === 'checkin' ? 'soil' : route.params.mode;
   const [layers, setLayers] = useState<Partial<SoilLayers>>({});
   const [visual, setVisual] = useState<Visual | ''>('');

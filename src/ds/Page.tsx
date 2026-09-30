@@ -4,7 +4,7 @@
  * the large title has scrolled away (continuity: the title moves into the bar).
  */
 import React from 'react';
-import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, RefreshControl, View } from 'react-native';
 import Animated, { FadeIn, interpolate, LinearTransition, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

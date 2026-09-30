@@ -7,7 +7,6 @@
  * the start: two more photos are offered, each with a different tip, and after the third
  * the name is asked for, with Pl@ntNet's weak guesses as "Maybe it's…".
  */
-import React from 'react';
 import { View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Candidate } from '../api';

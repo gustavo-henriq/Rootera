@@ -4,7 +4,7 @@
  * does the upgrade (service.upgrade_art) and flags it; seeing this clears the flag.
  * Waits while the profile sheet is up, so only one sheet shows at a time.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, SlideInDown, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

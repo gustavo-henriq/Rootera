@@ -517,6 +517,7 @@ export const PT: Record<string, string> = {
   "outdoors": "ao ar livre",
   "today": "hoje",
   "See again": "Ver de novo",
+  "The store hasn’t confirmed the purchase yet. Try Restore purchases in a moment.": "A loja ainda não confirmou a compra. Tente Restaurar compras daqui a pouco.",
   "Local weather and photo ID": "Clima local e identificação por foto",
   "Once you turn it on, this week’s weather nudges the drying window a little. A photo only suggests the species; you confirm it.": "Quando você liga, o clima da semana ajusta um pouco a janela de secagem. A foto só sugere a espécie; quem confirma é você.",
   "Weather or photo": "Clima ou foto",

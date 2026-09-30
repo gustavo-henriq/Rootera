@@ -5,8 +5,8 @@
  * The list is frozen when the round starts so cards never shuffle under your finger, and
  * the last card can always be undone.
  */
-import React, { useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, SlideInRight, SlideOutLeft, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Props } from '../navigation';

@@ -5,7 +5,7 @@
  */
 import React, { useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { NudgeKind } from '../../model';
 import { useTheme } from '../../ds/theme';
 import { fonts, radius, space, springs } from '../../ds/tokens';

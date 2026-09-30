@@ -4,7 +4,7 @@
  * so words rise and fade there, which reads the same at reading distance.
  * No springs and no overshoot: text should arrive calmly, not bounce.
  */
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Platform, StyleProp, TextStyle, View } from 'react-native';
 import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useTheme } from './theme';

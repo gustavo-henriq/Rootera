@@ -5,7 +5,6 @@
  * (named factors), or a mix of both while the first cycles come in. Until a pattern exists,
  * the server uses this same window to decide when a check is worth asking for.
  */
-import React from 'react';
 import { View } from 'react-native';
 import { Forecast } from '../model';
 import { locale, t, tn } from '../i18n';

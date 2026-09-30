@@ -7,7 +7,7 @@
  * suggestion, never a requirement: "Couldn't reach" is a valid answer (the backend then
  * never calls a plant that dries through "dry" on that check alone).
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Layer, LayerKey, SoilLayers, layerLabel } from '../model';

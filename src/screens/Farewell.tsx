@@ -7,7 +7,7 @@
  * The plant is removed only when the person leaves this screen, so the words stay with them
  * (and the plant page behind does not change under it).
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Modal, ScrollView, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

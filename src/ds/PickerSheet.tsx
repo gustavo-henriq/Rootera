@@ -3,7 +3,7 @@
  * Replaces rows of chips once there are too many to scan (Hick's law): with 8 plants chips
  * are fine, with 500 they are not.
  */
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

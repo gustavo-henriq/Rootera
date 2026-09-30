@@ -9,7 +9,7 @@
  * A root grows by redrawing its outline on every frame (an animated SVG prop, as in
  * onboarding/shared.tsx). With Reduce Motion everything is there at once.
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, View } from 'react-native';
 import Animated, { cancelAnimation, Easing, FadeInDown, SharedValue, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Ellipse, Path } from 'react-native-svg';

@@ -6,7 +6,7 @@
  * button show at once. The text keeps its space from the start (hidden until its turn),
  * so nothing on the screen jumps when it arrives.
  */
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

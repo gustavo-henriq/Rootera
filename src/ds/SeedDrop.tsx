@@ -8,7 +8,7 @@
  * is scaled from zero: on iOS a zero scale is a degenerate transform and the layer
  * flickers or vanishes for a few frames.
  */
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Image, View } from 'react-native';
 import Animated, {
   cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming,

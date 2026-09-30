@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { CareEvent } from '../model';
 import { useTheme } from './theme';

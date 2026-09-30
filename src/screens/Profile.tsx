@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Linking, Platform, StyleSheet, View } from 'react-native';
 import { Props } from '../navigation';
 import { useStore } from '../store';

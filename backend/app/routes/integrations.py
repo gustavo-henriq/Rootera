@@ -59,7 +59,11 @@ _identified: dict[tuple[str, str], int] = {}
 
 @router.post('/identify')
 def identify(payload: IdentifyIn, s=Depends(service), config: Settings = Depends(settings)):
-    key = (s.owner, datetime.now(timezone.utc).date().isoformat())
+    today = datetime.now(timezone.utc).date().isoformat()
+    # Counts from earlier days are no longer needed.
+    for old in [k for k in _identified if k[1] != today]:
+        del _identified[old]
+    key = (s.owner, today)
     if _identified.get(key, 0) >= IDENTIFY_PER_DAY:
         raise HTTPException(429, 'Photo identification limit reached for today. Search by name instead.')
     _identified[key] = _identified.get(key, 0) + 1
