@@ -26,12 +26,13 @@ const benefits: { icon: GlyphName; title: string; text: string }[] = [
   { icon: 'camera', title: 'Growth diary', text: 'A dated photo timeline for each plant, on your phone.' },
 ];
 // Only when no store is connected, so the preview can still be walked through.
-const previewAmounts: Record<Period, number> = { monthly: 12.9, annual: 89.9, lifetime: 249.9 };
-const PERIODS: Period[] = ['annual', 'monthly', 'lifetime'];
-const periodLabel: Record<Period, string> = { annual: 'Yearly', monthly: 'Monthly', lifetime: 'Lifetime' };
+const previewAmounts: Record<Period, number> = { monthly: 12.9, quarterly: 32.9, annual: 89.9, lifetime: 249.9 };
+// Shortest to longest, lifetime last.
+const PERIODS: Period[] = ['monthly', 'quarterly', 'annual', 'lifetime'];
+const periodLabel: Record<Period, string> = { monthly: 'Monthly', quarterly: 'Quarterly', annual: 'Yearly', lifetime: 'Lifetime' };
 // Formatted at render time, so the language chosen in You applies.
 const money = (n: number) => new Intl.NumberFormat(locale(), { style: 'currency', currency: 'BRL' }).format(n);
-const previewPrice = (p: Period) => p === 'monthly' ? t('{price} a month', { price: money(previewAmounts.monthly) }) : p === 'annual' ? t('{price} a year', { price: money(previewAmounts.annual) }) : t('{price} once', { price: money(previewAmounts.lifetime) });
+const previewPrice = (p: Period) => p === 'monthly' ? t('{price} a month', { price: money(previewAmounts.monthly) }) : p === 'quarterly' ? t('{price} every 3 months', { price: money(previewAmounts.quarterly) }) : p === 'annual' ? t('{price} a year', { price: money(previewAmounts.annual) }) : t('{price} once', { price: money(previewAmounts.lifetime) });
 
 function Shelf() {
   return <View style={{ alignItems: 'center' }}>
@@ -148,7 +149,7 @@ export function Plans({ navigation, route }: Props<'Plans'>) {
       </Stagger>)}
     </View>
     {picker && <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[3] }}>
-      {PERIODS.filter(p => !billingEnabled || offers?.some(o => o.period === p) || loading).map(p => {
+      {PERIODS.filter(p => billingEnabled ? offers?.some(o => o.period === p) || (loading && p !== 'quarterly') : p !== 'quarterly').map(p => {
         const on = p === period;
         const label = billingEnabled ? offers?.find(o => o.period === p)?.price ?? (loading ? '…' : t('Unavailable')) : previewPrice(p);
         return <Tap key={p} role="radio" selected={on} label={`${t(periodLabel[p])}, ${label}${p === 'annual' && saving > 0 ? `, ${t('save {n}%', { n: saving })}` : ''}`} onPress={() => setPeriod(p)} ring={radius.control}

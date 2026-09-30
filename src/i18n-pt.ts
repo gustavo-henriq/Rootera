@@ -517,6 +517,8 @@ export const PT: Record<string, string> = {
   "outdoors": "ao ar livre",
   "today": "hoje",
   "See again": "Ver de novo",
+  "Quarterly": "Trimestral",
+  "{price} every 3 months": "{price} a cada 3 meses",
   "So Rootera can call you by name.": "Para o Rootera te chamar pelo nome.",
   "The store hasn’t confirmed the purchase yet. Try Restore purchases in a moment.": "A loja ainda não confirmou a compra. Tente Restaurar compras daqui a pouco.",
   "Local weather and photo ID": "Clima local e identificação por foto",

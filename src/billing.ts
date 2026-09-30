@@ -29,9 +29,9 @@ const KEY = Platform.select({
 export const billingEnabled = !!KEY;
 let configuredFor: string | null = null;
 
-export type Period = 'monthly' | 'annual' | 'lifetime';
+export type Period = 'monthly' | 'quarterly' | 'annual' | 'lifetime';
 export interface Offer { id: string; period: Period; price: string; amount: number; pkg: PurchasesPackage }
-const PERIOD: Partial<Record<PACKAGE_TYPE, Period>> = { [PACKAGE_TYPE.MONTHLY]: 'monthly', [PACKAGE_TYPE.ANNUAL]: 'annual', [PACKAGE_TYPE.LIFETIME]: 'lifetime' };
+const PERIOD: Partial<Record<PACKAGE_TYPE, Period>> = { [PACKAGE_TYPE.MONTHLY]: 'monthly', [PACKAGE_TYPE.THREE_MONTH]: 'quarterly', [PACKAGE_TYPE.ANNUAL]: 'annual', [PACKAGE_TYPE.LIFETIME]: 'lifetime' };
 
 /** Configures the SDK once per signed-in user (the app user id is the backend's user id). */
 export async function configure(appUserID: string) {

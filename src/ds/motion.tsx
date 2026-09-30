@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { StyleProp, StyleSheet, useWindowDimensions, View, ViewStyle } from 'react-native';
-import Animated, { Easing, FadeIn, FadeInDown, Keyframe, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useTheme } from './theme';
 import { motion, springs, timing } from './tokens';
 
@@ -12,21 +12,16 @@ import { motion, springs, timing } from './tokens';
  * Entrances on the tokens' scale (motion.dur, motion.dist), so the same kind of thing always
  * moves the same way. Callers pass `undefined` instead when Reduce Motion is on.
  * - fade: something appears in place (a tab's content, a panel, a line of text).
- * - rise: something new arrives under what was there (a card, a button, a row); it comes up
- *   by one `enter` step while it fades in.
+ * - rise: something new arrives under what was there (a card, a button, a row).
  * - pop: a small thing that deserves a moment (a check mark, a new photo, a new drawing). It
- *   grows from 85% with a slight overshoot, never from zero: scaling up from zero flickers on
- *   the iPhone.
+ *   fades in a little slower; no zoom from zero, which flickers on the iPhone.
  */
+// Plain presets only: custom easing and initial values on entering animations closed the app
+// on the iPhone (Expo Go), right after the onboarding story.
 export const enter = {
   fade: (delay = 0) => FadeIn.delay(delay).duration(motion.dur.base),
-  rise: (delay = 0) => FadeInDown.delay(delay).duration(motion.dur.base).easing(Easing.out(Easing.cubic))
-    .withInitialValues({ transform: [{ translateY: motion.dist.enter }] }),
-  pop: (delay = 0) => new Keyframe({
-    0: { opacity: 0, transform: [{ scale: .85 }] },
-    60: { opacity: 1, transform: [{ scale: 1.04 }], easing: Easing.out(Easing.cubic) },
-    100: { opacity: 1, transform: [{ scale: 1 }], easing: Easing.inOut(Easing.quad) },
-  }).delay(delay).duration(motion.dur.slow),
+  rise: (delay = 0) => FadeInDown.delay(delay).duration(motion.dur.base),
+  pop: (delay = 0) => FadeIn.delay(delay).duration(motion.dur.slow),
 };
 
 /**

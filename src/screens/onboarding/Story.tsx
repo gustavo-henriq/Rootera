@@ -87,7 +87,10 @@ function rootPath(pts: number[], p: number, w0: number) {
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 function Root({ clock, i, pts, color }: { clock: SharedValue<number>; i: number; pts: number[]; color: string }) {
-  const props = useAnimatedProps(() => ({ d: rootPath(pts, out3(band(clock.value, rootAt(i), rootAt(i) + GROW)), WIDTH[i]) }), [pts]);
+  // Plain numbers only inside the worklet: calling a regular JS function (rootAt) from the UI
+  // thread closed the app on the iPhone (the web runs worklets on the JS thread, so it hid it).
+  const from = rootAt(i), width = WIDTH[i];
+  const props = useAnimatedProps(() => ({ d: rootPath(pts, out3(band(clock.value, from, from + GROW)), width) }), [pts]);
   return <AnimatedPath animatedProps={props} d="M0 0" fill={color} />;
 }
 
