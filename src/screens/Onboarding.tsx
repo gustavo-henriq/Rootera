@@ -2,7 +2,8 @@
  * First run:
  *  1. Opening: a seed drops into a pot, the wordmark sprouts, and "Get started"
  *     dives into the soil (automatic, see onboarding/Opening).
- *  2. How Rootera learns (a plant that grows as you tap) and your experience.
+ *  2. How Rootera learns (roots grow down, each opening into one of its sources, on
+ *     their own) and your experience.
  *  3. Your first plant, one note at a time; it is planted and celebrated.
  *  4. The payoff: what Rootera now knows and its first suggestion.
  * Nudges are not a step: Today offers them once, after this first plant (NudgeInvite).
@@ -53,8 +54,6 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
   const [dived, setDived] = useState(false);
   const [width, setWidth] = useState(0);
   const [storyDone, setStoryDone] = useState(false);
-  // A tap anywhere on the story step moves the story on (not only on its cards).
-  const [storyTap, setStoryTap] = useState(0);
   const [experience, setExperience] = useState<Experience | ''>(garden.caregiver?.experience ?? '');
   const [detail, setDetail] = useState<'Guided' | 'Concise'>(garden.caregiver?.detail ?? 'Guided');
   const [choice, setChoice] = useState<Choice | null>(null);
@@ -185,7 +184,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
       ? [t('Which plant is yours?'), t('Search by name or use a photo.')]
       : [t('Tell me about one of your plants'), t('The one you see most often.')],
   };
-  const hideTitle = (step === 1 && storyDone) || (step === 3 && !!kind);
+  const hideTitle = step === 3 && !!kind;
   const titleDelay = step === 1 && dived ? SOIL_LIFT : 0;
   const titleTime = titleDelay + revealDuration(titles[step][0]);
   const showCta = step === 1 ? storyDone : step === 3 ? plantReady : true;
@@ -206,7 +205,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
         : <View style={{ width: 44 }} />}
     </View>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: space.gutter, paddingBottom: space[6], flexGrow: 1 }}>
-      <Pressable accessible={false} disabled={step !== 1 || storyDone} onPress={() => setStoryTap(n => n + 1)} style={{ flexGrow: 1, gap: space[5] }}>
+      <View style={{ flexGrow: 1, gap: space[5] }}>
       {/* The title steps away once its job is done, so what follows can rise into its place.
           No exit animation: a leaving title lingered over the next step's title and cards. */}
       {!hideTitle && <Animated.View key={'title-' + step} style={{ gap: space[2], paddingTop: space[4] }}>
@@ -222,7 +221,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
       {/* Keyed by step: a new step's content mounts in place (a layout transition carried over
           from the last step slid it up over the new title). */}
       <Animated.View key={'content-' + step} layout={reduceMotion ? undefined : LinearTransition.delay(140).duration(380)} onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ paddingTop: hideTitle ? space[3] : 0 }}>
-        {!!width && step === 1 && <Story width={width} start={titleTime} advance={storyTap} onComplete={() => setStoryDone(true)} />}
+        {step === 1 && <Story start={titleTime} onComplete={() => setStoryDone(true)} />}
         {step === 2 && <Animated.View entering={reduceMotion ? undefined : FadeInDown.delay(140).duration(320)} style={{ gap: space[3] }}>
           <View style={{ flexDirection: 'row', gap: space[3] }}>
             {experiences.slice(0, 2).map(o => <GlassChoice key={o.value} on={experience === o.value} onPress={() => chooseExperience(o.value)} label={experienceLabel[o.value]} hint={experienceHint[o.value]} art={o.art} scene={o.scene} />)}
@@ -232,7 +231,7 @@ export function Onboarding({ navigation, route }: Props<'Welcome'>) {
         {!!width && step === 3 && <FirstPlant width={width} layers={layers} onLayers={setLayers} choice={choice} onChoose={setChoice} answers={answers} onAnswer={answer} editing={editing} setEditing={setEditing}
           photo={photo} idState={idState} matches={matches} attempt={Math.max(1, attempt)} onCamera={() => navigation.navigate('Camera', { returnTo: 'Welcome' })} />}
       </Animated.View>
-      </Pressable>
+      </View>
     </ScrollView>
     {/* The action appears only once it can be taken: no disabled "Plant it" waiting at the bottom. */}
     {showCta && <Animated.View key={step} entering={reduceMotion || step === 2 ? undefined : FadeInDown.duration(380)}

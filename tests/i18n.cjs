@@ -53,7 +53,7 @@ const TABLES = {
   'src/screens/PlantForm.tsx': ['LOCATIONS', 'LIGHT', 'YES_NO', 'POT', 'MATERIAL', 'SUBSTRATE', 'lightLabels'],
   'src/screens/onboarding/FirstPlant.tsx': ['LIGHT', 'POTS', 'STAGES', 'WATERED', 'SOILS', 'QUESTION', 'LABEL'],
   'src/screens/onboarding/Nudges.tsx': ['nudgeCopy'],
-  'src/screens/onboarding/Story.tsx': ['SOURCES', 'label'],
+  'src/screens/onboarding/Story.tsx': ['SOURCES'],
   'src/screens/onboarding/Opening.tsx': ['LINE', 'SUB'],
 };
 // Not prose: identifiers, kinds, latin names and aliases that happen to sit in these tables.

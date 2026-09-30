@@ -1,29 +1,23 @@
 /**
- * How Rootera learns, told as a plant growing. The seed sprouts on its own; then each
- * source appears as a glowing button around the plant. Tapping it draws its line to
- * the plant, grows the plant one stage and shows what that source adds underneath.
- * Tapping an earlier source brings its explanation back. After the third, the plant
- * blooms into "Rootera suggests".
+ * How Rootera learns, told by roots, playing on its own (no taps). After the dive into the
+ * soil, a seed sends one root down at a time; a sprout opens at the tip and the card for
+ * that source comes out of it: what you observe, what you tell us, the species notes.
+ * After the third, "Rootera suggests" closes the story and Continue appears.
+ *
+ * The cards hold their places from the start (invisible), so nothing moves as they arrive,
+ * and the roots are drawn to where the cards really are (measured), at any text size.
+ * A root grows by redrawing its outline on every frame (an animated SVG prop, as in
+ * onboarding/shared.tsx). With Reduce Motion everything is there at once.
  */
-import React, { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
-import Animated, { cancelAnimation, Easing, FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { useCompact, useTheme } from '../../ds/theme';
-import { fonts, radius, space } from '../../ds/tokens';
-import { SourceMark, T, Tap } from '../../ds/components';
-import { Ground } from '../../ds/plant';
-import { t } from '../../i18n';
+import React, { useEffect, useMemo, useState } from 'react';
+import { LayoutChangeEvent, View } from 'react-native';
+import Animated, { cancelAnimation, Easing, FadeInDown, SharedValue, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import Svg, { Ellipse, Path } from 'react-native-svg';
+import { useTheme } from '../../ds/theme';
+import { radius, space } from '../../ds/tokens';
+import { SourceMark, T } from '../../ds/components';
 import { pivot } from '../../ds/motion';
-
-/** One image per stage (seed, sprout, young plant, bud, bloom), all on the same canvas. */
-export const flowerStages: number[] = [
-  require('../../../assets/flower/1-seed.webp'),
-  require('../../../assets/flower/2-sprout.webp'),
-  require('../../../assets/flower/3-leaves.webp'),
-  require('../../../assets/flower/4-bud.webp'),
-  require('../../../assets/flower/5-bloom.webp'),
-];
-const RATIO = 994 / 1130;
+import { t } from '../../i18n';
 
 const SOURCES = [
   { key: 'observed' as const, title: 'You observe', text: 'Soil checks, waterings, leaves.' },
@@ -31,153 +25,146 @@ const SOURCES = [
   { key: 'species' as const, title: 'Species notes', text: 'A starting point, not a rule.' },
 ];
 
-/* ------------------------------------------------------------------ the plant */
+/* The roots' column, left of the cards: the seed, the roots and the sprouts at their tips. */
+const COL = 60;
+const SEED = { x: 20, y: 8 };
+const TIP_X = 32;
+const WIDTH = [4.2, 3.6, 3];        // each root at the seed; all end fine at the tip
+const SWAY = [9, -8, 12];           // so the three roots part and cross like real ones
+const WIGGLE = [2.5, 4, 5];         // and wander a little on the way down
 
-function StageImage({ src, on, w, h }: { src: number; on: boolean; w: number; h: number }) {
-  const { reduceMotion } = useTheme();
-  const p = useSharedValue(on ? 1 : 0);
-  useEffect(() => { p.value = reduceMotion ? (on ? 1 : 0) : withTiming(on ? 1 : 0, { duration: on ? 420 : 320 }); }, [on]);
-  // Cross-fade with a small rise; no scale from zero (it flickers on iOS).
-  const style = useAnimatedStyle(() => ({ opacity: p.value, transform: pivot(w, h, .5, 1, [{ scale: .96 + .04 * p.value }]) }));
-  return <Animated.Image source={src} resizeMode="contain" style={[{ position: 'absolute', width: w, height: h }, style]} />;
+/* The timeline, in ms from when the title has arrived. */
+const SEED_IN = 240;                // the seed shows first
+const STEP = 800;                   // then one root after another
+const GROW = 560;                   // a root's growth
+const SPROUT = 380;                 // the sprout opens as the tip arrives
+const CARD = 500;                   // and its card comes out right after
+const rootAt = (i: number) => SEED_IN + i * STEP;
+const ENDING = rootAt(2) + CARD + 450;   // "Rootera suggests"
+const DONE = ENDING + 350;              // Continue
+
+const band = (v: number, a: number, b: number) => { 'worklet'; return Math.min(1, Math.max(0, (v - a) / (b - a))); };
+const out3 = (u: number) => { 'worklet'; return 1 - Math.pow(1 - u, 3); };
+/** Overshoots a little and settles: the sprout pops open. */
+const backOut = (u: number) => { 'worklet'; const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2); };
+
+/** A root's centre line from the seed to the tip beside card `i` (flat x, y list). */
+function rootLine(i: number, tipY: number) {
+  const p0 = [SEED.x, SEED.y + 3], p1 = [SEED.x + SWAY[i], SEED.y + (tipY - SEED.y) * .45], p2 = [SEED.x - 10 + 2 * i, tipY - 16], p3 = [TIP_X, tipY];
+  const pts: number[] = [];
+  for (let k = 0; k <= 40; k++) {
+    const u = k / 40, v = 1 - u, a = v * v * v, b = 3 * v * v * u, c = 3 * v * u * u, d = u * u * u;
+    const wander = WIGGLE[i] * Math.sin(u * Math.PI * (3 + i)) * 4 * u * v;
+    pts.push(a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0] + wander, a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1]);
+  }
+  return pts;
 }
 
-function Flower({ stage, size }: { stage: number; size: number }) {
-  const w = size * RATIO;
-  const label = ['A seed in a pot', 'A sprout', 'A young plant', 'A plant with a bud', 'The plant in flower'][Math.min(stage, 4)];
-  return <View accessible accessibilityRole="image" accessibilityLabel={t(label)} style={{ width: w, height: size }}>
-    {/* The contact shadow is drawn in code (it follows the theme); the art has none baked in. */}
-    <Ground width={w * .72} style={{ position: 'absolute', bottom: -size * .07 }} />
-    {flowerStages.map((src, i) => <StageImage key={i} src={src} on={i === Math.min(stage, flowerStages.length - 1)} w={w} h={size} />)}
-  </View>;
+/** The root's outline grown to `p` (0-1): thick at the seed, fine at the growing tip. */
+function rootPath(pts: number[], p: number, w0: number) {
+  'worklet';
+  const n = pts.length / 2 - 1, m = p * n;
+  if (m < .05) return 'M0 0';
+  const k = Math.min(n - 1, Math.floor(m)), f = m - k;
+  const xs: number[] = [], ys: number[] = [];
+  for (let i = 0; i <= k; i++) { xs.push(pts[2 * i]); ys.push(pts[2 * i + 1]); }
+  xs.push(pts[2 * k] + (pts[2 * k + 2] - pts[2 * k]) * f);
+  ys.push(pts[2 * k + 1] + (pts[2 * k + 3] - pts[2 * k + 1]) * f);
+  const L = xs.length;
+  let left = '', right = '';
+  for (let i = 0; i < L; i++) {
+    const a = Math.max(0, i - 1), b = Math.min(L - 1, i + 1);
+    let tx = xs[b] - xs[a], ty = ys[b] - ys[a];
+    const tl = Math.hypot(tx, ty) || 1;
+    tx /= tl; ty /= tl;
+    const half = (w0 * Math.pow(1 - i / (L - 1 || 1), .8) + .4) / 2;
+    left += (i ? ' L' : 'M') + (xs[i] - ty * half).toFixed(1) + ' ' + (ys[i] + tx * half).toFixed(1);
+    right = ' L' + (xs[i] + ty * half).toFixed(1) + ' ' + (ys[i] - tx * half).toFixed(1) + right;
+  }
+  return left + right + ' Z';
 }
 
-/* ------------------------------------------------------------------ sources */
+const AnimatedPath = Animated.createAnimatedComponent(Path);
 
-function Glow({ on }: { on: boolean }) {
-  const { c, reduceMotion } = useTheme();
-  const p = useSharedValue(0);
-  useEffect(() => {
-    if (!on) { p.value = withTiming(0, { duration: 200 }); return; }
-    if (reduceMotion) { p.value = .6; return; }
-    p.value = withRepeat(withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.sin) }), -1, true);
-    return () => cancelAnimation(p);
-  }, [on, reduceMotion]);
-  const style = useAnimatedStyle(() => ({ opacity: on ? .14 + .26 * p.value : 0, transform: [{ scale: 1 + .05 * p.value }] }));
-  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: -6, bottom: -6, left: -6, right: -6, borderRadius: radius.control + 6, backgroundColor: c.leafMark }, style]} />;
+function Root({ clock, i, pts, color }: { clock: SharedValue<number>; i: number; pts: number[]; color: string }) {
+  const props = useAnimatedProps(() => ({ d: rootPath(pts, out3(band(clock.value, rootAt(i), rootAt(i) + GROW)), WIDTH[i]) }), [pts]);
+  return <AnimatedPath animatedProps={props} d="M0 0" fill={color} />;
 }
 
-/** A connector from a source to the plant, drawn when that source is tapped. */
-function Line({ on, from, to }: { on: boolean; from: { x: number; y: number }; to: { x: number; y: number } }) {
-  const { c, reduceMotion } = useTheme();
-  const p = useSharedValue(.02);
-  useEffect(() => { p.value = reduceMotion ? (on ? 1 : .02) : withTiming(on ? 1 : .02, { duration: 380, easing: Easing.out(Easing.cubic) }); }, [on]);
-  const vertical = from.x === to.x;
-  const len = vertical ? Math.abs(to.y - from.y) : Math.abs(to.x - from.x);
-  const style = useAnimatedStyle(() => ({ opacity: on ? 1 : 0, transform: vertical
-    ? pivot(1.5, len, .5, from.y > to.y ? 1 : 0, [{ scaleY: p.value }])
-    : pivot(len, 1.5, from.x < to.x ? 0 : 1, .5, [{ scaleX: p.value }]) }));
-  const box = vertical
-    ? { left: from.x - .75, top: Math.min(from.y, to.y), width: 1.5, height: len }
-    : { top: from.y - .75, left: Math.min(from.x, to.x), height: 1.5, width: len };
-  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', backgroundColor: c.ink2 }, box as any, style]} />;
-}
-
-function Node({ source, waiting, focused, onPress, wrap }: { source: typeof SOURCES[number]; waiting: boolean; focused: boolean; onPress: () => void; wrap?: boolean }) {
-  const { c } = useTheme();
-  return <Animated.View entering={FadeInDown.duration(220)}>
-    <Glow on={waiting} />
-    <Tap label={t(source.title)} selected={focused} onPress={onPress} ring={radius.control}
-      style={{ minHeight: 44, paddingHorizontal: 10, paddingVertical: 10, borderRadius: radius.control, borderWidth: focused || waiting ? 1.5 : 1, borderColor: focused || waiting ? c.ink : c.ink3, backgroundColor: c.raised, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <SourceMark kind={source.key} />
-      <T v="subhead" lines={wrap ? undefined : 2} style={{ fontFamily: fonts.medium, flexShrink: 1 }}>{t(source.title)}</T>
-    </Tap>
+/** Two leaves on a short stem; it opens from its base, at the root's tip. */
+function Sprout({ clock, at, x, y, color }: { clock: SharedValue<number>; at: number; x: number; y: number; color: string }) {
+  const style = useAnimatedStyle(() => {
+    const u = band(clock.value, at, at + 340);
+    // No scale from zero (it flickers on iOS): it starts small and fades in.
+    return { opacity: band(clock.value, at, at + 120), transform: pivot(22, 22, 3 / 22, 19 / 22, [{ scale: .3 + .7 * backOut(u) }]) };
+  });
+  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: x - 3, top: y - 19, width: 22, height: 22 }, style]}>
+    <Svg width={22} height={22}>
+      <Path d="M3 19 C5 15 7 12 9 9" stroke={color} strokeWidth={2} strokeLinecap="round" fill="none" />
+      <Path d="M9 9 C6 8 3 5 3 1 C7 1 9 4 9 9 Z" fill={color} />
+      <Path d="M9 9 C11 5 15 3 20 4 C19 9 14 11 9 9 Z" fill={color} />
+    </Svg>
   </Animated.View>;
 }
 
-/* ------------------------------------------------------------------ the story */
+function Card({ clock, at, source, onLayout }: { clock: SharedValue<number>; at: number; source: typeof SOURCES[number]; onLayout: (e: LayoutChangeEvent) => void }) {
+  const { c } = useTheme();
+  // It comes out of the sprout: a short slide from the left while it fades in.
+  const style = useAnimatedStyle(() => {
+    const e = out3(band(clock.value, at, at + 280));
+    return { opacity: e, transform: [{ translateX: -14 * (1 - e) }] };
+  });
+  return <Animated.View onLayout={onLayout} style={style}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: radius.control, borderWidth: 1, borderColor: c.hairline, backgroundColor: c.raised }}>
+      <SourceMark kind={source.key} size={10} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <T v="headline">{t(source.title)}</T>
+        <T v="subhead" tone="ink2">{t(source.text)}</T>
+      </View>
+    </View>
+  </Animated.View>;
+}
 
-export function Story({ width, start, advance = 0, onComplete }: { width: number; start: number; advance?: number; onComplete: () => void }) {
-  const { c, reduceMotion } = useTheme();
-  const compact = useCompact();
-  const [stage, setStage] = useState(0);
-  const [shown, setShown] = useState(0);
-  const [done, setDone] = useState(0);
-  const [focus, setFocus] = useState<number | null>(null);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const later = (fn: () => void, ms: number) => { timers.current.push(setTimeout(fn, reduceMotion ? 0 : ms)); };
-  const waiting = shown > done;
+export function Story({ start, onComplete }: { start: number; onComplete: () => void }) {
+  const { c, scheme, reduceMotion } = useTheme();
+  const clock = useSharedValue(reduceMotion ? DONE : 0);
+  const [tips, setTips] = useState<(number | null)[]>([null, null, null]);
+  const [height, setHeight] = useState(0);
+  const [ended, setEnded] = useState(reduceMotion);
 
   useEffect(() => {
-    // After the title has arrived, the seed sprouts by itself, then the first source appears.
-    later(() => setStage(1), Math.max(0, start - 200));
-    later(() => setShown(1), start + 150);
-    return () => timers.current.forEach(clearTimeout);
+    if (reduceMotion) { const done = setTimeout(onComplete, 0); return () => clearTimeout(done); }
+    // It starts as the title's last words arrive.
+    const at = Math.max(0, start - 250);
+    clock.value = withDelay(at, withTiming(DONE, { duration: DONE, easing: Easing.linear }));
+    const timers = [setTimeout(() => setEnded(true), at + ENDING), setTimeout(onComplete, at + DONE)];
+    return () => { cancelAnimation(clock); timers.forEach(clearTimeout); };
   }, []);
 
-  // A tap anywhere on the screen (counted by the onboarding): open the waiting source, or,
-  // while the next one is still on its way, bring it in now.
-  useEffect(() => {
-    if (!advance) return;
-    if (stage === 0) { setStage(1); setShown(1); return; }
-    if (waiting) tap(done);
-    else if (shown < SOURCES.length && shown === done) setShown(done + 1);
-  }, [advance]);
-
-  const tap = (i: number) => {
-    setFocus(i);
-    if (i !== done) return; // an earlier source: just bring its explanation back
-    const next = done + 1;
-    setDone(next);
-    setStage(next + 1);
-    if (next < SOURCES.length) later(() => setShown(next + 1), 280);
-    else later(onComplete, 650);
+  const lines = useMemo(() => tips.every(y => y !== null) ? tips.map((y, i) => rootLine(i, y!)) : null, [tips]);
+  const place = (i: number) => (e: LayoutChangeEvent) => {
+    const { y, height: h } = e.nativeEvent.layout;
+    setTips(prev => { const next = [...prev]; next[i] = Math.round(y + h / 2); return next; });
   };
+  const seed = useAnimatedStyle(() => ({ opacity: band(clock.value, 0, SEED_IN) }));
+  const rootColor = scheme === 'dark' ? c.soil[1] : c.soil[2];
 
-  // Two sources above the plant, species notes below it, lines meeting at the plant.
-  const nodeW = 132, H = 320, size = 180;
-  const plantTop = 40, plantBottom = plantTop + size;
-  const pos = [{ x: 0, y: 30 }, { x: width - nodeW, y: 30 }, { x: (width - nodeW) / 2, y: H - 48 }];
-  const lines = [
-    { from: { x: nodeW, y: 52 }, to: { x: width / 2 - size * .12, y: 52 } },
-    { from: { x: width - nodeW, y: 52 }, to: { x: width / 2 + size * .12, y: 52 } },
-    { from: { x: width / 2, y: H - 48 }, to: { x: width / 2, y: plantBottom - 6 } },
-  ];
-  const bloomed = done >= SOURCES.length;
-  return <View style={{ gap: space[4] }}>
-    {compact
-      // Large text: the plant on top, the sources as full-width buttons underneath (no fixed boxes).
-      ? <View style={{ alignItems: 'center', gap: space[3] }}>
-          <Flower stage={stage} size={150} />
-          {bloomed && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.input, backgroundColor: c.successSoft }}>
-            <SourceMark kind="suggested" /><T v="caption" tone="leafText">{t("Rootera suggests")}</T>
-          </View>}
-          {SOURCES.slice(0, shown).map((s, i) => <View key={s.key} style={{ alignSelf: 'stretch' }}>
-            <Node source={s} waiting={waiting && i === done} focused={focus === i} onPress={() => tap(i)} wrap />
-          </View>)}
-        </View>
-      : <View style={{ width, height: H }}>
-      <View style={{ position: 'absolute', left: (width - size * RATIO) / 2, top: plantTop }}><Flower stage={stage} size={size} /></View>
-      {bloomed && <Animated.View entering={FadeIn.delay(250).duration(300)} style={{ position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.input, backgroundColor: c.successSoft }}>
-          <SourceMark kind="suggested" /><T v="caption" tone="leafText">{t("Rootera suggests")}</T>
-        </View>
-      </Animated.View>}
-      {SOURCES.map((s, i) => <Line key={'l' + s.key} on={i < done} {...lines[i]} />)}
-      {SOURCES.slice(0, shown).map((s, i) => <View key={s.key} style={{ position: 'absolute', left: pos[i].x, top: pos[i].y, width: nodeW }}>
-        <Node source={s} waiting={waiting && i === done} focused={focus === i} onPress={() => tap(i)} />
-      </View>)}
-    </View>}
-    <View style={{ minHeight: 100, gap: space[2] }} accessibilityLiveRegion="polite">
-      {focus !== null
-        ? <Animated.View key={focus} entering={reduceMotion ? undefined : FadeInDown.duration(220)} style={{ gap: 4 }}>
-            <T v="headline">{t(SOURCES[focus].title)}</T>
-            <T v="body" tone="ink2">{t(SOURCES[focus].text)}</T>
-          </Animated.View>
-        : null}
-      {bloomed && <Animated.View entering={FadeInDown.delay(250).duration(300)}>
-        <T v="subhead" tone="ink2">{t("Every suggestion shows its source.")}</T>
-      </Animated.View>}
+  return <View style={{ gap: space[5] }}>
+    <View onLayout={e => setHeight(e.nativeEvent.layout.height)} style={{ paddingLeft: COL, paddingTop: space[6], gap: space[8] }}>
+      {lines && height > 0 && <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: COL, height }}>
+        <Svg width={COL} height={height}>{lines.map((pts, i) => <Root key={i} clock={clock} i={i} pts={pts} color={rootColor} />)}</Svg>
+        <Animated.View style={[{ position: 'absolute', left: 0, top: 0 }, seed]}>
+          <Svg width={COL} height={20}><Ellipse cx={SEED.x} cy={SEED.y} rx={6.5} ry={4.6} transform={`rotate(-18 ${SEED.x} ${SEED.y})`} fill={c.soil[1]} /></Svg>
+        </Animated.View>
+        {tips.map((y, i) => <Sprout key={i} clock={clock} at={rootAt(i) + SPROUT} x={TIP_X} y={y!} color={c.leaf} />)}
+      </View>}
+      {SOURCES.map((s, i) => <Card key={s.key} clock={clock} at={rootAt(i) + CARD} source={s} onLayout={place(i)} />)}
     </View>
+    {ended && <Animated.View entering={reduceMotion ? undefined : FadeInDown.duration(300)} style={{ gap: space[2], alignItems: 'flex-start' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.input, backgroundColor: c.successSoft }}>
+        <SourceMark kind="suggested" /><T v="caption" tone="leafText">{t("Rootera suggests")}</T>
+      </View>
+      <T v="subhead" tone="ink2">{t("Every suggestion shows its source.")}</T>
+    </Animated.View>}
   </View>;
 }
