@@ -39,7 +39,20 @@ Outras ideias, se quiser combinar:
 | 0:50–1:08 | Página da planta: "Perto de secar" + a linha do tempo; aba Ritmo com os ciclos; a linha do clima. | "Each watering starts a cycle. After one, it's still analyzing. After two, it gets specific. After three, it's your plant's own pattern. Local weather nudges the window." | Cada rega abre um ciclo... Depois de três, é o padrão da sua planta. O clima local ajusta a janela. |
 | 1:08–1:25 | Laboratório Shipaton: o regador vira nuvem e depois sol; simular 91 dias no "Inverno em Porto Alegre" com "Seguir o Rootera". | "For the judges: a lab that runs three months of a virtual plant in seconds, with real weather. Rootera stays inside the ranges from university extension guides." | Para os jurados: um laboratório que roda 3 meses em segundos, com clima real, dentro dos intervalos das fontes. |
 | 1:25–1:45 | Adicionar a 4ª planta → estante grátis cheia → Rootera+ (mensal, anual, vitalício) → compra → "Gerenciar assinatura" (Customer Center). | "Free keeps three plants. Rootera+ removes the limit: monthly, yearly or lifetime, through RevenueCat Paywalls. The server confirms the entitlement with RevenueCat; the app never decides on its own." | O grátis guarda 3 plantas... O servidor confirma a assinatura na RevenueCat; o app nunca decide sozinho. |
-| 1:45–1:55 | Tela final com o logo; texto: "Open source · MIT · github.com/SEU-USUARIO/rootera". | "Rootera. Built by a student for Shipaton 2026." | Feito por um estudante para a Shipaton 2026. |
+| 1:45–1:55 | Volta ao vaso real, agora com um broto novo. Tela final com o logo e o slogan; embaixo, "Open source (MIT): github.com/SEU-USUARIO/rootera". | "Your plant changes. Rootera learns the pattern. Built by a student for Shipaton 2026." | A planta muda. O Rootera aprende o padrão. Feito por um estudante para a Shipaton 2026. |
+
+## O slogan
+
+Sua ideia, "the plant changes, the pattern is learned", é boa porque diz em uma frase o que o app faz. Ajustei para a voz ativa e dei nome ao sujeito, para a frase fechar no produto:
+
+**"Your plant changes. Rootera learns the pattern."**
+
+Outras versões, caso prefira:
+- "The plant changes. The pattern is learned." (a sua, com pontuação de slogan)
+- "Plants change. Rootera keeps learning."
+- "Every plant changes. Rootera learns how."
+
+O slogan já está na thumbnail, no README e na frase curta do Devpost. Se trocar, me avise que eu atualizo os três.
 
 ## O trecho da RevenueCat: escolha antes de gravar
 
