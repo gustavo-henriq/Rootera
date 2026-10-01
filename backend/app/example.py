@@ -20,25 +20,26 @@ OLD_NAMES = ('Monstera', 'Costela-de-adão')
 NAMES = {'en': NAME, 'pt': NAME}
 EVENT_TYPES = {'Watered': 'PlantWatered', 'Soil check': 'SoilConditionReported', 'Observation': 'PlantObserved'}
 
-# (days before now, kind, value). Three cycles: dry about 5, 6 and 5 days after watering,
-# with checks in between as a caregiver would do; the last watering was 3 days ago.
+# (days before now, kind, value). Three cycles: dry about 8.5, 9.5 and 8.5 days after
+# watering, like the Shipaton lab's MVP Shipaton, with checks in between as a caregiver
+# would do; the last watering was 3 days ago.
 # Checks are in three layers, drying from the top down (a monstera is dry when the
 # surface and the middle are).
 MOIST = {'top': 'moist', 'middle': 'moist', 'bottom': 'moist'}
 DRYING = {'top': 'dry', 'middle': 'moist', 'bottom': 'moist'}
 DRY = {'top': 'dry', 'middle': 'dry', 'bottom': 'moist'}
 HISTORY = [
-    (19, 'Watered', {'amount_ml': 400}),
+    (30.5, 'Watered', {'amount_ml': 400}),
+    (27, 'Soil check', {'layers': MOIST}),
+    (22.5, 'Soil check', {'layers': DRYING}),
+    (21.55, 'Soil check', {'layers': DRY}),
+    (21.5, 'Watered', {'amount_ml': 400}),
     (17, 'Soil check', {'layers': MOIST}),
-    (15, 'Soil check', {'layers': DRYING}),
-    (14.05, 'Soil check', {'layers': DRY}),
-    (14, 'Watered', {'amount_ml': 400}),
-    (11, 'Soil check', {'layers': MOIST}),
-    (9, 'Soil check', {'layers': DRYING}),
-    (8.05, 'Soil check', {'layers': DRY}),
-    (8, 'Watered', {'amount_ml': 350}),
-    (6, 'Soil check', {'layers': MOIST}),
-    (4, 'Soil check', {'layers': DRYING}),
+    (12.5, 'Soil check', {'layers': DRYING}),
+    (11.55, 'Soil check', {'layers': DRY}),
+    (11.5, 'Watered', {'amount_ml': 350}),
+    (8, 'Soil check', {'layers': MOIST}),
+    (3.5, 'Soil check', {'layers': DRYING}),
     (3.05, 'Soil check', {'layers': DRY}),
     (3, 'Watered', {'amount_ml': 400}),
     (2, 'Observation', {'visual': 'great'}),
