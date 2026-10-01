@@ -4,7 +4,7 @@
 
 Rootera is a plant-care app that learns *one specific plant*: where it lives, the pot it is in, and how its soil actually dries, instead of pushing a watering calendar. Built for the [RevenueCat Shipaton 2026](https://www.shipaton.com/) (Next Gen Award) with Expo (React Native + TypeScript) and a FastAPI backend.
 
-[Português](README.pt-BR.md) · Demo video: *(link added with the submission)* · License: [MIT](LICENSE)
+[Português](README.pt-BR.md) · Try it in the browser: [rootera.byguto.com](https://rootera.byguto.com) · Demo video: [YouTube](https://www.youtube.com/watch?v=mT3kwDD25DU) · Submission: [Devpost](https://devpost.com/software/rootera-5mocq7) · License: [MIT](LICENSE)
 
 | Today | A plant's window | Three-layer check | Onboarding | Shipaton lab | Rootera+ |
 |---|---|---|---|---|---|

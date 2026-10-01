@@ -4,6 +4,8 @@
 
 O Rootera é um app de cuidado de plantas que aprende **uma planta específica**: o lugar onde ela vive, o vaso e quanto tempo a terra dela leva para secar. Ele não empurra um calendário de rega. Foi feito para a RevenueCat Shipaton 2026 (Next Gen Award), com Expo (React Native + TypeScript) e um backend em FastAPI.
 
+Teste no navegador: [rootera.byguto.com](https://rootera.byguto.com) · Vídeo: [YouTube](https://www.youtube.com/watch?v=mT3kwDD25DU)
+
 A documentação completa está em inglês, no [README.md](README.md). O raciocínio da calibração, com as fontes, está em [docs/calibracao-shipaton.md](docs/calibracao-shipaton.md).
 
 ## Em resumo
@@ -12,7 +14,7 @@ A documentação completa está em inglês, no [README.md](README.md). O racioc�
 - **Clima local (Open-Meteo, sem chave):** ajusta a janela entre 0,8× e 1,25×.
 - **Fontes à vista:** toda sugestão mostra de onde veio. Nenhuma porcentagem inventada.
 - **Laboratório Shipaton:** 91 dias de uma planta virtual, com clima real.
-- **Rootera+ pela RevenueCat:** mensal, anual ou vitalício, no entitlement `rootera`. Quem confirma a assinatura é o servidor.
+- **Rootera+ pela RevenueCat:** mensal, trimestral ou anual, no entitlement `rootera`. Quem confirma a assinatura é o servidor.
 
 ## Rodar localmente
 Precisa de Node 20+ e Python 3.12.
