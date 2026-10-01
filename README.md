@@ -30,7 +30,7 @@ University extension guides agree on one rule for houseplants: water when the so
 
 | Piece | Where |
 |---|---|
-| Entitlement `rootera`, products `monthly`, `yearly`, `lifetime` in the current offering (`$rc_monthly`, `$rc_annual`, `$rc_lifetime`) | RevenueCat dashboard |
+| Entitlement `rootera`, products `monthly`, `quarterly`, `yearly` in the current offering (`$rc_monthly`, `$rc_three_month`, `$rc_annual`) | RevenueCat dashboard |
 | SDK configured with the backend's user id as the app user id | [src/billing.ts](src/billing.ts) |
 | Paywall designed in RevenueCat Paywalls, shown with `presentPaywallIfNeeded({ requiredEntitlementIdentifier: 'rootera' })` | [src/billing.ts](src/billing.ts), [src/screens/Plans.tsx](src/screens/Plans.tsx) |
 | Customer Center from *You → Manage subscription* | [src/billing.ts](src/billing.ts) |
@@ -97,8 +97,8 @@ Reproduce it from the `backend` folder with `.venv/Scripts/python tests/season_c
 You need Node 20+, Python 3.12, and either Expo Go on a phone (Expo SDK 57) on the same Wi-Fi as the computer, or a browser.
 
 ```bash
-git clone https://github.com/<you>/rootera.git
-cd rootera
+git clone https://github.com/gustavo-henriq/Rootera.git
+cd Rootera
 npm ci
 cp .env.example .env
 ```

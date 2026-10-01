@@ -588,8 +588,6 @@ export const PT: Record<string, string> = {
   "Compare with": "Comparar com",
   "Start the simulation": "Começar a simulação",
   "Pattern: recommendations from this plant": "Padrão: recomendações desta planta",
-  "{price} once": "{price} uma vez",
-  "Lifetime": "Vitalício",
   "See plans": "Ver planos",
   "Change plan, cancel or get help": "Trocar de plano, cancelar ou pedir ajuda",
   "Manage subscription": "Gerenciar assinatura",

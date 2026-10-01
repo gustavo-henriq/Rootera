@@ -6,9 +6,9 @@
  * never decides on its own that someone is Plus: after a purchase or a restore it asks the
  * backend (/v1/billing/sync), which checks RevenueCat with its secret key.
  *
- * Products (configured in the RevenueCat dashboard, not here): monthly, yearly, lifetime,
+ * Products (configured in the RevenueCat dashboard, not here): monthly, quarterly and yearly,
  * all attached to the entitlement "rootera" and offered in the current offering as the
- * $rc_monthly, $rc_annual and $rc_lifetime packages. The paywall itself is designed in
+ * $rc_monthly, $rc_three_month and $rc_annual packages. The paywall itself is designed in
  * RevenueCat (Paywalls) and presented with react-native-purchases-ui; where that UI cannot
  * run (Expo Go without the native module, the web preview, no paywall configured), the
  * Plans screen shows its own plan picker over the same packages.

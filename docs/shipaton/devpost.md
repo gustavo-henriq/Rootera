@@ -53,7 +53,7 @@ Every university extension guide gives houseplant owners the same rule: water wh
   - The app is fully in English and Portuguese, respects Reduce Motion, and has large-text layouts.
 
 ### How RevenueCat is used *(Monetization)*
-- **Plans.** Free keeps three plants. **Rootera+** removes the limit and adds rooms and a dated growth diary. It is sold as monthly, yearly or lifetime, all unlocking the `rootera` entitlement through the current offering.
+- **Plans.** Free keeps three plants. **Rootera+** removes the limit and adds rooms and a dated growth diary. It is sold as monthly, quarterly or yearly, all unlocking the `rootera` entitlement through the current offering.
 - **Purchase screens.**
   - The paywall is built with **RevenueCat Paywalls** and shown with `presentPaywallIfNeeded` for the `rootera` entitlement.
   - Subscribers manage their plan in the **Customer Center**.
