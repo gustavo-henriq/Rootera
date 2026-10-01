@@ -1,0 +1,10 @@
+// The web preview on Cloudflare Workers (static assets only). The build runs
+// `npx expo export -p web` with EXPO_PUBLIC_API_URL pointing at the public API.
+{
+  "name": "rootera",
+  "compatibility_date": "2026-09-30",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
