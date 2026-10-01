@@ -211,9 +211,24 @@ function Today({ navigation }: TabProps<'Today'>) {
     }}>
     <Offline />
     <NudgeInvite />
+    <LabCard onOpen={() => navigation.navigate('Lab')} />
     {needs.length >= 3 && <RoundCard count={needs.length} onStart={() => navigation.navigate('Round')} />}
     {!garden.plants.length && <EmptyShelf onAdd={() => navigation.navigate('AddPlant', { first: true })} />}
   </Page>;
+}
+
+/** The Shipaton lab, one tap from Today: judges and testers can watch Rootera learn in seconds. */
+function LabCard({ onOpen }: { onOpen: () => void }) {
+  const { c } = useTheme();
+  return <Tap label={`${t('Shipaton lab')}. ${t('Simulate MVP Shipaton and watch Rootera adapt.')}`} onPress={onOpen} ring={radius.card}
+    style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], padding: space[4], borderRadius: radius.card, borderWidth: StyleSheet.hairlineWidth, borderColor: c.hairline, backgroundColor: c.raised }}>
+    <Glyph name="spark" size={22} tone={c.leafText} />
+    <View style={{ flex: 1, gap: 2 }}>
+      <T v="headline">{t('Shipaton lab')}</T>
+      <T v="subhead" tone="ink2">{t('Simulate MVP Shipaton and watch Rootera adapt.')}</T>
+    </View>
+    <Glyph name="forward" size={16} tone={c.ink3} />
+  </Tap>;
 }
 
 /** One entry for many check-ins: the round asks one question per plant. About 10 s each. */

@@ -77,18 +77,16 @@ export function Pop({ delay = 0, children, style }: React.PropsWithChildren<{ de
   return <Animated.View entering={reduceMotion ? undefined : enter.pop(delay)} style={style}>{children}</Animated.View>;
 }
 
-/** One gentle settle when a plant appears; never loops. */
+/** A plant appears: it rises into place once, without swinging or bouncing; never loops. */
 export function Settle({ children, delay = 100 }: React.PropsWithChildren<{ delay?: number }>) {
   const { reduceMotion } = useTheme();
-  const r = useSharedValue(0), y = useSharedValue(reduceMotion ? 0 : 14);
-  const box = useSharedValue({ w: 0, h: 0 });
+  const y = useSharedValue(reduceMotion ? 0 : 14);
   useEffect(() => {
     if (reduceMotion) return;
-    y.value = withDelay(delay, withSpring(0, springs.smooth));
-    r.value = withDelay(delay + 180, withSequence(withTiming(-2.4, { duration: 150 }), withSpring(0, springs.bouncy)));
+    y.value = withDelay(delay, withSpring(0, { ...springs.smooth, overshootClamping: true }));
   }, [reduceMotion]);
-  const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }, ...pivot(box.value.w, box.value.h, .5, 1, [{ rotate: `${r.value}deg` }])] }));
-  return <Animated.View onLayout={e => { box.value = { w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height }; }} style={style}>{children}</Animated.View>;
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
+  return <Animated.View style={style}>{children}</Animated.View>;
 }
 
 function Drop({ x, delay, fall }: { x: number; delay: number; fall: number }) {
